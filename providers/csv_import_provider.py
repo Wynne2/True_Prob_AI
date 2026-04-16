@@ -22,6 +22,10 @@ Odds CSV columns (all required):
   book, player_id, player_name, prop_type, line, over_odds, under_odds,
   game_id, team_abbr, opponent_abbr
 
+Optional odds column:
+  game_date  (YYYY-MM-DD) — when present, rows are filtered to match the
+             requested date so a single CSV can hold multiple days of lines.
+
 Defense CSV columns (all required):
   team_id, team_abbr, defensive_efficiency, pace,
   pts_allowed_pg, pts_allowed_sg, pts_allowed_sf, pts_allowed_pf, pts_allowed_c,
@@ -104,6 +108,17 @@ class CSVImportProvider(BaseProvider):
 
     def get_player_props(self, game_date: date) -> list[OddsLine]:
         rows = _read_csv(self._odds_path)
+
+        # Filter to the requested date when the optional column is present
+        date_str = game_date.isoformat()
+        if rows and "game_date" in rows[0]:
+            before = len(rows)
+            rows = [r for r in rows if r.get("game_date", "") == date_str]
+            logger.debug(
+                "CSV import: filtered odds from %d → %d rows for date %s",
+                before, len(rows), date_str,
+            )
+
         lines = []
         for row in rows:
             line = raw_dict_to_odds_line(row, DataSource.CSV_IMPORT)

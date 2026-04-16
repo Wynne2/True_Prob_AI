@@ -13,6 +13,7 @@ All arguments have sensible defaults so you can run with no flags at all.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from datetime import date
 
@@ -29,9 +30,65 @@ from engine.ranking_engine import rank_parlays
 from engine.slate_scanner import SlateScanner
 from utils.date_utils import parse_date, today_eastern
 from utils.formatting import format_american, format_edge, format_prob, format_currency
+from utils.api_debug import redact_url
 from utils.logging_utils import setup_logging
 
 console = Console()
+
+
+# ---------------------------------------------------------------------------
+# API debug interceptor
+# ---------------------------------------------------------------------------
+
+def install_api_debug_logger() -> None:
+    """
+    Monkey-patch requests.get so every outbound HTTP call prints:
+      - the redacted URL (API keys hidden)
+      - HTTP status code
+      - a readable JSON preview of the response body
+    """
+    import requests as _requests
+
+    _original_get = _requests.get
+
+    def _debug_get(url, **kwargs):
+        response = _original_get(url, **kwargs)
+        safe_url = redact_url(url)
+
+        status_color = "green" if response.ok else "red"
+        console.rule(f"[bold yellow]API Response[/bold yellow]  [{status_color}]{response.status_code}[/{status_color}]  [dim]{safe_url}[/dim]")
+
+        try:
+            data = response.json()
+            if isinstance(data, list):
+                console.print(f"[dim]  ↳ list of {len(data)} items[/dim]")
+                if data:
+                    preview = data[:3]  # first 3 items
+                    console.print_json(json.dumps(preview, default=str))
+                    if len(data) > 3:
+                        console.print(f"[dim]  ... {len(data) - 3} more items not shown[/dim]")
+            elif isinstance(data, dict):
+                # For large dicts, show all top-level keys and truncate long values
+                preview: dict = {}
+                for k, v in data.items():
+                    if isinstance(v, list) and len(v) > 3:
+                        preview[k] = v[:3] + [f"... ({len(v) - 3} more)"]
+                    elif isinstance(v, str) and len(v) > 200:
+                        preview[k] = v[:200] + "..."
+                    else:
+                        preview[k] = v
+                console.print_json(json.dumps(preview, default=str))
+            else:
+                console.print(f"[dim]  ↳ {repr(data)[:300]}[/dim]")
+        except Exception:
+            body_preview = response.text[:500]
+            console.print(f"[red]  ↳ Non-JSON response:[/red] {body_preview}")
+
+        console.print()
+        return response
+
+    _requests.get = _debug_get
+    console.print("[bold yellow]⚡ API debug mode ON[/bold yellow] — raw responses will be printed for every HTTP call.\n")
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +129,10 @@ Examples:
     parser.add_argument("--min-confidence", choices=["high", "medium", "low", "very_low"],
                         help="Minimum confidence tier per leg")
     parser.add_argument("--verbose", action="store_true", help="Verbose logging")
+    parser.add_argument(
+        "--debug-api", action="store_true",
+        help="Print raw JSON response from every API call (for verifying data sources)",
+    )
     return parser.parse_args()
 
 
@@ -99,7 +160,7 @@ def print_provider_status() -> None:
     for p in available:
         table.add_row(p, "[green]OK active[/green]")
     for p in missing:
-        table.add_row(p, "[dim]-- no key (sample fallback)[/dim]")
+        table.add_row(p, "[dim]-- no key (no data)[/dim]")
 
     console.print(table)
 
@@ -205,7 +266,26 @@ def main() -> None:
     args = parse_args()
     setup_logging(level="DEBUG" if args.verbose else "WARNING")
 
-    game_date = parse_date(args.date) if args.date else today_eastern()
+    if args.debug_api:
+        install_api_debug_logger()
+
+    if args.date:
+        try:
+            game_date = parse_date(args.date)
+        except (ValueError, TypeError):
+            console.print(
+                f"[red]Invalid date format:[/red] [bold]{args.date}[/bold]  "
+                f"— expected YYYY-MM-DD (e.g. 2026-04-16)"
+            )
+            sys.exit(1)
+    else:
+        game_date = today_eastern()
+
+    if game_date > today_eastern():
+        console.print(
+            f"[yellow]Future date selected ({game_date}).[/yellow] "
+            f"Data may be incomplete or unavailable for upcoming games."
+        )
 
     print_header(game_date)
     print_provider_status()
@@ -219,7 +299,17 @@ def main() -> None:
     console.print(f"[green]Evaluated {len(all_props)} prop lines.[/green]")
 
     if not all_props:
-        console.print("[red]No props found. Check your data providers or API keys.[/red]")
+        if game_date > today_eastern():
+            console.print(
+                f"[yellow]No props found for {game_date}.[/yellow] "
+                f"This is a future date — lines may not be posted yet."
+            )
+        else:
+            console.print(
+                f"[red]No props found for {game_date}.[/red] "
+                f"Check your data providers or API keys. "
+                f"There may be no games scheduled on this date."
+            )
         sys.exit(0)
 
     # Filter qualifying props

@@ -115,7 +115,12 @@ class SampleProvider(BaseProvider):
 
     def get_player_props(self, game_date: date) -> list[OddsLine]:
         from data.sample_games import get_sample_odds
-        return get_sample_odds()
+        lines = get_sample_odds()
+        logger.debug(
+            "SampleProvider: returning %d sample odds lines for requested date %s",
+            len(lines), game_date,
+        )
+        return lines
 
     def get_matchup_history(
         self, player_id: str, opponent_team_id: str

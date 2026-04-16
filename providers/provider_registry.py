@@ -2,9 +2,13 @@
 Provider Registry.
 
 The registry maintains the ordered list of active providers and routes
-each data request to the first provider that can fulfil it.  If all live
-providers fail or are unavailable, the registry falls back to the sample
-data provider automatically.
+each data request to the first provider that can fulfil it.
+
+Provider chain:
+    BallDontLie  ->  CSV import (manual override, no key required)
+
+No sample-data fallback.  If BallDontLie returns no data, the engine
+receives an empty result — never fake data.
 
 Usage:
     registry = ProviderRegistry.build()
@@ -27,76 +31,31 @@ logger = logging.getLogger(__name__)
 
 def _build_providers() -> list[BaseProvider]:
     """
-    Instantiate all providers whose credentials are present, plus the
-    always-available fallbacks (CSV import and sample data).
+    Instantiate the BallDontLie provider (primary) and the CSV import
+    provider (manual override).  No sample-data fallback is added.
     """
-    from providers.sample_provider import SampleProvider
     from providers.csv_import_provider import CSVImportProvider
 
     creds = get_credentials()
     providers: list[BaseProvider] = []
 
-    if creds.sportsdataio_key:
+    if creds.balldontlie_key:
         try:
-            from providers.sportsdataio_provider import SportsDataIOProvider
-            providers.append(SportsDataIOProvider(creds.sportsdataio_key))
-            logger.info("SportsDataIO provider registered")
+            from providers.balldontlie_provider import BallDontLieProvider
+            providers.append(BallDontLieProvider(creds.balldontlie_key))
+            logger.info("BallDontLie provider registered")
         except Exception as exc:
-            logger.warning("Failed to load SportsDataIO provider: %s", exc)
+            logger.warning("Failed to load BallDontLie provider: %s", exc)
     else:
-        logger.info("SportsDataIO skipped – no SPORTSDATAIO_API_KEY")
-
-    if creds.sportradar_key:
-        try:
-            from providers.sportradar_provider import SportradarProvider
-            providers.append(SportradarProvider(creds.sportradar_key))
-            logger.info("Sportradar provider registered")
-        except Exception as exc:
-            logger.warning("Failed to load Sportradar provider: %s", exc)
-    else:
-        logger.info("Sportradar skipped – no SPORTRADAR_API_KEY")
-
-    if creds.odds_api_key:
-        try:
-            from providers.odds_api_provider import OddsAPIProvider
-            providers.append(OddsAPIProvider(creds.odds_api_key))
-            logger.info("The Odds API provider registered")
-        except Exception as exc:
-            logger.warning("Failed to load Odds API provider: %s", exc)
-    else:
-        logger.info("The Odds API skipped – no THE_ODDS_API_KEY")
-
-    if creds.fantasypros_key:
-        try:
-            from providers.fantasypros_provider import FantasyProsProvider
-            providers.append(FantasyProsProvider(creds.fantasypros_key))
-            logger.info("FantasyPros provider registered")
-        except Exception as exc:
-            logger.warning("Failed to load FantasyPros provider: %s", exc)
-
-    if creds.nba_official_key:
-        try:
-            from providers.nba_official_provider import NBAOfficialProvider
-            providers.append(NBAOfficialProvider(creds.nba_official_key))
-            logger.info("NBA Official provider registered")
-        except Exception as exc:
-            logger.warning("Failed to load NBA Official provider: %s", exc)
-
-    if creds.statmuse_key:
-        try:
-            from providers.statmuse_provider import StatMuseProvider
-            providers.append(StatMuseProvider(creds.statmuse_key))
-            logger.info("StatMuse provider registered")
-        except Exception as exc:
-            logger.warning("Failed to load StatMuse provider: %s", exc)
+        logger.warning(
+            "No BALLDONTLIE_API_KEY found — no live data will be available. "
+            "Add your key to .env to enable data fetching."
+        )
 
     # CSV import is always available (no key required); it's a no-op if
-    # the CSV files don't exist.
+    # the import files don't exist.
     providers.append(CSVImportProvider())
-
-    # Sample data is always last — guaranteed fallback
-    providers.append(SampleProvider())
-    logger.info("Sample data fallback registered (always active)")
+    logger.debug("CSV import provider registered (manual override)")
 
     return providers
 
@@ -244,8 +203,8 @@ class ProviderRegistry:
         return [p.source_name.value for p in self._providers]
 
     def summary(self) -> str:
-        lines = ["Provider Registry:"]
+        lines = ["Provider Registry (BallDontLie -> CSV):"]
         for i, p in enumerate(self._providers, 1):
-            status = "available" if p.is_available() else "fallback/stub"
+            status = "live" if p.is_available() else "no key / stub"
             lines.append(f"  {i}. {p.__class__.__name__} ({status})")
         return "\n".join(lines)

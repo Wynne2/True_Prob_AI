@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Optional
 
 import requests
@@ -60,6 +60,16 @@ class SportradarProvider(BaseProvider):
             logger.error("Sportradar request error for %s: %s", url, exc)
             return None
 
+    @staticmethod
+    def _parse_tip_off(scheduled_str: str) -> datetime | None:
+        """Parse Sportradar's ISO-8601 scheduled time to a UTC-aware datetime."""
+        if not scheduled_str:
+            return None
+        try:
+            return datetime.fromisoformat(scheduled_str.replace("Z", "+00:00"))
+        except Exception:
+            return None
+
     def get_games_for_date(self, game_date: date) -> list[Game]:
         year = game_date.year
         month = game_date.month
@@ -72,6 +82,7 @@ class SportradarProvider(BaseProvider):
             try:
                 home = game_raw.get("home", {})
                 away = game_raw.get("away", {})
+                venue = game_raw.get("venue", {})
                 g = Game(
                     game_id=game_raw.get("id", ""),
                     home_team_id=home.get("id", ""),
@@ -79,6 +90,9 @@ class SportradarProvider(BaseProvider):
                     away_team_id=away.get("id", ""),
                     away_team_abbr=away.get("alias", ""),
                     game_date=game_date,
+                    tip_off_time=self._parse_tip_off(game_raw.get("scheduled", "")),
+                    arena=venue.get("name", ""),
+                    city=venue.get("city", ""),
                     data_source=DataSource.SPORTRADAR,
                 )
                 games.append(g)
@@ -86,7 +100,28 @@ class SportradarProvider(BaseProvider):
                 logger.warning("Failed to parse Sportradar game: %s", exc)
         return games
 
+    @staticmethod
+    def _is_sportradar_id(game_id: str) -> bool:
+        """
+        Return True only for UUID-format IDs (e.g. 'd50df249-f9ad-4bde-...').
+
+        Sportradar game IDs are UUIDs.  Sample data uses short readable IDs
+        like 'g_bos_mia'; passing those to the API always produces a 404.
+        """
+        import re
+        return bool(re.match(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            game_id.lower(),
+        ))
+
     def get_players_for_game(self, game_id: str) -> list[Player]:
+        if not self._is_sportradar_id(game_id):
+            logger.debug(
+                "Sportradar: skipping get_players_for_game — '%s' is not a Sportradar UUID",
+                game_id,
+            )
+            raise NotImplementedError  # let registry fall through to next provider
+
         # Sportradar: use game summary to get rosters
         data = self._get(f"games/{game_id}/summary.json")
         if not data:

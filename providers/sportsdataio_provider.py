@@ -33,7 +33,7 @@ from domain.enums import (
     PropType,
 )
 from providers.base_provider import BaseProvider
-from utils.date_utils import format_date
+from utils.date_utils import format_date, today_eastern
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class SportsDataIOProvider(BaseProvider):
 
     def get_lineups(self, game_date: Optional[date] = None) -> list[dict]:
         # SportsDataIO projected starters
-        date_str = format_date(game_date) if game_date else format_date(date.today())
+        date_str = format_date(game_date if game_date is not None else today_eastern())
         data = self._get(f"projections/json/ProjectedPlayerGameStatsByDate/{date_str}")
         if not data:
             return []

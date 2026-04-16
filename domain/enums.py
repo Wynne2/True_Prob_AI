@@ -66,6 +66,9 @@ class BookName(str, Enum):
     BOVADA = "bovada"
     BET365 = "bet365"
     PINNACLE = "pinnacle"
+    MYBOOKIE = "mybookie"
+    LOWVIG = "lowvig"
+    BETONLINE = "betonline"
     SAMPLE = "sample"          # internal sample data book
 
 
@@ -116,6 +119,7 @@ class ParlayRiskProfile(str, Enum):
 
 class DataSource(str, Enum):
     """Tracks which provider supplied a given data record."""
+    BALLDONTLIE = "balldontlie"
     SPORTSDATAIO = "sportsdataio"
     SPORTRADAR = "sportradar"
     ODDS_API = "odds_api"

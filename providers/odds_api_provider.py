@@ -16,7 +16,7 @@ Endpoints used:
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 import requests
@@ -40,6 +40,9 @@ _BOOK_MAP: dict[str, BookName] = {
     "bovada": BookName.BOVADA,
     "bet365": BookName.BET365,
     "pinnacle": BookName.PINNACLE,
+    "mybookieag": BookName.MYBOOKIE,
+    "lowvig": BookName.LOWVIG,
+    "betonlineag": BookName.BETONLINE,
 }
 
 
@@ -74,8 +77,37 @@ class OddsAPIProvider(BaseProvider):
             logger.error("The Odds API request error: %s", exc)
             return None
 
+    @staticmethod
+    def _utc_to_eastern_date(utc_iso: str) -> date | None:
+        """
+        Parse a UTC ISO-8601 timestamp and return its Eastern calendar date.
+
+        The Odds API returns commence_time in UTC (e.g. "2026-04-16T02:00:00Z").
+        NBA games that start at ~10 PM ET have a UTC time of the following day,
+        so a simple string-prefix comparison against the Eastern query date fails
+        for all late-night tip-offs.  This method converts to Eastern first.
+        """
+        if not utc_iso:
+            return None
+        try:
+            dt_utc = datetime.fromisoformat(utc_iso.replace("Z", "+00:00"))
+            try:
+                from zoneinfo import ZoneInfo
+                return dt_utc.astimezone(ZoneInfo("America/New_York")).date()
+            except Exception:
+                # Fallback fixed offset: NBA season = EDT (UTC-4)
+                return (dt_utc - timedelta(hours=4)).date()
+        except Exception:
+            return None
+
     def _get_events(self, game_date: date) -> list[dict]:
-        """Fetch upcoming events for the NBA on *game_date*."""
+        """
+        Fetch upcoming NBA events and filter to those that start on *game_date*
+        in Eastern time.
+
+        The API returns all upcoming events regardless of date, and commence_time
+        is always UTC — so we convert each timestamp to Eastern before comparing.
+        """
         data = self._get(
             f"sports/{self._cfg.sport_key}/odds",
             regions=self._cfg.regions,
@@ -85,11 +117,15 @@ class OddsAPIProvider(BaseProvider):
         )
         if not data:
             return []
-        date_str = game_date.isoformat()
-        return [
+        matched = [
             e for e in data
-            if e.get("commence_time", "").startswith(date_str)
+            if self._utc_to_eastern_date(e.get("commence_time", "")) == game_date
         ]
+        logger.debug(
+            "The Odds API: %d/%d events match Eastern date %s",
+            len(matched), len(data), game_date,
+        )
+        return matched
 
     def get_games_for_date(self, game_date: date) -> list[Game]:
         events = self._get_events(game_date)

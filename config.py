@@ -3,8 +3,8 @@ Configuration and environment variable management.
 
 All API keys and tunable runtime settings are loaded from environment
 variables (or a .env file).  If a provider key is absent the platform
-degrades gracefully: the provider is skipped and a warning is logged, but
-all other providers and the sample-data fallback continue to work normally.
+degrades gracefully: the provider is skipped and no data will be available
+for that provider.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ def _key(name: str) -> str | None:
 @dataclass(frozen=True)
 class ProviderCredentials:
     """Snapshot of all provider API keys at startup."""
+    balldontlie_key: str | None = field(default_factory=lambda: _key("BALLDONTLIE_API_KEY"))
     sportsdataio_key: str | None = field(default_factory=lambda: _key("SPORTSDATAIO_API_KEY"))
     sportradar_key: str | None = field(default_factory=lambda: _key("SPORTRADAR_API_KEY"))
     odds_api_key: str | None = field(default_factory=lambda: _key("THE_ODDS_API_KEY"))
@@ -44,6 +45,7 @@ class ProviderCredentials:
     @property
     def available_providers(self) -> list[str]:
         mapping = {
+            "balldontlie": self.balldontlie_key,
             "sportsdataio": self.sportsdataio_key,
             "sportradar": self.sportradar_key,
             "odds_api": self.odds_api_key,
@@ -58,6 +60,7 @@ class ProviderCredentials:
     @property
     def missing_providers(self) -> list[str]:
         mapping = {
+            "balldontlie": self.balldontlie_key,
             "sportsdataio": self.sportsdataio_key,
             "sportradar": self.sportradar_key,
             "odds_api": self.odds_api_key,
@@ -68,6 +71,16 @@ class ProviderCredentials:
             "rotowire": self.rotowire_key,
         }
         return [name for name, key in mapping.items() if not key]
+
+
+# ---------------------------------------------------------------------------
+# BallDontLie endpoints
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class BallDontLieConfig:
+    base_url: str = "https://api.balldontlie.io"
+    timeout: int = 15
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +161,7 @@ class AppSettings:
 
 _credentials: ProviderCredentials | None = None
 _app_settings: AppSettings | None = None
+_bdl_config: BallDontLieConfig | None = None
 _sdio_config: SportsDataIOConfig | None = None
 _sr_config: SportradarConfig | None = None
 _odds_config: OddsAPIConfig | None = None
@@ -165,6 +179,13 @@ def get_settings() -> AppSettings:
     if _app_settings is None:
         _app_settings = AppSettings()
     return _app_settings
+
+
+def get_bdl_config() -> BallDontLieConfig:
+    global _bdl_config
+    if _bdl_config is None:
+        _bdl_config = BallDontLieConfig()
+    return _bdl_config
 
 
 def get_sdio_config() -> SportsDataIOConfig:
@@ -190,10 +211,11 @@ def get_odds_api_config() -> OddsAPIConfig:
 
 def reload_config() -> None:
     """Force re-read of env vars (useful in tests)."""
-    global _credentials, _app_settings, _sdio_config, _sr_config, _odds_config
+    global _credentials, _app_settings, _bdl_config, _sdio_config, _sr_config, _odds_config
     load_dotenv(dotenv_path=_ENV_PATH, override=True)
     _credentials = None
     _app_settings = None
+    _bdl_config = None
     _sdio_config = None
     _sr_config = None
     _odds_config = None
