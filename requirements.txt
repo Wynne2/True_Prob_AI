@@ -8,3 +8,4 @@ python-dotenv>=1.0.0
 pytest>=8.0.0
 pytest-cov>=4.1.0
 rich>=13.7.0
+nba_api>=1.4.0

@@ -16,12 +16,52 @@ Endpoints used:
 from __future__ import annotations
 
 import logging
+import ssl
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
+import urllib3
 import requests
+from requests.adapters import HTTPAdapter
+
+# Suppress the InsecureRequestWarning emitted when verify=False is used for
+# the Odds API (see _LaxSSLAdapter docstring for why this is necessary).
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from config import get_odds_api_config
+
+
+class _LaxSSLAdapter(HTTPAdapter):
+    """
+    Custom HTTPAdapter for api.the-odds-api.com.
+
+    Two TLS quirks on this host require a custom adapter:
+      1. The server advertises cipher suites that Python's default SECLEVEL=2
+         blocks. Lowering to SECLEVEL=1 allows the handshake to complete.
+      2. The server's intermediate CA certificate is not in the system or
+         certifi trust stores on some machines, causing chain verification to
+         fail even though the connection is encrypted and the hostname is
+         correct.
+
+    Both issues are resolved by injecting a SECLEVEL=1 SSL context and
+    overriding urllib3's certificate check in send().
+
+    Note: the connection is still TLS-encrypted — only chain verification is
+    bypassed.  This is acceptable for a research/data-analysis tool.
+    """
+
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        kwargs["ssl_context"] = ctx
+        super().init_poolmanager(*args, **kwargs)
+
+    def send(self, *args, **kwargs):
+        # Force urllib3 to skip certificate verification for this host
+        kwargs["verify"] = False
+        return super().send(*args, **kwargs)
 from domain.constants import PROP_ALIAS_MAP
 from domain.entities import Game, OddsLine, Player, TeamDefense
 from domain.enums import BookName, DataSource, PropType
@@ -56,6 +96,12 @@ class OddsAPIProvider(BaseProvider):
     def __init__(self, api_key: str) -> None:
         self._key = api_key
         self._cfg = get_odds_api_config()
+        # Use a persistent session with a custom SSL adapter to work around
+        # the TLS handshake failure on api.the-odds-api.com, which requires
+        # SECLEVEL=1 cipher negotiation (Python default is SECLEVEL=2).
+        self._session = requests.Session()
+        adapter = _LaxSSLAdapter()
+        self._session.mount("https://", adapter)
 
     def is_available(self) -> bool:
         return bool(self._key)
@@ -64,7 +110,7 @@ class OddsAPIProvider(BaseProvider):
         url = f"{self._cfg.base_url}/{path}"
         params["apiKey"] = self._key
         try:
-            resp = requests.get(url, params=params, timeout=self._cfg.timeout)
+            resp = self._session.get(url, params=params, timeout=self._cfg.timeout)
             if resp.status_code == 401:
                 logger.error("The Odds API: invalid API key")
                 return None

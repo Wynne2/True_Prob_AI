@@ -89,7 +89,12 @@ class PointsModel(BaseStatModel):
         home_away_factor = self._home_away_factor(is_home, player)
 
         # Projection
-        base = player.points_per_game or 15.0
+        if player.points_per_game > 0:
+            base = player.points_per_game
+        elif player.is_starter:
+            base = 8.0   # conservative starter placeholder; completeness penalty handles uncertainty
+        else:
+            base = 4.0   # conservative bench placeholder
         projected = (
             base
             * minutes_factor

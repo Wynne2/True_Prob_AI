@@ -50,7 +50,12 @@ class ThreesModel(BaseStatModel):
                           if player.minutes_per_game > 0 else 1.0)
 
         # Projected 3PA
-        base_3pa = player.three_point_attempts or 3.0
+        if player.three_point_attempts > 0:
+            base_3pa = player.three_point_attempts
+        elif player.is_starter:
+            base_3pa = 2.0   # conservative starter placeholder
+        else:
+            base_3pa = 1.0   # conservative bench placeholder
         proj_3pa = base_3pa * minutes_factor
 
         # Positional defence adjustment on attempts

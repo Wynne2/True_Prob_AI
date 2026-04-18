@@ -65,7 +65,12 @@ class AssistsModel(BaseStatModel):
         )
         injury_factor = self._injury_factor(player)
 
-        base = player.assists_per_game or 3.0
+        if player.assists_per_game > 0:
+            base = player.assists_per_game
+        elif player.is_starter:
+            base = 2.5   # conservative starter placeholder
+        else:
+            base = 1.0   # conservative bench placeholder
         projected = (
             base
             * minutes_factor

@@ -9,7 +9,7 @@ Estimates the standard deviation of a player's stat line, incorporating:
 
 from __future__ import annotations
 
-from domain.constants import VARIANCE_INFLATION
+from domain.constants import VARIANCE_INFLATION, STD_MIN_FRACTION, STD_ABSOLUTE_MIN
 from domain.entities import Player
 from domain.enums import PropType
 from utils.distributions import sample_std
@@ -37,8 +37,12 @@ class VarianceModel:
         raw_std = self._raw_std(player, prop_type, projected_mean, use_recent_form)
         inflation = VARIANCE_INFLATION.get(prop_type, 1.20)
         inflated = raw_std * inflation
-        # Minimum floor: 10% of projected mean or 0.5 whichever is greater
-        floor = max(projected_mean * 0.10, 0.5)
+        # Minimum floor: larger of (fraction × mean) and absolute minimum.
+        # These wider floors prevent overconfident distributions when the
+        # projected mean is far from the prop line.
+        min_frac = STD_MIN_FRACTION.get(prop_type, 0.30)
+        min_abs  = STD_ABSOLUTE_MIN.get(prop_type, 1.0)
+        floor = max(projected_mean * min_frac, min_abs)
         return max(inflated, floor)
 
     def _raw_std(

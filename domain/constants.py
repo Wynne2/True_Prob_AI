@@ -43,15 +43,61 @@ FORM_WINDOW_LONG: int = 20
 # ---------------------------------------------------------------------------
 
 VARIANCE_INFLATION: dict[PropType, float] = {
-    PropType.POINTS: 1.15,
-    PropType.REBOUNDS: 1.20,
-    PropType.ASSISTS: 1.25,
-    PropType.THREES: 1.30,
-    PropType.PRA: 1.10,
-    PropType.BLOCKS: 1.40,
-    PropType.STEALS: 1.40,
-    PropType.TURNOVERS: 1.25,
+    PropType.POINTS:    1.55,   # was 1.15 — empirical NBA game-to-game scoring spread
+    PropType.REBOUNDS:  1.80,   # was 1.20 — high overdispersion in rebounding
+    PropType.ASSISTS:   1.65,   # was 1.25
+    PropType.THREES:    2.00,   # was 1.30 — shooting is highly volatile night-to-night
+    PropType.PRA:       1.45,   # was 1.10
+    PropType.BLOCKS:    2.20,   # was 1.40 — blocks are extremely high-variance
+    PropType.STEALS:    2.20,   # was 1.40 — steals are extremely high-variance
+    PropType.TURNOVERS: 1.70,   # was 1.25
 }
+
+# Minimum std as fraction of projected mean — prevents overconfident tight distributions
+# when the projected mean is far from the prop line.
+STD_MIN_FRACTION: dict[PropType, float] = {
+    PropType.POINTS:    0.30,
+    PropType.REBOUNDS:  0.35,
+    PropType.ASSISTS:   0.40,
+    PropType.THREES:    0.50,
+    PropType.PRA:       0.25,
+    PropType.BLOCKS:    0.55,
+    PropType.STEALS:    0.55,
+    PropType.TURNOVERS: 0.45,
+}
+
+# Absolute minimum std floor — prevents degenerate distributions for low-average players
+STD_ABSOLUTE_MIN: dict[PropType, float] = {
+    PropType.POINTS:    2.5,
+    PropType.REBOUNDS:  1.2,
+    PropType.ASSISTS:   1.0,
+    PropType.THREES:    0.7,
+    PropType.PRA:       4.0,
+    PropType.BLOCKS:    0.4,
+    PropType.STEALS:    0.4,
+    PropType.TURNOVERS: 0.6,
+}
+
+# NegBin overdispersion — empirical NBA value (was hardcoded 1.3 in distributions.py)
+# Var = mean × NEGBIN_VARIANCE_INFLATION.  2.0 matches observed rebound/assist spread.
+NEGBIN_VARIANCE_INFLATION: float = 2.0
+
+# ---------------------------------------------------------------------------
+# Probability calibration pipeline constants
+# These are applied in engine/prop_evaluator.py after the raw distribution
+# tail probability is computed, to prevent unrealistic 95–100% outputs.
+#
+# Pipeline: raw_prob → shrinkage → completeness_penalty → ceiling_clamp
+# ---------------------------------------------------------------------------
+
+# Pulls all probabilities toward 50% before the completeness penalty.
+# 0.80 means a raw 99.9% becomes 0.5 + 0.499 × 0.80 = 89.9%.
+PROBABILITY_SHRINKAGE_FACTOR: float = 0.80
+
+# Hard ceiling / floor on any single-game prop probability.
+# Most realistic NBA props should fall well within this range.
+MAX_PROBABILITY_CEILING: float = 0.93
+MIN_PROBABILITY_FLOOR:   float = 0.07
 
 # ---------------------------------------------------------------------------
 # Positional fantasy points multiplier lookup

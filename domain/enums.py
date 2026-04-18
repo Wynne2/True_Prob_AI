@@ -119,14 +119,16 @@ class ParlayRiskProfile(str, Enum):
 
 class DataSource(str, Enum):
     """Tracks which provider supplied a given data record."""
-    BALLDONTLIE = "balldontlie"
+    NBA_API = "nba_api"          # nba_api Python library (no key required)
     SPORTSDATAIO = "sportsdataio"
     SPORTRADAR = "sportradar"
     ODDS_API = "odds_api"
+    CSV_IMPORT = "csv_import"
+    SAMPLE = "sample"
+    # Retired sources — kept for enum compatibility with existing data records
+    BALLDONTLIE = "balldontlie"
     FANTASYPROS = "fantasypros"
     NBA_OFFICIAL = "nba_official"
     STATMUSE = "statmuse"
     ROTOGRINDERS = "rotogrinders"
     ROTOWIRE = "rotowire"
-    CSV_IMPORT = "csv_import"
-    SAMPLE = "sample"

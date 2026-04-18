@@ -97,7 +97,7 @@ def _negbinom_params(mean: float, variance: float) -> tuple[float, float]:
 
 def negbinom_prob_over(
     mean: float,
-    variance_inflation: float = 1.3,
+    variance_inflation: float = 2.0,
     line: float = 0.0,
     min_mean: float = 0.1,
 ) -> float:
@@ -121,7 +121,7 @@ def negbinom_prob_over(
 
 def negbinom_prob_under(
     mean: float,
-    variance_inflation: float = 1.3,
+    variance_inflation: float = 2.0,
     line: float = 0.0,
     min_mean: float = 0.1,
 ) -> float:

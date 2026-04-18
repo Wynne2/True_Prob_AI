@@ -68,7 +68,12 @@ class ReboundsModel(BaseStatModel):
         injury_factor = self._injury_factor(player)
         home_away_factor = 1.0  # rebounds show minimal home/away split
 
-        base = player.rebounds_per_game or 4.0
+        if player.rebounds_per_game > 0:
+            base = player.rebounds_per_game
+        elif player.is_starter:
+            base = 3.0   # conservative starter placeholder
+        else:
+            base = 2.0   # conservative bench placeholder
         projected = (
             base
             * minutes_factor
