@@ -23,6 +23,7 @@ from datetime import date
 from typing import Optional
 
 from config import get_credentials, get_sdio_config
+from data.builders.team_defense_builder import build_team_defense
 from data.loaders.sportsdataio_loader import (
     fetch_depth_charts,
     fetch_games_for_date,
@@ -33,7 +34,7 @@ from data.loaders.sportsdataio_loader import (
     fetch_team_season_stats,
     index_by_player_id,
 )
-from domain.constants import PROP_ALIAS_MAP
+from domain.constants import PROP_ALIAS_MAP, SDIO_SEASON
 from domain.entities import Game, OddsLine, Player, TeamDefense
 from domain.enums import (
     BookName,
@@ -72,7 +73,7 @@ _STATUS_MAP: dict[str, InjuryStatus] = {
     "not with team": InjuryStatus.NOT_WITH_TEAM,
 }
 
-_CURRENT_SEASON = "2026"
+_CURRENT_SEASON = SDIO_SEASON
 
 
 class SportsDataIOProvider(BaseProvider):
@@ -103,8 +104,12 @@ class SportsDataIOProvider(BaseProvider):
         """
         raw = fetch_games_for_date(game_date)
         games = []
+        from utils.date_utils import parse_iso_datetime
+
         for r in raw:
             try:
+                dt_raw = r.get("date_time") or ""
+                tip = parse_iso_datetime(str(dt_raw)) if dt_raw else None
                 games.append(Game(
                     game_id=r["game_id"],
                     home_team_id=r["home_team_id"],
@@ -112,6 +117,8 @@ class SportsDataIOProvider(BaseProvider):
                     away_team_id=r["away_team_id"],
                     away_team_abbr=r["away_team"],
                     game_date=game_date,
+                    tip_off_time=tip,
+                    status=str(r.get("status", "") or ""),
                     game_total=r.get("over_under", 0.0),
                     home_spread=r.get("point_spread", 0.0),
                     data_source=DataSource.SPORTSDATAIO,
@@ -190,34 +197,16 @@ class SportsDataIOProvider(BaseProvider):
 
     def get_team_defense(self, team_id: str) -> Optional[TeamDefense]:
         """
-        Return a TeamDefense entity from SportsDataIO team season stats.
+        Return TeamDefense with per-position stats allowed (SDIO) + pace/def_rating (nba_api).
 
-        Note: Per-position DvP breakdown is computed by dvp_builder, not
-        here.  This method provides the team-level defensive context.
-
-        SOURCE: SportsDataIO (team defensive stats).
+        Plan A: real positional matchup inputs for MatchupModel / FPAModel — baked into
+        every projection that receives this object from load_team_defense().
         """
-        team_stats = {r["team_id"]: r for r in fetch_team_season_stats(_CURRENT_SEASON)}
-        raw = team_stats.get(team_id)
-        if not raw:
+        try:
+            return build_team_defense(team_id)
+        except Exception as exc:
+            logger.warning("get_team_defense: build_team_defense failed for %s: %s", team_id, exc)
             return None
-
-        # Use opponent points allowed as a proxy for defensive efficiency
-        opp_pts = float(raw.get("opp_pts", 0) or 0)
-
-        return TeamDefense(
-            team_id=team_id,
-            team_abbr=raw.get("team", ""),
-            # Overall defensive context
-            defensive_efficiency=opp_pts,   # pts allowed per game (not per 100 poss)
-            # Position-level DvP fields are populated by dvp_builder; set neutral defaults
-            pts_allowed_pg=opp_pts,
-            pts_allowed_sg=opp_pts,
-            pts_allowed_sf=opp_pts,
-            pts_allowed_pf=opp_pts,
-            pts_allowed_c=opp_pts,
-            data_source=DataSource.SPORTSDATAIO,
-        )
 
     def get_team_context(self, team_id: str) -> Optional[dict]:
         """

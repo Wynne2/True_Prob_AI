@@ -27,7 +27,7 @@ from engine.ranking_engine import rank_parlays, summary_stats
 from engine.slate_scanner import SlateScanner
 from utils.api_debug import capture_api_responses
 from utils.date_utils import today_eastern
-from utils.formatting import format_american, format_edge, format_prob, format_currency
+from utils.formatting import book_display_name, format_american, format_edge, format_prob, format_currency
 from zoneinfo import ZoneInfo
 
 # ---------------------------------------------------------------------------
@@ -77,6 +77,13 @@ def render_sidebar() -> dict:
             st.caption(f"Historical date — showing data for {selected_date}.")
 
         st.divider()
+        is_playoff = st.checkbox(
+            "Playoff slate",
+            value=False,
+            help="Boosts projected minutes slightly for playoff rotation patterns.",
+        )
+
+        st.divider()
         st.subheader("Parlay Constraints")
 
         min_edge = st.slider(
@@ -121,13 +128,14 @@ def render_sidebar() -> dict:
         st.divider()
         st.subheader("Display")
         top_parlays = st.number_input("Top Parlays to Show", min_value=1, value=10, step=1)
+        top_straight = st.number_input("Top Straight Bets to Show", min_value=1, value=15, step=5)
         sort_by = st.selectbox(
             "Sort Parlays By",
             options=[s.value for s in SortField],
             index=0,
         )
 
-        run = st.button("🔍 Scan & Build Parlays", type="primary", use_container_width=True)
+        run = st.button("🔍 Scan & Build", type="primary", use_container_width=True)
 
     return {
         "date": selected_date,
@@ -142,8 +150,10 @@ def render_sidebar() -> dict:
         "min_confidence": None if min_confidence == "Any" else min_confidence,
         "stake": float(stake),
         "top_parlays": int(top_parlays),
+        "top_straight": int(top_straight),
         "sort_by": SortField(sort_by),
         "run": run,
+        "is_playoff": is_playoff,
     }
 
 
@@ -220,14 +230,17 @@ def render_props_table(props: list) -> None:
             "Prop": p.prop_type.value,
             "Line": p.line,
             "Side": p.side.value.upper(),
+            "Baseline": round(getattr(p, "baseline_projection", 0) or p.projected_value, 1),
             "Projected": round(p.projected_value, 1),
+            "Exp Min": round(getattr(p, "expected_minutes", 0), 1),
             "True %": round(p.true_probability * 100, 1),
             "Implied %": round(p.implied_probability * 100, 1),
             "Edge %": round(p.edge * 100, 1),
             "Odds": format_american(p.sportsbook_odds),
             "Fair Odds": format_american(p.fair_odds),
-            "Best Book": p.best_book.value,
+            "Best Book": book_display_name(p.best_book, getattr(p, "best_book_key", "") or ""),
             "Confidence": p.confidence.value,
+            "Warnings": "; ".join(getattr(p, "calibration_warnings", []) or []),
         })
 
     df = pd.DataFrame(rows).sort_values("Edge %", ascending=False)
@@ -241,6 +254,92 @@ def render_props_table(props: list) -> None:
 
     styled = df.style.map(highlight_edge, subset=["Edge %"])
     st.dataframe(styled, width="stretch", hide_index=True)
+
+
+def render_straight_bets(props: list, stake: float, top_n: int) -> None:
+    """Render top straight-bet recommendations as individual cards with payouts."""
+    if not props:
+        st.warning("No qualifying straight bets found. Try lowering the min edge.")
+        return
+
+    sorted_props = sorted(props, key=lambda p: p.edge, reverse=True)[:top_n]
+
+    st.markdown(
+        f"### Top {len(sorted_props)} Straight Bets "
+        f"_(of {len(props)} qualifying props)_"
+    )
+
+    # Summary row
+    avg_edge = sum(p.edge for p in sorted_props) / len(sorted_props)
+    avg_true = sum(p.true_probability for p in sorted_props) / len(sorted_props)
+    best_edge = sorted_props[0].edge
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Qualifying Props", len(props))
+    m2.metric("Avg Edge", f"{avg_edge * 100:.1f}%")
+    m3.metric("Best Edge", f"{best_edge * 100:.1f}%")
+    m4.metric("Avg True Prob", f"{avg_true * 100:.1f}%")
+
+    st.divider()
+
+    def _payout(american_odds: float, wager: float) -> float:
+        if american_odds >= 100:
+            return wager * (american_odds / 100)
+        else:
+            return wager * (100 / abs(american_odds))
+
+    for rank, prop in enumerate(sorted_props, 1):
+        edge_pct = prop.edge * 100
+        book_label = book_display_name(prop.best_book, getattr(prop, "best_book_key", "") or "")
+        net_profit = _payout(prop.sportsbook_odds, stake)
+        total_return = stake + net_profit
+
+        if edge_pct >= 8:
+            edge_color = "#50fa7b"
+        elif edge_pct >= 5:
+            edge_color = "#f1fa8c"
+        else:
+            edge_color = "#ff9955"
+
+        header = (
+            f"#{rank}  {prop.player_name}  —  "
+            f"{prop.prop_type.value} {prop.side.value.upper()} {prop.line}  |  "
+            f"{format_american(prop.sportsbook_odds)} @ {book_label}  |  "
+            f"Edge: {format_edge(prop.edge)}"
+        )
+
+        with st.expander(header, expanded=(rank <= 3)):
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("True Prob", format_prob(prop.true_probability))
+            c2.metric("Implied Prob", format_prob(prop.implied_probability))
+            c3.metric("Edge", format_edge(prop.edge))
+            c4.metric("Projected", f"{prop.projected_value:.1f}")
+            c5.metric("Confidence", prop.confidence.value.capitalize())
+
+            wm = getattr(prop, "calibration_warnings", None) or []
+            if wm:
+                st.caption("Calibration: " + ", ".join(wm))
+            if getattr(prop, "expected_minutes", 0):
+                st.caption(
+                    f"Baseline ~{getattr(prop, 'baseline_projection', prop.projected_value):.1f} · "
+                    f"Exp min ~{prop.expected_minutes:.0f}"
+                )
+
+            st.divider()
+
+            p1, p2, p3, p4 = st.columns(4)
+            p1.metric("Stake", format_currency(stake))
+            p2.metric("Odds", format_american(prop.sportsbook_odds))
+            p3.metric("Net Profit", format_currency(net_profit))
+            p4.metric("Total Return", format_currency(total_return))
+
+            st.markdown(
+                f"**Book:** `{book_label}`  &nbsp;|&nbsp;  "
+                f"**Fair Odds:** `{format_american(prop.fair_odds)}`  &nbsp;|&nbsp;  "
+                f"**Team:** `{prop.team_abbr}` vs `{prop.opponent_abbr}`"
+            )
+
+            if hasattr(prop, "explanation") and prop.explanation:
+                st.caption(prop.explanation)
 
 
 def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
@@ -303,7 +402,7 @@ def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
                     "True %": round(leg.true_probability * 100, 1),
                     "Edge %": round(leg.edge * 100, 1),
                     "Odds": format_american(leg.sportsbook_odds),
-                    "Book": leg.sportsbook.value,
+                    "Book": book_display_name(leg.sportsbook, getattr(leg, "best_book_key", "") or ""),
                     "Confidence": leg.confidence.value,
                 })
 
@@ -373,9 +472,15 @@ def render_api_debug_tab(game_date: date) -> None:
     st.divider()
 
     if st.button("▶ Run API Diagnostics", type="primary", key="run_debug"):
-        # Reset the provider registry so fresh HTTP calls are made (not cached)
+        # Reset registry AND bypass disk cache so we always see live HTTP calls.
         from data.loaders import reset_registry, load_games, load_odds
         reset_registry()
+
+        # Temporarily disable disk cache so SportsDataIO / Sportradar don't
+        # silently serve stale data and skip the network entirely.
+        import os
+        _prev_cache = os.environ.get("DISK_CACHE_ENABLED", "true")
+        os.environ["DISK_CACHE_ENABLED"] = "false"
 
         with st.spinner("Calling APIs and collecting raw responses…"):
             with capture_api_responses(max_list=5) as responses:
@@ -387,6 +492,8 @@ def render_api_debug_tab(game_date: date) -> None:
                     load_odds(game_date)
                 except Exception:
                     pass
+
+        os.environ["DISK_CACHE_ENABLED"] = _prev_cache
 
         st.session_state["debug_responses"] = responses
         st.session_state["debug_date"] = game_date
@@ -489,7 +596,11 @@ def main() -> None:
             games = load_games(params["date"])
             st.session_state.games = games
             scanner = SlateScanner()
-            all_props = scanner.scan(params["date"], prop_types=params["prop_types"])
+            all_props = scanner.scan(
+                params["date"],
+                prop_types=params["prop_types"],
+                is_playoff=params.get("is_playoff", False),
+            )
             st.session_state.all_props = all_props
 
         if not all_props:
@@ -501,12 +612,14 @@ def main() -> None:
             else:
                 st.error(
                     f"No props found for {params['date']}. "
-                    "There may be no games scheduled on this date, "
-                    "or your data providers returned no results."
+                    "Only pregame matchups are evaluated — if every game has started or finished, "
+                    "the slate is empty. Otherwise check providers / API keys."
                 )
             st.session_state.parlays = []
         else:
-            st.success(f"Evaluated {len(all_props)} prop lines.")
+            st.success(
+                f"Evaluated {len(all_props)} prop lines (pregame games only — in progress / final excluded)."
+            )
 
         constraints = ParlayConstraints(
             min_edge=params["min_edge"],
@@ -534,18 +647,25 @@ def main() -> None:
         render_games_slate(st.session_state.games)
 
     # Tab layout
-    tab_parlays, tab_props, tab_lines, tab_debug = st.tabs([
-        "🎯 Parlays", "📊 Props Analysis", "🛒 Line Shopping", "🔬 API Debug"
+    tab_straight, tab_parlays, tab_props, tab_lines, tab_debug = st.tabs([
+        "🎲 Straight Bets", "🎯 Parlays", "📊 Props Analysis", "🛒 Line Shopping", "🔬 API Debug"
     ])
 
     all_props = st.session_state.all_props
     parlays = st.session_state.parlays
 
+    with tab_straight:
+        if all_props:
+            qualifying = [p for p in all_props if p.edge >= params["min_edge"]]
+            render_straight_bets(qualifying, params["stake"], params["top_straight"])
+        else:
+            st.info("Click 'Scan & Build' in the sidebar to get started.")
+
     with tab_parlays:
         if parlays:
             render_parlay_cards(parlays, params["stake"], params["top_parlays"])
         else:
-            st.info("Click 'Scan & Build Parlays' in the sidebar to get started.")
+            st.info("Click 'Scan & Build' in the sidebar to get started.")
 
     with tab_props:
         if all_props:

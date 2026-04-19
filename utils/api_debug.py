@@ -77,8 +77,10 @@ def _preview(data: object, max_list: int = 5) -> object:
 @contextmanager
 def capture_api_responses(max_list: int = 5) -> Generator[list[dict], None, None]:
     """
-    Context manager that intercepts every ``requests.get`` call made inside
-    the ``with`` block and appends a structured record to the yielded list.
+    Context manager that intercepts every HTTP GET call made inside the
+    ``with`` block — both bare ``requests.get`` and ``requests.Session.get``
+    (used by The Odds API provider) — and appends a structured record to the
+    yielded list.
 
     Each record contains:
         provider   – human-readable name derived from the URL hostname
@@ -94,13 +96,12 @@ def capture_api_responses(max_list: int = 5) -> Generator[list[dict], None, None
 
     captured: list[dict] = []
     _original_get = _requests.get
+    _original_session_get = _requests.Session.get
 
-    def _capturing_get(url, **kwargs):
-        safe_url = redact_url(url)
-        label = provider_label_from_url(url)
-        record: dict = {
-            "provider": label,
-            "url": safe_url,
+    def _make_record(url: str) -> dict:
+        return {
+            "provider": provider_label_from_url(url),
+            "url": redact_url(url),
             "status": None,
             "ok": False,
             "item_count": None,
@@ -108,30 +109,48 @@ def capture_api_responses(max_list: int = 5) -> Generator[list[dict], None, None
             "raw": None,
             "error": None,
         }
+
+    def _fill_record(record: dict, response) -> None:
+        record["status"] = response.status_code
+        record["ok"] = response.ok
+        try:
+            data = response.json()
+            record["raw"] = data
+            record["preview"] = _preview(data, max_list)
+            if isinstance(data, list):
+                record["item_count"] = len(data)
+        except Exception:
+            record["raw"] = response.text[:3000]
+            record["error"] = "Response is not valid JSON"
+
+    def _capturing_get(url, **kwargs):
+        record = _make_record(url)
         try:
             response = _original_get(url, **kwargs)
-            record["status"] = response.status_code
-            record["ok"] = response.ok
-            try:
-                data = response.json()
-                record["raw"] = data
-                record["preview"] = _preview(data, max_list)
-                if isinstance(data, list):
-                    record["item_count"] = len(data)
-            except Exception:
-                record["raw"] = response.text[:3000]
-                record["error"] = "Response is not valid JSON"
+            _fill_record(record, response)
         except Exception as exc:
             record["error"] = str(exc)
-        captured.append(record)
-        # Always return a real response object so callers don't crash
-        if record.get("status") is None:
-            # Re-raise if the request itself failed so providers handle it normally
+            captured.append(record)
             raise
-        return response  # type: ignore[return-value]
+        captured.append(record)
+        return response
+
+    def _capturing_session_get(self, url, **kwargs):
+        record = _make_record(url)
+        try:
+            response = _original_session_get(self, url, **kwargs)
+            _fill_record(record, response)
+        except Exception as exc:
+            record["error"] = str(exc)
+            captured.append(record)
+            raise
+        captured.append(record)
+        return response
 
     _requests.get = _capturing_get  # type: ignore[assignment]
+    _requests.Session.get = _capturing_session_get  # type: ignore[assignment]
     try:
         yield captured
     finally:
         _requests.get = _original_get  # type: ignore[assignment]
+        _requests.Session.get = _original_session_get  # type: ignore[assignment]

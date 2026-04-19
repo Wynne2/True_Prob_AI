@@ -15,6 +15,7 @@ import statistics
 from datetime import date
 from typing import Optional
 
+from domain.constants import PROP_STATS_ALLOWING_ZERO_SEASON_AVG
 from domain.entities import Player
 from domain.feature_vector import FeatureVector
 from domain.provider_models import DvPEntry, MatchupContext
@@ -76,11 +77,15 @@ def build_feature_vector(
     # BASE PRODUCTION  (SOURCE: SportsDataIO primary via Player entity)
     # ------------------------------------------------------------------
     _fill_base_production(fv, player, prop_type)
+    # Preserve season minutes before any injury/role projection overwrites fv fields.
+    season_mpg = max(player.minutes_per_game, 1e-6)
 
     # ------------------------------------------------------------------
     # USAGE / TRACKING  (SOURCE: nba_api primary)
     # ------------------------------------------------------------------
-    usage_ctx = usage_tracking_service.get_usage_context(player.player_id, player.team_id)
+    usage_ctx = usage_tracking_service.get_usage_context(
+        player.player_id, player.team_id, player_name=player.name
+    )
     fv.usage_rate = usage_ctx.usage_rate or player.usage_rate
     fv.touches_per_game = usage_ctx.touches_per_game or player.touches
     fv.time_of_possession = usage_ctx.time_of_possession or player.time_of_possession
@@ -105,15 +110,11 @@ def build_feature_vector(
     # Role stability: consistent starter = 1.0, inconsistent or bench = <1.0
     fv.role_stability_factor = 1.0 if inj_ctx.is_starter else 0.90
 
-    # Projected minutes from lineup context
+    # Projected minutes for *this game* (lineup/injury). Season rates must use season_mpg.
     if inj_ctx.projected_minutes > 0:
         fv.projected_minutes = inj_ctx.projected_minutes
     else:
         fv.projected_minutes = player.minutes_per_game
-
-    # Recalculate per-minute now that we have a projected minute estimate
-    if fv.projected_minutes > 0 and fv.season_avg > 0:
-        fv.season_per_minute = fv.season_avg / fv.projected_minutes
 
     # ------------------------------------------------------------------
     # SPLITS  (SOURCE: nba_api primary)
@@ -123,15 +124,27 @@ def build_feature_vector(
         prop_type=prop_type,
         opponent_team_id=opponent_team_id,
         is_home=is_home,
+        player_name=player.name,
     )
     # Enrich with game-log level data for rolling std dev
     split_ctx = splits_service.enrich_split_context_with_logs(
         split_ctx, player.player_id, prop_type
     )
 
+    # Prefer nba_api season average when available — it matches game logs and fixes SDIO drift.
+    if (split_ctx.season_avg or 0) > 0:
+        fv.season_avg = split_ctx.season_avg
+
+    if fv.season_avg > 0:
+        fv.season_per_minute = fv.season_avg / season_mpg
+
     fv.recent_5_avg = split_ctx.last_5_avg or fv.season_avg
     fv.recent_10_avg = split_ctx.last_10_avg or fv.season_avg
     fv.recent_std_dev = split_ctx.last_10_std_dev
+
+    # Push per-game log arrays back into the Player entity so stat models can
+    # compute per-36 efficiency factors (which require paired stat + minutes data).
+    _enrich_player_recent_logs(player, prop_type, split_ctx)
 
     # Home/away split factor
     if is_home:
@@ -209,6 +222,64 @@ def _fill_base_production(fv: FeatureVector, player: Player, prop_type: str) -> 
     )
 
 
+def _enrich_player_recent_logs(
+    player: Player,
+    prop_type: str,
+    split_ctx,
+) -> None:
+    """
+    Write per-game log arrays from the split context back into the Player entity.
+
+    This gives the stat models paired (stat, minutes) arrays so they can compute
+    per-36 efficiency factors rather than raw per-game ratios.  Only overwrites
+    a list if the log data is richer (multi-element) than the existing data.
+    """
+    from domain.provider_models import SplitContext as SC
+    if not isinstance(split_ctx, SC):
+        return
+
+    # Per-game stat values from game logs (multi-element list)
+    log10 = split_ctx.last_10_games  # list[float], most-recent game first
+    log5 = split_ctx.last_5_games
+    min10 = split_ctx.last_10_minutes
+    min5 = split_ctx.last_5_minutes
+
+    # Only update if the log arrays are richer than the existing single-element lists
+    def _maybe_set(current: list[float], candidate: list[float]) -> list[float]:
+        if len(candidate) > len(current):
+            return candidate
+        return current
+
+    # Overwrite paired minutes lists (always prefer richer data from logs)
+    if min10:
+        player.last10_minutes = _maybe_set(player.last10_minutes, min10)
+    if min5:
+        player.last5_minutes = _maybe_set(player.last5_minutes, min5)
+
+    # Stat-specific lists
+    if prop_type == "points":
+        player.last10_points = _maybe_set(player.last10_points, log10)
+        player.last5_points = _maybe_set(player.last5_points, log5)
+    elif prop_type == "rebounds":
+        player.last10_rebounds = _maybe_set(player.last10_rebounds, log10)
+        player.last5_rebounds = _maybe_set(player.last5_rebounds, log5)
+    elif prop_type == "assists":
+        player.last10_assists = _maybe_set(player.last10_assists, log10)
+        player.last5_assists = _maybe_set(player.last5_assists, log5)
+    elif prop_type == "threes":
+        player.last10_threes = _maybe_set(player.last10_threes, log10)
+        player.last5_threes = _maybe_set(player.last5_threes, log5)
+    elif prop_type == "blocks":
+        player.last10_blocks = _maybe_set(player.last10_blocks, log10)
+        player.last5_blocks = _maybe_set(player.last5_blocks, log5)
+    elif prop_type == "steals":
+        player.last10_steals = _maybe_set(player.last10_steals, log10)
+        player.last5_steals = _maybe_set(player.last5_steals, log5)
+    elif prop_type == "turnovers":
+        player.last10_turnovers = _maybe_set(player.last10_turnovers, log10)
+        player.last5_turnovers = _maybe_set(player.last5_turnovers, log5)
+
+
 def _assess_completeness(fv: FeatureVector) -> tuple[float, list[str]]:
     """
     Score the data completeness of a FeatureVector (0-1).
@@ -216,10 +287,14 @@ def _assess_completeness(fv: FeatureVector) -> tuple[float, list[str]]:
     Flags missing or default-value fields that reduce model confidence.
     """
     flags: list[str] = []
+    season_avg_ok = (fv.season_avg or 0) > 0 or (
+        (fv.prop_type or "") in PROP_STATS_ALLOWING_ZERO_SEASON_AVG
+        and (fv.projected_minutes or 0) > 0
+    )
     checks = {
         "usage_rate": fv.usage_rate,
         "touches_per_game": fv.touches_per_game,
-        "season_avg": fv.season_avg,
+        "season_avg": season_avg_ok,
         "projected_minutes": fv.projected_minutes,
         "dvp_points_factor": fv.dvp_points_factor != 1.0 or fv.dvp_pts_allowed > 0,
         "pace_context": fv.pace_context > 0,

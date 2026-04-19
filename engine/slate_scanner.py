@@ -34,6 +34,7 @@ from datetime import date
 from typing import Optional
 
 from domain.entities import Game, OddsLine, Player, PropProbability
+from utils.date_utils import filter_pregame_games
 from domain.enums import PropType
 from engine.prop_evaluator import PropEvaluator
 
@@ -45,11 +46,15 @@ class SlateScanner:
 
     def __init__(self) -> None:
         self._evaluator = PropEvaluator()
+        # Populated by scan() for CLI/UI messaging (pregame filter vs empty slate).
+        self.last_raw_slate_game_count: int = 0
+        self.last_pregame_slate_game_count: int = 0
 
     def scan(
         self,
         game_date: date,
         prop_types: Optional[list[PropType]] = None,
+        is_playoff: bool = False,
     ) -> list[PropProbability]:
         """
         Scan all games for *game_date* and return all evaluated props.
@@ -59,22 +64,49 @@ class SlateScanner:
         Args:
             game_date: The date to scan.
             prop_types: Optional whitelist of prop types.
+            is_playoff: When True, mark all slate games as playoff (rotation/minute priors).
 
         Returns:
             List of PropProbability objects.
         """
         logger.info("SlateScanner: scanning slate for %s", game_date)
+        self.last_raw_slate_game_count = 0
+        self.last_pregame_slate_game_count = 0
 
         # ----------------------------------------------------------
         # STEP 1: Pull slate
         # SOURCE: Sportradar → SportsDataIO (via ProviderRegistry)
         # ----------------------------------------------------------
         games, all_odds = self._pull_slate_and_odds(game_date)
+        if is_playoff:
+            for g in games:
+                g.is_playoff = True
+            logger.info("SlateScanner: playoff mode ON — %d games flagged", len(games))
+
         if not games:
             logger.warning("SlateScanner: no games found for %s", game_date)
             return []
 
-        logger.info("SlateScanner: %d games, %d odds lines loaded", len(games), len(all_odds))
+        pre_count = len(games)
+        self.last_raw_slate_game_count = pre_count
+        games = filter_pregame_games(games)
+        skipped = pre_count - len(games)
+        if skipped:
+            logger.info(
+                "SlateScanner: skipped %d game(s) already in progress or final (pregame props only)",
+                skipped,
+            )
+
+        if not games:
+            self.last_pregame_slate_game_count = 0
+            logger.warning(
+                "SlateScanner: no pregame slate left for %s (all games started or finished)",
+                game_date,
+            )
+            return []
+
+        self.last_pregame_slate_game_count = len(games)
+        logger.info("SlateScanner: %d pregame games, %d odds lines loaded", len(games), len(all_odds))
 
         # ----------------------------------------------------------
         # STEP 3: Warm all service-layer caches (batch pulls, not per-prop)
@@ -313,11 +345,28 @@ class SlateScanner:
                 for r in depth if r.get("player_id")
             }
 
-            # Use season stats as proxy game logs for DvP (opponent stats not included
-            # in season endpoint; full per-game DvP requires individual game log pulls).
-            # For now, seed DvP with an empty log set — dvp_service returns neutral factors.
+            # Fetch real game logs from SportsDataIO for DvP computation.
+            # Use the feature store (already built by _build_feature_store) when
+            # available; otherwise fall back to fetching the last 15 games for
+            # each active player in the position map.
+            game_logs: list[dict] = []
+            try:
+                from data.loaders.sportsdataio_loader import fetch_player_game_logs
+                from domain.constants import SDIO_SEASON
+                for player_id in list(position_map.keys())[:150]:  # cap API calls
+                    logs = fetch_player_game_logs(
+                        player_id, season=SDIO_SEASON, num_games=15
+                    )
+                    game_logs.extend(logs)
+                logger.info(
+                    "DvP: loaded %d game log records from %d players",
+                    len(game_logs), min(len(position_map), 150),
+                )
+            except Exception as log_exc:
+                logger.warning("DvP: could not fetch game logs (%s); using empty set", log_exc)
+
             refresh_dvp_tables(
-                player_game_logs=[],
+                player_game_logs=game_logs,
                 position_map=position_map,
                 cache_date=game_date,
             )
@@ -334,10 +383,11 @@ class SlateScanner:
         min_edge: float = 0.0,
         prop_types: Optional[list[PropType]] = None,
         min_confidence: Optional[str] = None,
+        is_playoff: bool = False,
     ) -> list[PropProbability]:
         """Scan and immediately apply basic filters."""
         from domain.enums import ConfidenceTier
-        all_props = self.scan(game_date, prop_types=prop_types)
+        all_props = self.scan(game_date, prop_types=prop_types, is_playoff=is_playoff)
         filtered = [p for p in all_props if p.edge >= min_edge]
 
         if min_confidence:

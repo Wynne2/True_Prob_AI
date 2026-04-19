@@ -44,15 +44,23 @@ def shop_lines(
     all_lines: list[OddsLine],
     player_id: Optional[str] = None,
     prop_type: Optional[PropType] = None,
+    min_books: int = 2,
 ) -> list[BestLine]:
     """
     Aggregate odds across all books and return the best over/under price
     for each unique player/prop/line combination.
 
+    Only returns lines that at least *min_books* sportsbooks agree on.
+    This prevents alternate lines posted by a single book (e.g. Bovada's
+    21.5–30.5 ladder for a player whose consensus line is 25.5 everywhere
+    else) from generating fake edges.  If no line has min_books coverage,
+    falls back to the line with the most book coverage.
+
     Args:
         all_lines: All available OddsLine objects (across all books).
         player_id: If provided, restrict to one player.
         prop_type: If provided, restrict to one prop type.
+        min_books: Minimum distinct books required to include a line.
 
     Returns:
         List of BestLine objects (one per side per unique prop/line).
@@ -69,9 +77,29 @@ def shop_lines(
     for line in lines:
         groups[_group_key(line)].append(line)
 
+    # --- Consensus filter ---
+    # For each player+prop, only keep lines that have >= min_books coverage.
+    # If nothing meets the threshold, keep the line(s) with the most books.
+    # Group the groups by (player_id, prop_type) to do per-player filtering.
+    by_player_prop: dict[tuple, list[tuple]] = defaultdict(list)
+    for key in groups:
+        pid, ptype, _ = key
+        by_player_prop[(pid, ptype)].append(key)
+
+    allowed_keys: set[tuple] = set()
+    for (pid, ptype), keys in by_player_prop.items():
+        book_counts = {k: len({ol.book for ol in groups[k]}) for k in keys}
+        max_count = max(book_counts.values())
+        threshold = min(min_books, max_count)  # fall back if no line has min_books
+        for k, cnt in book_counts.items():
+            if cnt >= threshold:
+                allowed_keys.add(k)
+
     results: list[BestLine] = []
 
     for (pid, ptype, numeric_line), group in groups.items():
+        if (pid, ptype, numeric_line) not in allowed_keys:
+            continue
         if not group:
             continue
 
@@ -87,6 +115,8 @@ def shop_lines(
                 over_books[ol.book] = ol.over_odds
             if ol.book not in under_books or ol.under_odds > under_books[ol.book]:
                 under_books[ol.book] = ol.under_odds
+
+        num_books = len(over_books)
 
         # Best over
         if over_books:
@@ -122,6 +152,10 @@ def shop_lines(
                 opponent_abbr=ref.opponent_abbr,
             ))
 
+    logger.debug(
+        "shop_lines: %d groups → %d allowed (min_books=%d) → %d BestLines",
+        len(groups), len(allowed_keys), min_books, len(results),
+    )
     return results
 
 

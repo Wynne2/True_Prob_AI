@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import ssl
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -69,7 +70,9 @@ from providers.base_provider import BaseProvider
 
 logger = logging.getLogger(__name__)
 
-# Map Odds API bookmaker keys to internal BookName enum
+# Map Odds API bookmaker keys to internal BookName enum.
+# Keys: https://the-odds-api.com/sports-odds-data/bookmaker-apis.html
+# Unlisted keys fall back to BookName.OTHER; OddsLine.book_key preserves the label for UI.
 _BOOK_MAP: dict[str, BookName] = {
     "fanduel": BookName.FANDUEL,
     "draftkings": BookName.DRAFTKINGS,
@@ -83,6 +86,24 @@ _BOOK_MAP: dict[str, BookName] = {
     "mybookieag": BookName.MYBOOKIE,
     "lowvig": BookName.LOWVIG,
     "betonlineag": BookName.BETONLINE,
+    # Common US aliases / additional books
+    "williamhill_us": BookName.CAESARS,
+    "sugarhouse": BookName.BETRIVERS,
+    "unibet_us": BookName.BETRIVERS,
+    "twinspires": BookName.BETRIVERS,
+    "barstool": BookName.BETMGM,
+    "superbook": BookName.BETMGM,
+    "wynnbet": BookName.CAESARS,
+    "fanatics": BookName.OTHER,
+    "espnbet": BookName.OTHER,
+    "hardrockbet": BookName.OTHER,
+    "fliff": BookName.OTHER,
+    "windcreek": BookName.OTHER,
+    "betparx": BookName.OTHER,
+    "betus": BookName.OTHER,
+    "ballybet": BookName.OTHER,
+    "tipico_us": BookName.OTHER,
+    "prizepicks": BookName.OTHER,
 }
 
 
@@ -109,19 +130,59 @@ class OddsAPIProvider(BaseProvider):
     def _get(self, path: str, **params) -> Optional[list | dict]:
         url = f"{self._cfg.base_url}/{path}"
         params["apiKey"] = self._key
-        try:
-            resp = self._session.get(url, params=params, timeout=self._cfg.timeout)
-            if resp.status_code == 401:
-                logger.error("The Odds API: invalid API key")
+        max_attempts = 4
+        for attempt in range(max_attempts):
+            try:
+                resp = self._session.get(url, params=params, timeout=self._cfg.timeout)
+                if resp.status_code in (502, 503, 504):
+                    if attempt < max_attempts - 1:
+                        wait = 1.5 * (2 ** attempt)
+                        logger.warning(
+                            "The Odds API: HTTP %s (transient) — retry in %.1fs (%d/%d)",
+                            resp.status_code, wait, attempt + 1, max_attempts,
+                        )
+                        time.sleep(wait)
+                        continue
+                    logger.error(
+                        "The Odds API: HTTP %s after %d attempts — service unavailable",
+                        resp.status_code, max_attempts,
+                    )
+                    return None
+                if resp.status_code == 401:
+                    try:
+                        body = resp.json()
+                        detail = body.get("message") or body.get("error") or resp.text[:200]
+                    except Exception:
+                        detail = resp.text[:200]
+                    logger.error(
+                        "The Odds API: 401 Unauthorized — %s "
+                        "(check https://the-odds-api.com/account to verify key & remaining credits)",
+                        detail,
+                    )
+                    return None
+                if resp.status_code == 402:
+                    logger.error(
+                        "The Odds API: 402 Payment Required — monthly credits exhausted. "
+                        "Upgrade your plan or wait for the next billing cycle."
+                    )
+                    return None
+                if resp.status_code == 429:
+                    logger.warning("The Odds API: rate limit exceeded (too many requests per minute)")
+                    return None
+                resp.raise_for_status()
+                return resp.json()
+            except requests.RequestException as exc:
+                if attempt < max_attempts - 1:
+                    wait = 1.5 * (2 ** attempt)
+                    logger.warning(
+                        "The Odds API: request failed (%s) — retry in %.1fs (%d/%d)",
+                        exc, wait, attempt + 1, max_attempts,
+                    )
+                    time.sleep(wait)
+                    continue
+                logger.error("The Odds API request error: %s", exc)
                 return None
-            if resp.status_code == 429:
-                logger.warning("The Odds API: rate limit exceeded")
-                return None
-            resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException as exc:
-            logger.error("The Odds API request error: %s", exc)
-            return None
+        return None
 
     @staticmethod
     def _utc_to_eastern_date(utc_iso: str) -> date | None:
@@ -176,10 +237,13 @@ class OddsAPIProvider(BaseProvider):
     def get_games_for_date(self, game_date: date) -> list[Game]:
         events = self._get_events(game_date)
         games = []
+        from utils.date_utils import parse_iso_datetime
+
         for evt in events:
             try:
                 home = evt.get("home_team", "")
                 away = evt.get("away_team", "")
+                tip = parse_iso_datetime(evt.get("commence_time") or "")
                 g = Game(
                     game_id=evt.get("id", ""),
                     home_team_id=home.lower().replace(" ", "_"),
@@ -187,6 +251,7 @@ class OddsAPIProvider(BaseProvider):
                     away_team_id=away.lower().replace(" ", "_"),
                     away_team_abbr=self._abbr(away),
                     game_date=game_date,
+                    tip_off_time=tip,
                     data_source=DataSource.ODDS_API,
                 )
                 games.append(g)
@@ -225,8 +290,8 @@ class OddsAPIProvider(BaseProvider):
 
                 bookmakers = data.get("bookmakers", [])
                 for book_data in bookmakers:
-                    book_key = book_data.get("key", "")
-                    book = _BOOK_MAP.get(book_key, BookName.SAMPLE)
+                    book_key = book_data.get("key", "") or ""
+                    book = _BOOK_MAP.get(book_key, BookName.OTHER)
 
                     for market in book_data.get("markets", []):
                         market_key = market.get("key", "")
@@ -234,21 +299,29 @@ class OddsAPIProvider(BaseProvider):
                         if not prop_type:
                             continue
 
-                        # Group outcomes by player (description)
-                        player_outcomes: dict[str, dict] = {}
+                        # Group outcomes by (player_name, line_value).
+                        # Bovada and similar books post multiple alternate lines
+                        # for the same player (e.g. 2.5, 3.5, 4.5 assists).
+                        # Keying only by player name causes the line value to be
+                        # set from the first outcome while over/under odds keep
+                        # getting overwritten by each subsequent alternate line,
+                        # producing corrupted records like line=2.5 at +190
+                        # (which is really the 3.5 line's price).
+                        player_outcomes: dict[tuple, dict] = {}
                         for outcome in market.get("outcomes", []):
                             desc = outcome.get("description", "")
                             name = outcome.get("name", "")  # 'Over' or 'Under'
                             price = outcome.get("price", -110)
                             point = outcome.get("point", 0.5)
-                            if desc not in player_outcomes:
-                                player_outcomes[desc] = {"point": point}
+                            key = (desc, float(point))
+                            if key not in player_outcomes:
+                                player_outcomes[key] = {"point": point, "player_name": desc}
                             if name.lower() == "over":
-                                player_outcomes[desc]["over_odds"] = int(price)
+                                player_outcomes[key]["over_odds"] = int(price)
                             elif name.lower() == "under":
-                                player_outcomes[desc]["under_odds"] = int(price)
+                                player_outcomes[key]["under_odds"] = int(price)
 
-                        for player_name, odds in player_outcomes.items():
+                        for (player_name, _pt), odds in player_outcomes.items():
                             if "over_odds" not in odds or "under_odds" not in odds:
                                 continue
                             line = OddsLine(
@@ -256,11 +329,12 @@ class OddsAPIProvider(BaseProvider):
                                 player_id=player_name.lower().replace(" ", "_"),
                                 player_name=player_name,
                                 prop_type=prop_type,
-                                line=float(odds.get("point", 0.5)),
+                                line=float(odds["point"]),
                                 over_odds=odds["over_odds"],
                                 under_odds=odds["under_odds"],
                                 game_id=event_id,
                                 data_source=DataSource.ODDS_API,
+                                book_key=book_key,
                             )
                             all_lines.append(line)
 

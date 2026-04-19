@@ -4,7 +4,9 @@ Prop Evaluator  –  core evaluation pipeline.
 For each (player, prop_type, line, side) combination, the evaluator:
 1. Retrieves the pre-built FeatureVector from the feature store (if available).
 2. Hydrates the Player entity with enriched fields from the FeatureVector so
-   existing stat models work without modification (backward compatible).
+   existing stat models work without modification (backward compatible). Season
+   averages from the FeatureVector (nba_api splits) override SDIO Player rows.
+   **Never** replace season MPG on Player with tonight's projected minutes.
 3. Runs the appropriate stat model to get a projection.
 4. Converts the projection to a true probability using the correct distribution.
 5. Retrieves the best available sportsbook odds (SOURCE: The Odds API).
@@ -23,8 +25,11 @@ import logging
 from typing import Optional
 
 from domain.constants import (
+    AUDIT_FLAG_SHRINK_MAX_STEPS,
+    AUDIT_FLAG_TRUE_PROB_SHRINK_STEP,
     FPA_LEAGUE_AVG,
     LEAGUE_AVG_DEF_EFF,
+    LOW_LINE_THRESHOLD,
     MAX_PROBABILITY_CEILING,
     MIN_PROBABILITY_FLOOR,
     PROBABILITY_SHRINKAGE_FACTOR,
@@ -48,6 +53,8 @@ from models.rebounds_model import ReboundsModel
 from models.steals_model import StealsModel
 from models.threes_model import ThreesModel
 from models.turnovers_model import TurnoversModel
+from engine.final_calibration_gate import apply_final_calibration_gate
+from engine.market_calibration import calibrate_true_probability
 from models.variance_model import VarianceModel
 from odds.fair_odds import calculate_edge, true_prob_to_american_odds
 from odds.implied_probability import implied_prob_for_side
@@ -66,6 +73,34 @@ from utils.distributions import (
 from utils.math_helpers import clamp
 
 logger = logging.getLogger(__name__)
+
+
+def _sync_season_stat_from_feature_vector(player: Player, fv: FeatureVector) -> None:
+    """
+    Align per-game season stats on Player with FeatureVector.season_avg.
+
+    The builder prefers nba_api split season lines over stale/wrong SDIO averages;
+    models read Player.*_per_game, so they must match the validated feature row.
+    """
+    sa = fv.season_avg
+    if sa <= 0:
+        return
+    pt = (fv.prop_type or "").strip().lower()
+    if pt == "points":
+        player.points_per_game = sa
+    elif pt == "rebounds":
+        player.rebounds_per_game = sa
+    elif pt == "assists":
+        player.assists_per_game = sa
+    elif pt == "threes":
+        player.threes_per_game = sa
+    elif pt == "blocks":
+        player.blocks_per_game = sa
+    elif pt == "steals":
+        player.steals_per_game = sa
+    elif pt == "turnovers":
+        player.turnovers_per_game = sa
+    # pra: composite — sub-models use roster pts/reb/ast; do not overwrite from sum here.
 
 
 def _normalize_name(name: str) -> str:
@@ -133,6 +168,8 @@ def _hydrate_player_from_feature_vector(player: Player, fv: FeatureVector) -> Pl
     SOURCE: FeatureVector fields are sourced from nba_api (usage/tracking/splits)
             and SportsDataIO (season averages, injuries, lineups).
     """
+    _sync_season_stat_from_feature_vector(player, fv)
+
     # Usage and tracking (SOURCE: nba_api primary)
     if fv.usage_rate:
         player.usage_rate = fv.usage_rate
@@ -146,13 +183,13 @@ def _hydrate_player_from_feature_vector(player: Player, fv: FeatureVector) -> Pl
         player.rebound_chances = fv.rebound_chances
 
     # Splits (SOURCE: nba_api primary)
-    if fv.recent_5_avg and fv.recent_5_avg != fv.season_avg:
-        # Distribute recent form across stat arrays for the prop type
+    # Trigger if either window differs from season — don't require both to match.
+    if fv.recent_5_avg != fv.season_avg or fv.recent_10_avg != fv.season_avg:
         _fill_recent_form_by_prop(player, fv)
 
-    # Role (SOURCE: SportsDataIO primary)
-    if fv.projected_minutes:
-        player.minutes_per_game = fv.projected_minutes
+    # Do not set player.minutes_per_game to fv.projected_minutes — that is *tonight's*
+    # expected minutes; MinutesModel already computes exp_minutes. Season MPG must stay
+    # the season average for rate + baseline math.
 
     return player
 
@@ -182,13 +219,16 @@ def _fill_recent_form_by_prop(player: Player, fv: FeatureVector) -> None:
         if val5:
             player.last5_threes = val5
     elif pt == "pra":
-        # PRA: distribute evenly as a composite
-        pra5 = [fv.recent_5_avg]
-        pra10 = [fv.recent_10_avg]
-        if pra5:
-            player.last5_points = pra5
-        if pra10:
-            player.last10_points = pra10
+        # PRA composite: distribute across pts/reb/ast lists proportionally.
+        # Rough NBA split: pts ~55%, reb ~28%, ast ~17% of PRA total.
+        if fv.recent_5_avg:
+            player.last5_points    = [fv.recent_5_avg * 0.55]
+            player.last5_rebounds  = [fv.recent_5_avg * 0.28]
+            player.last5_assists   = [fv.recent_5_avg * 0.17]
+        if fv.recent_10_avg:
+            player.last10_points   = [fv.recent_10_avg * 0.55]
+            player.last10_rebounds = [fv.recent_10_avg * 0.28]
+            player.last10_assists  = [fv.recent_10_avg * 0.17]
 
 
 class PropEvaluator:
@@ -199,9 +239,10 @@ class PropEvaluator:
     SlateScanner before the evaluation loop starts).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, debug_mode: bool = False) -> None:
         self._confidence_model = ConfidenceModel()
         self._variance_model = VarianceModel()
+        self._debug_mode = debug_mode
 
     def evaluate(
         self,
@@ -234,6 +275,20 @@ class PropEvaluator:
         if model is None:
             logger.warning("No model for prop type: %s", prop_type)
             return []
+
+        # --- Feature validation ---
+        from utils.feature_validator import validate_feature_vector
+        effective_completeness: Optional[float] = None
+        if feature_vector is not None:
+            validation = validate_feature_vector(feature_vector, prop_type.value)
+            if not validation.is_valid:
+                logger.warning(
+                    "PropEvaluator: skipping %s %s — no season_avg data",
+                    player.name, prop_type.value,
+                )
+                return []
+            if validation.data_completeness_override is not None:
+                effective_completeness = validation.data_completeness_override
 
         # Enrich player with feature vector data before passing to model
         if feature_vector is not None:
@@ -272,9 +327,15 @@ class PropEvaluator:
         best_lines = shop_lines(player_lines)
         results: list[PropProbability] = []
 
+        volatile_low_line = {PropType.THREES, PropType.BLOCKS, PropType.STEALS}
+
         for best in best_lines:
             numeric_line = best.line
             side = PropSide(best.side)
+
+            projection.dist_std = self._variance_model.std(
+                player, prop_type, projection.projected_value, prop_line=numeric_line
+            )
 
             # --- 3-step probability calibration pipeline ---
             # Step 1: raw tail probability from the chosen distribution
@@ -286,27 +347,60 @@ class PropEvaluator:
             shrunk_prob = 0.5 + (raw_prob - 0.5) * PROBABILITY_SHRINKAGE_FACTOR
 
             # Step 3: data-completeness penalty — blend toward 50% when feature
-            # inputs are sparse / unreliable (fv.data_completeness from builder).
-            completeness = clamp(
-                getattr(feature_vector, "data_completeness", 1.0) if feature_vector else 1.0,
-                0.20, 1.0,
+            # inputs are sparse / unreliable (fv.data_completeness from builder,
+            # potentially reduced further by the feature validator).
+            base_completeness = (
+                getattr(feature_vector, "data_completeness", 1.0)
+                if feature_vector else 1.0
             )
+            # Use validator override if it lowers completeness further
+            if effective_completeness is not None:
+                base_completeness = min(base_completeness, effective_completeness)
+            completeness = clamp(base_completeness, 0.20, 1.0)
             calibrated_prob = shrunk_prob * completeness + 0.5 * (1.0 - completeness)
 
             # Step 4: hard ceiling / floor — no single-game prop should ever
             # reach near certainty without extraordinary evidence.
             true_prob = clamp(calibrated_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
 
-            # Vig-removed implied probability (SOURCE: The Odds API pricing)
-            ref_line_odds = [ol for ol in player_lines if ol.line == numeric_line]
-            if not ref_line_odds:
+            audit_flags = list(getattr(projection, "projection_audit_flags", None) or [])
+            if audit_flags:
+                n_audit = min(len(audit_flags), AUDIT_FLAG_SHRINK_MAX_STEPS)
+                shrink = AUDIT_FLAG_TRUE_PROB_SHRINK_STEP ** n_audit
+                true_prob = 0.5 + (true_prob - 0.5) * shrink
+                true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+
+            if numeric_line <= LOW_LINE_THRESHOLD and prop_type in volatile_low_line:
+                true_prob = 0.5 + (true_prob - 0.5) * 0.90
+
+            # Vig-removed implied probability (SOURCE: The Odds API pricing).
+            # Use the SAME book that produced the best odds so edge is self-consistent.
+            # Primary: the best-line object itself if it carries over/under odds.
+            # Fallback: first matching OddsLine from the same line value.
+            best_book_line = next(
+                (
+                    ol for ol in player_lines
+                    if ol.line == numeric_line and ol.book == best.best_book
+                ),
+                None,
+            )
+            ref = best_book_line or next(
+                (ol for ol in player_lines if ol.line == numeric_line), None
+            )
+            if ref is None:
                 continue
 
-            ref = ref_line_odds[0]
             implied = implied_prob_for_side(best.side, ref.over_odds, ref.under_odds)
 
+            true_prob, cal_warnings = calibrate_true_probability(
+                true_prob, implied, best.best_odds,
+            )
+            true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+
+            cal_warnings = list(cal_warnings)
+            cal_warnings.extend(audit_flags)
+
             edge = calculate_edge(true_prob, implied)
-            fair_odds_american = true_prob_to_american_odds(true_prob)
 
             consistency = self._variance_model.consistency_score(
                 player, prop_type, projection.projected_value
@@ -316,29 +410,115 @@ class PropEvaluator:
                 consistency, edge, has_defense_data=defense is not None,
             )
 
+            true_prob, confidence, gate_warnings = apply_final_calibration_gate(
+                player,
+                game,
+                is_home,
+                prop_type,
+                side,
+                numeric_line,
+                projection,
+                true_prob,
+                implied,
+                edge,
+                confidence,
+                completeness,
+                best.best_odds,
+            )
+            true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+            edge = calculate_edge(true_prob, implied)
+            fair_odds_american = true_prob_to_american_odds(true_prob)
+            cal_warnings = list(cal_warnings) + gate_warnings
+
             from engine.explanation_engine import build_explanation
             explanation = build_explanation(player, prop_type, side, projection, defense)
+            if gate_warnings:
+                explanation = (
+                    f"{explanation} Conservative final check applied "
+                    f"({len(gate_warnings)} signal(s): {', '.join(gate_warnings[:6])})."
+                )
 
+            # --- Debug payload ---
+            import os
+            _verbose = os.environ.get("VERBOSE", "0") in ("1", "true", "yes")
+            _debug = getattr(self, "_debug_mode", False) or _verbose
+            debug_payload = None
+            if _debug:
+                # Compute both sides' raw probability for visibility
+                over_raw = clamp(_true_prob(projection, numeric_line, PropSide.OVER), 0.001, 0.999)
+                under_raw = clamp(_true_prob(projection, numeric_line, PropSide.UNDER), 0.001, 0.999)
+                from odds.implied_probability import get_fair_implied_probabilities
+                fair_over_impl, fair_under_impl = get_fair_implied_probabilities(
+                    ref.over_odds, ref.under_odds
+                )
+                debug_payload = {
+                    "season_avg": getattr(feature_vector, "season_avg", player.points_per_game) if feature_vector else player.points_per_game,
+                    "recent_10_avg": getattr(feature_vector, "recent_10_avg", 0.0) if feature_vector else 0.0,
+                    "recent_5_avg": getattr(feature_vector, "recent_5_avg", 0.0) if feature_vector else 0.0,
+                    "season_rate_per_minute": round(projection.season_rate_per_minute, 4),
+                    "recent_rate_per_minute": round(projection.recent_rate_per_minute, 4),
+                    "raw_minute_scaled_mean": round(projection.raw_minute_scaled_mean, 4),
+                    "expected_minutes_model": round(projection.expected_minutes, 2),
+                    "projected_minutes": player.minutes_per_game,
+                    "usage_rate": player.usage_rate,
+                    "minutes_factor": round(projection.minutes_factor, 4),
+                    "usage_adjustment": round(projection.usage_factor, 4),
+                    "injury_adjustment": round(projection.injury_factor, 4),
+                    "pace_adjustment": round(projection.pace_factor, 4),
+                    "matchup_adjustment": round(projection.matchup_factor, 4),
+                    "dvp_adjustment": round(getattr(feature_vector, "dvp_points_factor", 1.0) if feature_vector else 1.0, 4),
+                    "final_projection": round(projection.projected_value, 3),
+                    "expected_fga_proxy": round(projection.expected_field_goal_attempts_proxy, 3),
+                    "expected_3pa_proxy": round(projection.expected_three_point_attempts_proxy, 3),
+                    "projection_audit_flags": list(projection.projection_audit_flags or []),
+                    "raw_over_prob": round(over_raw, 4),
+                    "raw_under_prob": round(under_raw, 4),
+                    "raw_prob": round(raw_prob, 4),
+                    "shrunk_prob": round(shrunk_prob, 4),
+                    "calibrated_prob": round(calibrated_prob, 4),
+                    "over_probability": round(0.5 + (over_raw - 0.5) * PROBABILITY_SHRINKAGE_FACTOR * completeness, 4),
+                    "under_probability": round(0.5 + (under_raw - 0.5) * PROBABILITY_SHRINKAGE_FACTOR * completeness, 4),
+                    "over_implied": round(fair_over_impl, 4),
+                    "under_implied": round(fair_under_impl, 4),
+                    "data_completeness": round(completeness, 4),
+                    "selected_side": side.value,
+                    "reason_selected": (
+                        f"edge={edge:.3f} (true_prob={true_prob:.3f} vs implied={implied:.3f})"
+                    ),
+                }
+
+            bp = projection.baseline_projection or projection.projected_value
             results.append(PropProbability(
                 player_id=player.player_id,
                 player_name=player.name,
                 team_abbr=player.team_abbr,
-                opponent_abbr=best.opponent_abbr or game.away_team_abbr,
+                # Opponent: if player is on home team → away is opponent, and vice versa.
+                opponent_abbr=best.opponent_abbr or (
+                    game.away_team_abbr
+                    if player.team_abbr == game.home_team_abbr
+                    else game.home_team_abbr
+                ),
                 game_id=game.game_id,
                 prop_type=prop_type,
                 line=numeric_line,
                 side=side,
                 projected_value=projection.projected_value,
+                baseline_projection=bp,
+                adjusted_projection=projection.projected_value,
+                expected_minutes=projection.expected_minutes,
+                calibration_warnings=cal_warnings,
                 true_probability=true_prob,
                 implied_probability=implied,
                 edge=edge,
                 fair_odds=fair_odds_american,
                 sportsbook_odds=best.best_odds,
                 best_book=best.best_book,
+                best_book_key=getattr(ref, "book_key", "") or "",
                 confidence=confidence,
                 distribution_type=projection.distribution_type,
                 explanation=explanation,
                 all_lines=player_lines,
+                debug_payload=debug_payload,
             ))
 
         return results

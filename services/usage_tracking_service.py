@@ -27,19 +27,36 @@ from data.loaders.nba_api_loader import (
     fetch_team_pace_batch,
     index_by_player_id,
 )
+from domain.constants import NBA_SEASON
 from domain.provider_models import UsageTrackingContext
 
 logger = logging.getLogger(__name__)
 
-_CURRENT_SEASON = "2024-25"
+_CURRENT_SEASON = NBA_SEASON
 
 # Module-level indexes (populated once per day)
-_usage_index: dict[str, dict] = {}       # player_id -> advanced stats
-_poss_tracking_index: dict[str, dict] = {}  # player_id -> possessions tracking
+_usage_index: dict[str, dict] = {}          # nba_api player_id -> advanced stats
+_usage_name_index: dict[str, dict] = {}     # normalized name -> advanced stats (fallback)
+_poss_tracking_index: dict[str, dict] = {}  # nba_api player_id -> possessions tracking
+_poss_name_index: dict[str, dict] = {}      # normalized name -> possessions tracking
 _passing_tracking_index: dict[str, dict] = {}
+_passing_name_index: dict[str, dict] = {}
 _rebound_tracking_index: dict[str, dict] = {}
-_team_pace_index: dict[str, dict] = {}  # team_id -> pace stats
+_rebound_name_index: dict[str, dict] = {}
+_team_pace_index: dict[str, dict] = {}      # team_id -> pace stats
 _loaded_date: Optional[date] = None
+
+
+def _normalize_name(name: str) -> str:
+    """Lowercase, strip accents/punctuation for fuzzy name matching."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", name)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.lower().strip()
+
+
+def _build_name_index(records: list[dict]) -> dict[str, dict]:
+    return {_normalize_name(r.get("player_name", "")): r for r in records if r.get("player_name")}
 
 
 def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
@@ -49,8 +66,11 @@ def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
     Safe to call multiple times — data is served from disk cache after
     the first pull.  Set force=True to bypass cache entirely.
     """
-    global _usage_index, _poss_tracking_index, _passing_tracking_index
-    global _rebound_tracking_index, _team_pace_index, _loaded_date
+    global _usage_index, _usage_name_index
+    global _poss_tracking_index, _poss_name_index
+    global _passing_tracking_index, _passing_name_index
+    global _rebound_tracking_index, _rebound_name_index
+    global _team_pace_index, _loaded_date
 
     today = date.today()
     if not force and _loaded_date == today and _usage_index:
@@ -63,6 +83,7 @@ def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
     logger.info("UsageTrackingService: fetching advanced dashboard (season=%s)", season)
     advanced = fetch_usage_dashboard_batch(season=season, date_str=date_str)
     _usage_index = index_by_player_id(advanced)
+    _usage_name_index = _build_name_index(advanced)
 
     # --- Possessions tracking (SOURCE: nba_api PRIMARY: touches) ---
     logger.info("UsageTrackingService: fetching possessions tracking")
@@ -70,6 +91,7 @@ def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
         season=season, pt_measure_type="Possessions", date_str=date_str
     )
     _poss_tracking_index = index_by_player_id(poss)
+    _poss_name_index = _build_name_index(poss)
 
     # --- Passing context (SOURCE: nba_api) ---
     logger.info("UsageTrackingService: fetching passing tracking")
@@ -77,6 +99,7 @@ def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
         season=season, pt_measure_type="Passing", date_str=date_str
     )
     _passing_tracking_index = index_by_player_id(passing)
+    _passing_name_index = _build_name_index(passing)
 
     # --- Rebounding context (SOURCE: nba_api) ---
     logger.info("UsageTrackingService: fetching rebounding tracking")
@@ -84,6 +107,7 @@ def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
         season=season, pt_measure_type="Rebounding", date_str=date_str
     )
     _rebound_tracking_index = index_by_player_id(rebounding)
+    _rebound_name_index = _build_name_index(rebounding)
 
     # --- Team pace (SOURCE: nba_api PRIMARY) ---
     logger.info("UsageTrackingService: fetching team pace dashboard")
@@ -100,31 +124,46 @@ def refresh(season: str = _CURRENT_SEASON, force: bool = False) -> None:
 def get_usage_context(
     player_id: str,
     team_id: str,
+    player_name: str = "",
     season: str = _CURRENT_SEASON,
 ) -> UsageTrackingContext:
     """
     Return UsageTrackingContext for *player_id*.
+
+    nba_api uses NBA.com player IDs which differ from SportsDataIO IDs.
+    When the ID lookup misses (always, for SDIO-sourced player_ids), we fall
+    back to a normalized player-name lookup so usage data is never lost.
 
     Auto-refreshes if not yet loaded for today.
     """
     if not _usage_index:
         refresh(season)
 
-    adv = _usage_index.get(player_id, {})
-    poss = _poss_tracking_index.get(player_id, {})
-    passing = _passing_tracking_index.get(player_id, {})
-    rebounding = _rebound_tracking_index.get(player_id, {})
+    norm_name = _normalize_name(player_name) if player_name else ""
+
+    def _lookup(id_idx: dict, name_idx: dict) -> dict:
+        rec = id_idx.get(player_id, {})
+        if not rec and norm_name:
+            rec = name_idx.get(norm_name, {})
+        return rec
+
+    adv = _lookup(_usage_index, _usage_name_index)
+    poss = _lookup(_poss_tracking_index, _poss_name_index)
+    passing = _lookup(_passing_tracking_index, _passing_name_index)
+    rebounding = _lookup(_rebound_tracking_index, _rebound_name_index)
     team_pace = _team_pace_index.get(team_id, {})
+
+    # nba_api returns USG_PCT as a 0-1 fraction (e.g. 0.213 = 21.3%).
+    # Do NOT divide by 100 — the value is already in the domain's 0-1 contract.
+    raw_usg = float(adv.get("usg_pct", 0) or 0)
 
     return UsageTrackingContext(
         player_id=player_id,
-        player_name=adv.get("player_name", ""),
+        player_name=adv.get("player_name", player_name),
         team_id=team_id,
-        # SOURCE: nba_api advanced dashboard (PRIMARY: usage rate)
-        usage_rate=float(adv.get("usg_pct", 0) or 0),
+        usage_rate=raw_usg,
         possessions_per_game=float(adv.get("poss", 0) or 0),
         team_pace=float(team_pace.get("pace", 0) or 0),
-        # SOURCE: nba_api tracking (PRIMARY: touches)
         touches_per_game=float(poss.get("touches", 0) or 0),
         time_of_possession=float(poss.get("time_of_poss", 0) or 0),
         front_ct_touches=float(poss.get("front_ct_touches", 0) or 0),

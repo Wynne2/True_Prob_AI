@@ -11,9 +11,37 @@ from domain.enums import Position, PropType
 # Season context
 # ---------------------------------------------------------------------------
 
-NBA_SEASON: str = "2024-25"
-LEAGUE_AVG_PACE: float = 100.3          # possessions per 48 min, 2024-25 estimate
-LEAGUE_AVG_DEF_EFF: float = 113.1       # pts per 100 possessions allowed, 2024-25
+NBA_SEASON: str = "2025-26"             # nba_api season string (YYYY-YY format)
+SDIO_SEASON: str = "2026"               # SportsDataIO season string (end-year format)
+LEAGUE_AVG_PACE: float = 100.3          # possessions per 48 min, 2025-26 estimate
+
+# Prop types where a season average of exactly 0.0 can still be valid real data
+# (e.g. non-shooting bigs for threes, low-usage players for secondary stats).
+# Feature validation treats season_avg<=0 as "missing" for other props (points, etc.).
+PROP_STATS_ALLOWING_ZERO_SEASON_AVG: frozenset[str] = frozenset(
+    {"threes", "blocks", "steals", "turnovers", "assists"}
+)
+LEAGUE_AVG_DEF_EFF: float = 113.1       # pts per 100 possessions allowed, 2025-26
+
+# FPA standard deviation used to normalize FPA z-scores (league-empirical estimate)
+FPA_LEAGUE_STD: float = 4.5
+
+# ---------------------------------------------------------------------------
+# Injury redistribution — position similarity weights.
+# When teammate X is OUT, active player Y inherits a fraction of X's vacancy
+# weighted by positional overlap.  Values in [0, 1].
+# ---------------------------------------------------------------------------
+POSITION_SIMILARITY: dict[str, dict[str, float]] = {
+    "PG": {"PG": 1.0, "SG": 0.6, "SF": 0.2, "PF": 0.1, "C": 0.0, "G": 0.8, "F": 0.2, "GF": 0.3, "FC": 0.1},
+    "SG": {"PG": 0.6, "SG": 1.0, "SF": 0.4, "PF": 0.1, "C": 0.0, "G": 0.8, "F": 0.3, "GF": 0.4, "FC": 0.1},
+    "SF": {"PG": 0.2, "SG": 0.4, "SF": 1.0, "PF": 0.5, "C": 0.1, "G": 0.3, "F": 0.8, "GF": 0.6, "FC": 0.3},
+    "PF": {"PG": 0.1, "SG": 0.1, "SF": 0.5, "PF": 1.0, "C": 0.5, "G": 0.1, "F": 0.7, "GF": 0.3, "FC": 0.7},
+    "C":  {"PG": 0.0, "SG": 0.0, "SF": 0.1, "PF": 0.5, "C": 1.0, "G": 0.0, "F": 0.3, "GF": 0.1, "FC": 0.8},
+    "G":  {"PG": 0.8, "SG": 0.8, "SF": 0.3, "PF": 0.1, "C": 0.0, "G": 1.0, "F": 0.2, "GF": 0.4, "FC": 0.1},
+    "F":  {"PG": 0.2, "SG": 0.3, "SF": 0.8, "PF": 0.7, "C": 0.3, "G": 0.2, "F": 1.0, "GF": 0.7, "FC": 0.5},
+    "GF": {"PG": 0.3, "SG": 0.4, "SF": 0.6, "PF": 0.3, "C": 0.1, "G": 0.4, "F": 0.7, "GF": 1.0, "FC": 0.3},
+    "FC": {"PG": 0.1, "SG": 0.1, "SF": 0.3, "PF": 0.7, "C": 0.8, "G": 0.1, "F": 0.5, "GF": 0.3, "FC": 1.0},
+}
 
 # ---------------------------------------------------------------------------
 # Model blend weights
@@ -27,6 +55,113 @@ PROJECTION_BLEND_WEIGHTS: dict[str, float] = {
     "matchup_adj": 0.10,
     "recent_trend": 0.05,
 }
+
+# Stable per-game baseline before matchup/pace (anti fake-edge). Sums to 1.0.
+BASELINE_BLEND_WEIGHTS: dict[str, float] = {
+    "season": 0.50,
+    "recent": 0.25,
+    "per_minute_expected": 0.25,
+}
+
+# High-usage starters (assists/points): anchor to season first; recent noise must not collapse baseline.
+BASELINE_BLEND_ELITE_ASSISTS: dict[str, float] = {
+    "season": 0.68,
+    "recent": 0.14,
+    "per_minute_expected": 0.18,
+}
+BASELINE_BLEND_ELITE_POINTS: dict[str, float] = {
+    "season": 0.62,
+    "recent": 0.18,
+    "per_minute_expected": 0.20,
+}
+ELITE_ASSISTS_SEASON_THRESHOLD: float = 7.25   # APG — primary playmaker tier
+ELITE_POINTS_SEASON_THRESHOLD: float = 21.0
+ELITE_REBOUNDS_SEASON_THRESHOLD: float = 9.0   # RPG — elite glass / rim bigs
+BASELINE_BLEND_ELITE_REBOUNDS: dict[str, float] = {
+    "season": 0.65,
+    "recent": 0.17,
+    "per_minute_expected": 0.18,
+}
+
+# Blended baseline vs season (ACTIVE only) — all prop types; starters get tighter anchors than bench.
+BASELINE_SEASON_SOFT_FLOOR_RATIO: float = 0.91
+BASELINE_HARD_ANCHOR_RATIO: float = 0.85
+BASELINE_SEASON_SOFT_FLOOR_RATIO_BENCH: float = 0.83
+BASELINE_HARD_ANCHOR_RATIO_BENCH: float = 0.75
+# Recent game avg cannot drag blend below season × this without injury (slump dampener).
+RECENT_VS_SEASON_FLOOR_RATIO: float = 0.88
+
+# Single environment modifier: geometric mean of pace × matchup is clamped to this band.
+ENVIRONMENT_MODIFIER_MIN: float = 0.92
+ENVIRONMENT_MODIFIER_MAX: float = 1.08
+
+# Projection guards vs season anchor (starters / bench) — tune in backtests.
+PROJECTION_FLOOR_RATIO_STARTER: float = 0.88
+PROJECTION_FLOOR_RATIO_BENCH: float = 0.68
+PROJECTION_CEILING_RATIO_STARTER: float = 1.28
+PROJECTION_CEILING_RATIO_BENCH: float = 1.35
+# Extra floor for elite counting-stat seasons (e.g. 9+ APG) — guards use real season anchor.
+PROJECTION_FLOOR_ELITE_ASSISTS: float = 0.90
+ELITE_ASSISTS_FLOOR_THRESHOLD: float = 8.5
+MINUTES_FLOOR_RELAX_THRESHOLD: float = 0.85  # if exp_min < this × season mpg, allow lower floor
+
+# Threes: matchup/pace must not inflate *makes* above a minute-scaled anchor when role minutes are down.
+THREES_ENV_DAMPEN_WHEN_MINUTES_DOWN: float = 0.42   # shrink env toward 1.0 when exp_mpg < season mpg
+THREES_MAX_ABOVE_MINUTE_SCALED_ANCHOR: float = 1.14  # cap vs season_3pm × (exp_min / season_mpg) when minutes down
+
+# Points: low-usage players are opportunity-limited — do not let matchup/form stack above minute-scaled PPG.
+LOW_USAGE_RATE_THRESHOLD: float = 0.18            # USG% fraction; below = role / spacer archetype
+POINTS_ENV_DAMPEN_LOW_USAGE_AND_MINUTES_DOWN: float = 0.45
+LOW_USAGE_POINTS_MAX_ABOVE_MINUTE_ANCHOR: float = 1.15  # vs season_ppg × (exp_min / mpg) when minutes down
+LOW_USAGE_MINUTES_VACUUM_RELAX: float = 2.0          # extra minutes from absences → allow slightly higher bump
+
+# When expected_minutes < season MPG: cap projection vs minute-scaled season anchor (all usages).
+MINUTES_DOWN_SCALED_CEILING_BASE: float = 1.10
+MINUTES_DOWN_SCALED_CEILING_HIGH_USG: float = 1.15   # usage_rate >= this fraction
+HIGH_USAGE_RATE_FLOOR: float = 0.22
+MINUTES_DOWN_SCALED_CEILING_VACUUM: float = 1.18     # large teammate-out vacuum
+
+# Points: implied scoring load vs FGA proxy (volume sanity).
+POINTS_PER_FGA_EFFICIENCY_CEILING: float = 2.35      # max plausible pts / FGA for role validation
+
+# Minutes engine: blend season MPG with recent windows (see MinutesModel).
+MINUTES_BLEND_WEIGHTS: dict[str, float] = {
+    "season_mpg": 0.52,
+    "last5_mpg": 0.28,
+    "last10_mpg": 0.20,
+}
+# High-minute starters: projected minutes should not sit far below season without injury/B2B.
+STAR_MPG_SEASON_THRESHOLD: float = 28.0
+STAR_MINUTES_VS_SEASON_FLOOR: float = 0.92
+
+# Low prop lines — extra variance multiplier (applied in VarianceModel).
+LOW_LINE_THRESHOLD: float = 2.0
+LOW_LINE_VARIANCE_BOOST: float = 1.35
+
+# Final gate: flag when projection deviates from season this much (structural sanity).
+PROJECTION_VS_SEASON_OUTLIER_RATIO: float = 0.25
+
+# Each projection audit flag shrinks distance of true_prob from 50% (compound, capped).
+AUDIT_FLAG_TRUE_PROB_SHRINK_STEP: float = 0.97
+AUDIT_FLAG_SHRINK_MAX_STEPS: int = 5
+
+# Market calibration haircuts (edge vs implied gap)
+MARKET_DISAGREE_SOFT: float = 0.12   # beyond this: mild haircut
+MARKET_DISAGREE_HARD: float = 0.22   # beyond this: stronger haircut
+CALIBRATION_HAIRCUT_SOFT: float = 0.92
+CALIBRATION_HAIRCUT_HARD: float = 0.82
+
+# Parlay true-prob independence discount
+PARLAY_CORRELATION_PENALTY_K: float = 0.45
+PARLAY_CALIBRATION_FACTOR_DEFAULT: float = 0.92
+PARLAY_ALL_UNDER_PENALTY: float = 0.88
+PARLAY_LONG_ODDS_AMERICAN: int = 600
+PARLAY_LONG_ODDS_TRUE_CAP: float = 0.28
+
+# Final self-check before treating a prop as high-edge (prefer conservative).
+FINAL_GATE_HIGH_EDGE_EDGE: float = 0.055
+FINAL_GATE_TRUE_SHRINK: float = 0.93
+FINAL_GATE_IMPLIED_BLEND: float = 0.10
 
 # ---------------------------------------------------------------------------
 # Recent-form lookback windows

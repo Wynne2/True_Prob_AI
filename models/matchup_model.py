@@ -4,14 +4,25 @@ Matchup adjustment model.
 Computes a matchup multiplier from opponent defensive efficiency and
 positional defensive statistics.  The multiplier is applied on top of
 the player's baseline projection.
+
+Directionality contract (verified here and in tests):
+  factor > 1.0  →  weak opponent defense   →  boost projection
+  factor < 1.0  →  strong opponent defense  →  reduce projection
+  factor = 1.0  →  league-average defense   →  neutral
+
+For every prop type:
+  factor = allowed_by_opponent_to_position / league_avg_allowed_to_position
 """
 
 from __future__ import annotations
 
-from domain.constants import FPA_LEAGUE_AVG, LEAGUE_AVG_DEF_EFF
+import logging
+
 from domain.entities import Player, TeamDefense
 from domain.enums import Position, PropType
 from utils.math_helpers import clamp
+
+logger = logging.getLogger(__name__)
 
 
 class MatchupModel:
@@ -144,16 +155,49 @@ class MatchupModel:
         }
 
         # Map prop to allowed stat
+        # Blocks / steals use positional allowed data where present; fall back to
+        # team-level "forced" stats only as a last resort with a neutral sentinel.
+        def _blocks_allowed(d: TeamDefense, p: Position) -> float:
+            # blocks_allowed_per_game is a team aggregate, not position-specific.
+            # Return 0 to trigger neutral fallback; avoids wrong-granularity mixing.
+            return d.blocks_allowed_per_game  # team-level — usable directionally
+
+        def _steals_allowed(d: TeamDefense, p: Position) -> float:
+            # "steals_forced" is offensive TOs forced, not steals allowed to players.
+            # Return 0 to keep this neutral when only team-level data is available.
+            return 0.0  # intentionally neutral — no position-level steals allowed data
+
         allowed_getters = {
-            PropType.POINTS: self.pts_allowed_to_position,
-            PropType.REBOUNDS: self.reb_allowed_to_position,
-            PropType.ASSISTS: self.ast_allowed_to_position,
-            PropType.THREES: self.threes_allowed_to_position,
-            PropType.BLOCKS: lambda d, p: d.blocks_allowed_per_game,
-            PropType.STEALS: lambda d, p: d.steals_forced_per_game,
+            PropType.POINTS:    self.pts_allowed_to_position,
+            PropType.REBOUNDS:  self.reb_allowed_to_position,
+            PropType.ASSISTS:   self.ast_allowed_to_position,
+            PropType.THREES:    self.threes_allowed_to_position,
+            PropType.BLOCKS:    _blocks_allowed,
+            PropType.STEALS:    _steals_allowed,
             PropType.TURNOVERS: lambda d, p: d.turnovers_forced_per_game,
-            PropType.PRA: self.pts_allowed_to_position,  # use pts as proxy
+            # PRA: composite pts + reb + ast allowed vs position
+            PropType.PRA:       None,   # handled separately below
         }
+
+        if prop_type == PropType.PRA:
+            pts = self.pts_allowed_to_position(defense, pos)
+            reb = self.reb_allowed_to_position(defense, pos)
+            ast = self.ast_allowed_to_position(defense, pos)
+            allowed = pts + reb + ast
+
+            pts_lg = league_avg.get(PropType.POINTS, {}).get(pos, 0.0)
+            reb_lg = league_avg.get(PropType.REBOUNDS, {}).get(pos, 0.0)
+            ast_lg = league_avg.get(PropType.ASSISTS, {}).get(pos, 0.0)
+            league_baseline = pts_lg + reb_lg + ast_lg
+
+            if league_baseline <= 0 or allowed <= 0:
+                return 1.0
+            factor = allowed / league_baseline
+            logger.debug(
+                "MatchupModel PRA pos=%s: allowed=%.1f league=%.1f factor=%.3f",
+                pos.value, allowed, league_baseline, factor,
+            )
+            return clamp(factor, 0.75, 1.25)
 
         getter = allowed_getters.get(prop_type)
         if getter is None:
@@ -163,7 +207,15 @@ class MatchupModel:
         league_baseline = league_avg.get(prop_type, {}).get(pos, 0.0)
 
         if league_baseline <= 0 or allowed <= 0:
+            logger.debug(
+                "MatchupModel %s pos=%s: no data (allowed=%.2f, league=%.2f) → neutral",
+                prop_type.value, pos.value, allowed, league_baseline,
+            )
             return 1.0
 
         factor = allowed / league_baseline
+        logger.debug(
+            "MatchupModel %s pos=%s: allowed=%.2f league=%.2f factor=%.3f",
+            prop_type.value, pos.value, allowed, league_baseline, factor,
+        )
         return clamp(factor, 0.75, 1.25)

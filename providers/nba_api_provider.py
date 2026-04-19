@@ -30,13 +30,12 @@ from data.loaders.nba_api_loader import (
     fetch_usage_dashboard_batch,
     index_by_player_id,
 )
+from domain.constants import NBA_SEASON
 from domain.entities import Game, OddsLine, Player, TeamDefense
 from domain.enums import DataSource, InjuryStatus, Position
 from providers.base_provider import BaseProvider
 
 logger = logging.getLogger(__name__)
-
-_CURRENT_SEASON = "2024-25"
 
 
 class NBAApiProvider(BaseProvider):
@@ -51,7 +50,7 @@ class NBAApiProvider(BaseProvider):
 
     source_name = DataSource.NBA_API
 
-    def __init__(self, season: str = _CURRENT_SEASON) -> None:
+    def __init__(self, season: str = NBA_SEASON) -> None:
         self._season = season
         # Lazy-load indexes; populated on first access
         self._usage_index: dict[str, dict] = {}
@@ -126,7 +125,7 @@ class NBAApiProvider(BaseProvider):
             team_id=rec.get("team_id", ""),
             team_abbr=rec.get("team_abbr", ""),
             position=Position.G,
-            usage_rate=float(rec.get("usg_pct", 0) or 0),
+            usage_rate=float(rec.get("usg_pct", 0) or 0) / 100.0,
             data_source=DataSource.NBA_API,
         )
 

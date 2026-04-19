@@ -42,6 +42,18 @@ def all_sample_odds():
     return get_sample_odds()
 
 
+@pytest.fixture
+def bypass_pregame_filter(monkeypatch):
+    """
+    Live slate integration tests need games even when all tips have passed
+    for the calendar day; pregame-only filtering would return an empty slate.
+    """
+    monkeypatch.setattr(
+        "engine.slate_scanner.filter_pregame_games",
+        lambda games: games,
+    )
+
+
 class TestPropEvaluator:
     def setup_method(self):
         self.evaluator = PropEvaluator()
@@ -122,11 +134,11 @@ class TestSlateScanner:
     def setup_method(self):
         self.scanner = SlateScanner()
 
-    def test_scan_today_returns_results(self):
+    def test_scan_today_returns_results(self, bypass_pregame_filter):
         results = self.scanner.scan(date.today())
         assert len(results) > 0
 
-    def test_scan_result_fields(self):
+    def test_scan_result_fields(self, bypass_pregame_filter):
         results = self.scanner.scan(date.today())
         for r in results[:10]:
             assert r.player_name
@@ -135,7 +147,7 @@ class TestSlateScanner:
             assert r.game_id
             assert 0.0 <= r.true_probability <= 1.0
 
-    def test_scan_with_filter(self):
+    def test_scan_with_filter(self, bypass_pregame_filter):
         results = self.scanner.scan_with_filter(
             date.today(),
             min_edge=0.04,
@@ -145,7 +157,7 @@ class TestSlateScanner:
             assert r.edge >= 0.04
             assert r.prop_type in (PropType.POINTS, PropType.REBOUNDS)
 
-    def test_scan_prop_type_filter(self):
+    def test_scan_prop_type_filter(self, bypass_pregame_filter):
         points_only = self.scanner.scan(
             date.today(),
             prop_types=[PropType.POINTS],

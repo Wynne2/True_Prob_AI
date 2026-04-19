@@ -33,8 +33,9 @@ from services import injury_context_service, usage_tracking_service, splits_serv
 
 logger = logging.getLogger(__name__)
 
-_CURRENT_SEASON_SDIO = "2026"
-_CURRENT_SEASON_NBA = "2025-26"
+from domain.constants import NBA_SEASON, SDIO_SEASON
+_CURRENT_SEASON_SDIO = SDIO_SEASON
+_CURRENT_SEASON_NBA = NBA_SEASON
 
 # Module-level indexes
 _season_stats_index: dict[str, dict] = {}
@@ -141,39 +142,66 @@ def get_player(
     fg3a = float(sdio.get("fg3a", 0) or 0)
     fg3pct = (tpg / fg3a) if fg3a > 0 else 0.0
 
-    # --- Usage / tracking (SOURCE: nba_api primary) ---
-    usage_ctx = usage_tracking_service.get_usage_context(player_id, team_id)
+    # --- Identity / name for cross-source lookups ---
+    player_name = str(sdio.get("player_name") or depth.get("player_name") or "")
+    norm_name = splits_service._normalize_name(player_name) if player_name else ""
+
+    # --- Usage / tracking (SOURCE: nba_api primary, name-fallback for ID mismatch) ---
+    usage_ctx = usage_tracking_service.get_usage_context(
+        player_id, team_id, player_name=player_name
+    )
 
     # --- Splits (SOURCE: nba_api primary) ---
     # We pre-warm splits so they are available; per-prop SplitContext is built
     # in the feature builder, not here.
     splits_svc = splits_service
-    adv_season = usage_tracking_service._usage_index.get(player_id, {})
 
-    # Home / away averages from splits index
-    home_ppg = float(splits_svc._home_index.get(player_id, {}).get("pts", 0) or 0)
-    away_ppg = float(splits_svc._away_index.get(player_id, {}).get("pts", 0) or 0)
+    def _adv_lookup(id_idx: dict, name_idx: dict) -> dict:
+        rec = id_idx.get(player_id, {})
+        if not rec and norm_name:
+            rec = name_idx.get(norm_name, {})
+        return rec
 
-    # Recent form from last-5 and last-10 split indexes
-    def _split_stat(idx: dict, key: str) -> list[float]:
-        rec = idx.get(player_id, {})
+    adv_season = _adv_lookup(
+        usage_tracking_service._usage_index,
+        usage_tracking_service._usage_name_index,
+    )
+
+    # Home / away averages from splits index (name fallback)
+    home_ppg = float(_adv_lookup(splits_svc._home_index, splits_svc._home_name_index).get("pts", 0) or 0)
+    away_ppg = float(_adv_lookup(splits_svc._away_index, splits_svc._away_name_index).get("pts", 0) or 0)
+
+    # Recent form from last-5 and last-10 split indexes (name fallback)
+    def _split_stat(id_idx: dict, name_idx: dict, key: str) -> list[float]:
+        rec = _adv_lookup(id_idx, name_idx)
         if not rec:
             return []
         # Split dashboards return averages not game arrays; return a single-element
         # list as a sentinel; the feature builder will enrich with log-level data.
-        val = float(rec.get(key, 0) or 0)
-        return [val] if val else []
+        raw = rec.get(key)
+        if raw is None:
+            return []
+        val = float(raw or 0)
+        # Use explicit None check (not falsy) so a real 0.0 average is preserved.
+        return [val]
 
-    last5_pts = _split_stat(splits_svc._last5_index, "pts")
-    last5_reb = _split_stat(splits_svc._last5_index, "reb")
-    last5_ast = _split_stat(splits_svc._last5_index, "ast")
-    last5_min = _split_stat(splits_svc._last5_index, "min")
-    last5_fg3 = _split_stat(splits_svc._last5_index, "fg3m")
+    last5_pts  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "pts")
+    last5_reb  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "reb")
+    last5_ast  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "ast")
+    last5_min  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "min")
+    last5_fg3  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "fg3m")
+    last5_blk  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "blk")
+    last5_stl  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "stl")
+    last5_tov  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "tov")
 
-    last10_pts = _split_stat(splits_svc._last10_index, "pts")
-    last10_reb = _split_stat(splits_svc._last10_index, "reb")
-    last10_ast = _split_stat(splits_svc._last10_index, "ast")
-    last10_min = _split_stat(splits_svc._last10_index, "min")
+    last10_pts = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "pts")
+    last10_reb = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "reb")
+    last10_ast = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "ast")
+    last10_min = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "min")
+    last10_fg3 = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "fg3m")
+    last10_blk = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "blk")
+    last10_stl = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "stl")
+    last10_tov = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "tov")
 
     player = Player(
         player_id=player_id,
@@ -209,17 +237,26 @@ def get_player(
         home_ppg=home_ppg,
         away_ppg=away_ppg,
         is_starter=inj_ctx.is_starter,
+        minutes_vacuum=inj_ctx.minutes_vacuum,
 
-        # Recent form (SOURCE: nba_api splits / SportsDataIO logs)
+        # Recent form (SOURCE: nba_api splits — single-element window averages;
+        # enriched to per-game arrays by player_feature_builder via game logs)
         last5_points=last5_pts,
         last5_rebounds=last5_reb,
         last5_assists=last5_ast,
         last5_minutes=last5_min,
         last5_threes=last5_fg3,
+        last5_blocks=last5_blk,
+        last5_steals=last5_stl,
+        last5_turnovers=last5_tov,
         last10_points=last10_pts,
         last10_rebounds=last10_reb,
         last10_assists=last10_ast,
         last10_minutes=last10_min,
+        last10_threes=last10_fg3,
+        last10_blocks=last10_blk,
+        last10_steals=last10_stl,
+        last10_turnovers=last10_tov,
 
         data_source=DataSource.SPORTSDATAIO,
     )

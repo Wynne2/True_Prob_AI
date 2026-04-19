@@ -120,7 +120,11 @@ class SportradarConfig:
 class OddsAPIConfig:
     base_url: str = "https://api.the-odds-api.com/v4"
     sport_key: str = "basketball_nba"
-    regions: str = "us"
+    # The Odds API uses comma-separated region codes, e.g. us,us2 (second US book group).
+    # Override with env ODDS_API_REGIONS — do not use "us_2"; the API expects "us2".
+    regions: str = field(
+        default_factory=lambda: os.environ.get("ODDS_API_REGIONS", "us,us2")
+    )
     markets: str = (
         "player_points,player_rebounds,player_assists,"
         "player_threes,player_blocks,player_steals,player_turnovers"

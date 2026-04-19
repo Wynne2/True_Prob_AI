@@ -33,6 +33,33 @@ def build_explanation(
 
     proj_val = format_stat(projection.projected_value)
     parts.append(f"Projected {prop_type.value}: {proj_val} (model mean).")
+    if projection.baseline_projection > 0 and projection.environment_multiplier > 0:
+        base_val = format_stat(projection.baseline_projection)
+        parts.append(
+            f"Skill baseline ~{base_val} at season-minute load "
+            f"(env ×{projection.environment_multiplier:.2f}; ~{projection.expected_minutes:.0f} min tonight)."
+        )
+    if projection.season_rate_per_minute > 0.0:
+        parts.append(
+            f"Rates: season {projection.season_rate_per_minute:.3f}/min, "
+            f"recent ~{projection.recent_rate_per_minute:.3f}/min."
+        )
+    if prop_type == PropType.POINTS and projection.expected_field_goal_attempts_proxy > 0.5:
+        parts.append(
+            f"FGA proxy ~{projection.expected_field_goal_attempts_proxy:.1f} "
+            f"(volume check vs projection)."
+        )
+    if prop_type == PropType.THREES and projection.expected_three_point_attempts_proxy > 0.25:
+        parts.append(
+            f"3PA proxy ~{projection.expected_three_point_attempts_proxy:.2f} "
+            f"(makes = attempts × 3P%)."
+        )
+    if projection.projection_audit_flags:
+        parts.append(
+            "Audit: " + ", ".join(projection.projection_audit_flags[:6])
+            + ("…" if len(projection.projection_audit_flags) > 6 else "")
+            + "."
+        )
 
     # Pace context
     if defense and defense.pace > 0:

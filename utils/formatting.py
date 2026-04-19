@@ -4,6 +4,55 @@ Output formatting helpers for CLI and Streamlit display.
 
 from __future__ import annotations
 
+from domain.enums import BookName
+
+# Pretty labels for known BookName values + common Odds API keys not worth a full enum.
+_BOOK_LABELS: dict[str, str] = {
+    "draftkings": "DraftKings",
+    "fanduel": "FanDuel",
+    "betmgm": "BetMGM",
+    "caesars": "Caesars",
+    "pointsbet": "PointsBet",
+    "betrivers": "BetRivers",
+    "bovada": "Bovada",
+    "bet365": "Bet365",
+    "pinnacle": "Pinnacle",
+    "mybookie": "MyBookie",
+    "lowvig": "LowVig",
+    "betonline": "BetOnline",
+    "sample": "Sample",
+    "other": "Other",
+}
+
+# Odds API `key` strings → display name (when book maps to OTHER or for extra polish)
+_ODDS_API_KEY_LABELS: dict[str, str] = {
+    "espnbet": "ESPN Bet",
+    "hardrockbet": "Hard Rock Bet",
+    "fanatics": "Fanatics",
+    "fliff": "Fliff",
+    "windcreek": "Wind Creek",
+    "betparx": "betPARX",
+    "betus": "BetUS",
+    "ballybet": "Bally Bet",
+    "tipico_us": "Tipico",
+    "prizepicks": "PrizePicks",
+}
+
+
+def book_display_name(book: BookName, api_book_key: str = "") -> str:
+    """
+    Human-readable sportsbook name for CLI/UI.
+
+    When The Odds API returns a book we only map to BookName.OTHER, *api_book_key*
+    carries the raw key so we still show a real label (not '---').
+    """
+    k = (api_book_key or "").strip().lower()
+    if k and k in _ODDS_API_KEY_LABELS:
+        return _ODDS_API_KEY_LABELS[k]
+    if book == BookName.OTHER and k:
+        return k.replace("_", " ").title()
+    return _BOOK_LABELS.get(book.value, book.value.replace("_", " ").title())
+
 
 def format_american(odds: int) -> str:
     """Format American odds with explicit sign, e.g. '+150', '-110'."""

@@ -18,15 +18,13 @@ import logging
 from datetime import date
 from typing import Optional
 
-from domain.enums import InjuryStatus
+from domain.enums import InjuryStatus, Position
 from domain.provider_models import InjuryContext
+from models.injury_redistribution_model import build_teammates_out_dicts, compute_vacancy_factor
 from services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 _CACHE = get_cache("sportsdataio", default_ttl=900)   # 15-min TTL for injuries
-
-# Usage boost per absent star teammate (approximate league average)
-_USAGE_BOOST_PER_ABSENCE = 0.06   # 6% per key absence, capped at 20%
 
 _STATUS_MAP: dict[str, InjuryStatus] = {
     "active": InjuryStatus.ACTIVE,
@@ -106,22 +104,52 @@ def get_injury_context(
     status = _normalise_status(
         injury_raw.get("status") or lineup_raw.get("injury_status") or "active"
     )
-    is_starter = bool(lineup_raw.get("started", True))
+
+    # Default is_starter to False (unknown) when no lineup data, not True.
+    # Using depth-order == 1 from lineup as a reliable starter signal.
+    if lineup_raw:
+        is_starter = bool(lineup_raw.get("started") or lineup_raw.get("depth_order") == 1)
+    else:
+        is_starter = False
+
     proj_minutes = float(lineup_raw.get("projected_min", 0) or 0)
 
-    # Find teammates who are OUT
-    teammates_out_names: list[str] = []
-    for pid, inj in _injury_index.items():
-        if pid == player_id:
-            continue
-        if str(inj.get("team_id", "")) != str(team_id):
-            continue
-        if _normalise_status(inj.get("status", "")) == InjuryStatus.OUT.value:
-            teammates_out_names.append(inj.get("player_name", pid))
+    # --- Role-aware injury redistribution (replaces flat uniform boost) ---
+    # Build the list of OUT teammates with their stats for redistribution.
+    from services.player_context_service import _season_stats_index as _stats_idx
+    teammates_out_dicts = build_teammates_out_dicts(
+        _injury_index, team_id, player_id, _stats_idx
+    )
+    teammates_out_names = [t["player_name"] for t in teammates_out_dicts]
+    out_count = len(teammates_out_dicts)
 
-    out_count = len(teammates_out_names)
-    # Vacancy factor: boost per absent teammate, capped at 20%
-    vacancy = min(1.0 + out_count * _USAGE_BOOST_PER_ABSENCE, 1.20)
+    # Determine this player's position for similarity weighting.
+    from services.player_context_service import _depth_index as _depth_idx
+    depth_rec = _depth_idx.get(player_id, {})
+    raw_pos = injury_raw.get("position") or depth_rec.get("position") or "G"
+    try:
+        player_pos = Position(raw_pos.upper())
+    except (ValueError, AttributeError):
+        player_pos = Position.G
+
+    player_usage = float((_stats_idx.get(player_id) or {}).get("usage_rate", 0) or 0)
+
+    usage_boost, minutes_boost = compute_vacancy_factor(
+        player_pos, player_usage, teammates_out_dicts
+    )
+
+    # teammate_usage_vacuum expressed as a multiplier (>1.0 = more usage available)
+    # Additive usage boost expressed relative to a baseline usage of 0.20
+    base_usage_for_mult = max(player_usage, 0.20)
+    vacancy_multiplier = 1.0 + (usage_boost / base_usage_for_mult) if usage_boost > 0 else 1.0
+    vacancy_multiplier = min(vacancy_multiplier, 1.40)
+
+    if out_count > 0:
+        logger.info(
+            "InjuryRedistribution: player=%s team=%s | %d teammate(s) OUT → "
+            "usage_boost=+%.3f, minutes_boost=+%.1f min",
+            player_id, team_id, out_count, usage_boost, minutes_boost,
+        )
 
     return InjuryContext(
         player_id=player_id,
@@ -133,7 +161,8 @@ def get_injury_context(
         projected_minutes=proj_minutes,
         teammates_out=teammates_out_names,
         teammates_out_count=out_count,
-        teammate_usage_vacuum=vacancy,
+        teammate_usage_vacuum=vacancy_multiplier,
+        minutes_vacuum=minutes_boost,
     )
 
 

@@ -215,7 +215,41 @@ class ProviderRegistry:
         return self._try_list("modeling", "get_players_for_game", game_id)
 
     def get_player_context(self, player_id: str) -> Optional[Player]:
-        return self._try_optional("modeling", "get_player_context", player_id)
+        """
+        Return a fully-hydrated Player entity.
+
+        Merge strategy (not first-wins):
+          1. SportsDataIO provides the full Player shell (season stats, injury,
+             position, depth-chart role).
+          2. NBAApiProvider overlays usage_rate if SDIO left it at 0.
+
+        This prevents the minimal nba_api Player (no season stats) from
+        pre-empting SDIO's complete box-score Player.
+        """
+        from providers.sportsdataio_provider import SportsDataIOProvider
+        from providers.nba_api_provider import NBAApiProvider
+
+        sdio_player: Optional[Player] = None
+        nba_player: Optional[Player] = None
+
+        for provider in self._groups.get("modeling", []):
+            try:
+                if isinstance(provider, SportsDataIOProvider) and sdio_player is None:
+                    sdio_player = provider.get_player_context(player_id)
+                elif isinstance(provider, NBAApiProvider) and nba_player is None:
+                    nba_player = provider.get_player_context(player_id)
+            except Exception as exc:
+                logger.warning("get_player_context failed on %s: %s", provider.source_name, exc)
+
+        # Prefer SDIO shell; overlay nba_api usage_rate if SDIO has none
+        result = sdio_player or nba_player
+        if result is None:
+            return None
+
+        if result.usage_rate == 0.0 and nba_player is not None and nba_player.usage_rate > 0:
+            result.usage_rate = nba_player.usage_rate
+
+        return result
 
     def get_player_recent_form(self, player_id: str, n: int = 10) -> list[dict]:
         return self._try_list("modeling", "get_player_recent_form", player_id, n)

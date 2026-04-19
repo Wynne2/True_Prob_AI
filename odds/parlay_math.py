@@ -13,6 +13,16 @@ from odds.normalizer import (
     decimal_to_american,
 )
 
+from domain.constants import (
+    PARLAY_ALL_UNDER_PENALTY,
+    PARLAY_CALIBRATION_FACTOR_DEFAULT,
+    PARLAY_LONG_ODDS_AMERICAN,
+    PARLAY_LONG_ODDS_TRUE_CAP,
+    PARLAY_CORRELATION_PENALTY_K,
+)
+from domain.enums import ConfidenceTier, PropSide
+from utils.math_helpers import clamp
+
 
 # ---------------------------------------------------------------------------
 # Combined odds
@@ -55,6 +65,39 @@ def parlay_combined_true_probability(leg_true_probs: list[float]) -> float:
     for p in leg_true_probs:
         result *= max(0.0, min(1.0, p))
     return result
+
+
+def _parlay_calibration_factor(legs: list) -> float:
+    f = PARLAY_CALIBRATION_FACTOR_DEFAULT
+    for leg in legs:
+        if getattr(leg, "calibration_warnings", None):
+            f *= 0.96
+        conf = getattr(leg, "confidence", None)
+        if conf in (ConfidenceTier.LOW, ConfidenceTier.VERY_LOW):
+            f *= 0.97
+    return max(0.45, min(1.0, f))
+
+
+def parlay_combined_true_probability_calibrated(
+    leg_true_probs: list[float],
+    *,
+    legs: list,
+    avg_pairwise_correlation: float,
+    combined_american_odds: int,
+) -> float:
+    """
+    Naive leg product × calibration factor × correlation penalty, with optional
+    all-under penalty and long-odds true-probability cap.
+    """
+    naive = parlay_combined_true_probability(leg_true_probs)
+    corr_penalty = max(0.06, 1.0 - PARLAY_CORRELATION_PENALTY_K * avg_pairwise_correlation)
+    cal = _parlay_calibration_factor(legs) if legs else PARLAY_CALIBRATION_FACTOR_DEFAULT
+    out = naive * cal * corr_penalty
+    if legs and all(l.side == PropSide.UNDER for l in legs):
+        out *= PARLAY_ALL_UNDER_PENALTY
+    if combined_american_odds >= PARLAY_LONG_ODDS_AMERICAN:
+        out = min(out, PARLAY_LONG_ODDS_TRUE_CAP)
+    return clamp(out, 0.0, 1.0)
 
 
 def parlay_combined_implied_probability(leg_implied_probs: list[float]) -> float:

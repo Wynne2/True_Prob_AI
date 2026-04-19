@@ -32,6 +32,7 @@ class InjuryContext:
     teammates_out: list[str] = field(default_factory=list)    # player names
     teammates_out_count: int = 0
     teammate_usage_vacuum: float = 1.0  # >1.0 = extra usage available
+    minutes_vacuum: float = 0.0         # additional minutes available (additive)
 
 
 @dataclass
@@ -49,12 +50,15 @@ class SplitContext:
     season_avg: float = 0.0
     season_games: int = 0
 
-    # Recent form
+    # Recent form — per-game stat values
     last_5_avg: float = 0.0
     last_10_avg: float = 0.0
     last_10_std_dev: float = 0.0
     last_5_games: list[float] = field(default_factory=list)
     last_10_games: list[float] = field(default_factory=list)
+    # Paired minutes per game — used for per-36 efficiency calculations
+    last_5_minutes: list[float] = field(default_factory=list)
+    last_10_minutes: list[float] = field(default_factory=list)
 
     # Location splits
     home_avg: float = 0.0

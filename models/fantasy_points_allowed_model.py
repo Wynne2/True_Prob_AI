@@ -11,10 +11,14 @@ in a single composite signal.
 
 from __future__ import annotations
 
-from domain.constants import FPA_LEAGUE_AVG
+import logging
+
+from domain.constants import FPA_LEAGUE_AVG, FPA_LEAGUE_STD
 from domain.entities import Player, TeamDefense
 from domain.enums import Position
 from utils.math_helpers import clamp
+
+logger = logging.getLogger(__name__)
 
 
 class FPAModel:
@@ -46,12 +50,17 @@ class FPAModel:
         opp_fpa = self._fpa_for_position(defense, pos)
         league_avg = FPA_LEAGUE_AVG.get(pos, 33.0)
 
-        if league_avg <= 0 or opp_fpa <= 0:
+        if opp_fpa <= 0:
+            logger.debug(
+                "FPAModel: no FPA data for position %s — returning neutral 1.0", pos.value
+            )
             return 1.0
 
-        # Z-score relative to league average (rough approximation: std ≈ 4.5)
-        fpa_std = 4.5
-        z = (opp_fpa - league_avg) / fpa_std
+        if league_avg <= 0:
+            return 1.0
+
+        # Z-score relative to league average using empirical std from constants
+        z = (opp_fpa - league_avg) / FPA_LEAGUE_STD
 
         factor = 1.0 + weight * z
         return clamp(factor, 0.85, 1.15)

@@ -586,6 +586,7 @@ def fetch_team_season_stats(season: str = "2026") -> list[dict]:
             "opp_fga": float(opp.get("FieldGoalsAttempted", 0) or 0) / gp,
             "opp_stl": float(opp.get("Steals", 0) or 0) / gp,
             "opp_blk": float(opp.get("BlockedShots", 0) or 0) / gp,
+            "opp_tov": float(opp.get("Turnovers", 0) or 0) / gp,
         })
 
     _CACHE.set(cache_key, records, ttl_seconds=21_600)

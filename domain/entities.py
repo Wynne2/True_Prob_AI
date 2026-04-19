@@ -66,16 +66,28 @@ class Player:
     away_ppg: float = 0.0
     is_starter: bool = True
 
-    # Recent form (last N games)
+    # Recent form (last N games) — per-game values or single-element window averages.
+    # Minutes lists are paired with each stat list so models can compute per-36 rates.
     last5_points: list[float] = field(default_factory=list)
     last5_rebounds: list[float] = field(default_factory=list)
     last5_assists: list[float] = field(default_factory=list)
     last5_minutes: list[float] = field(default_factory=list)
     last5_threes: list[float] = field(default_factory=list)
+    last5_blocks: list[float] = field(default_factory=list)
+    last5_steals: list[float] = field(default_factory=list)
+    last5_turnovers: list[float] = field(default_factory=list)
+
     last10_points: list[float] = field(default_factory=list)
     last10_rebounds: list[float] = field(default_factory=list)
     last10_assists: list[float] = field(default_factory=list)
     last10_minutes: list[float] = field(default_factory=list)
+    last10_threes: list[float] = field(default_factory=list)
+    last10_blocks: list[float] = field(default_factory=list)
+    last10_steals: list[float] = field(default_factory=list)
+    last10_turnovers: list[float] = field(default_factory=list)
+
+    # Injury redistribution context (set by PlayerContextService)
+    minutes_vacuum: float = 0.0    # extra minutes available due to teammate absences
 
     data_source: DataSource = DataSource.SAMPLE
 
@@ -170,6 +182,8 @@ class Game:
     away_team_abbr: str
     game_date: date = field(default_factory=date.today)
     tip_off_time: Optional[datetime] = None
+    # SportsDataIO / schedule: Scheduled, InProgress, Final, Postponed, etc.
+    status: str = ""
     arena: str = ""
     city: str = ""
 
@@ -183,6 +197,7 @@ class Game:
     # Game context flags
     is_back_to_back_home: bool = False
     is_back_to_back_away: bool = False
+    is_playoff: bool = False          # NBA playoffs — tighter rotations, star minutes ↑
 
     data_source: DataSource = DataSource.SAMPLE
 
@@ -207,6 +222,7 @@ class OddsLine:
     timestamp: Optional[datetime] = None
     is_alternate_line: bool = False
     data_source: DataSource = DataSource.SAMPLE
+    book_key: str = ""             # raw Odds API bookmaker key (for display when book == OTHER)
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +258,19 @@ class StatProjection:
 
     confidence: ConfidenceTier = ConfidenceTier.MEDIUM
 
+    # Anti–fake-edge pipeline (baseline vs game context)
+    baseline_projection: float = 0.0
+    expected_minutes: float = 0.0
+    environment_multiplier: float = 1.0
+
+    # Rate-based audit trail (skill estimate before pace/matchup stack)
+    season_rate_per_minute: float = 0.0
+    recent_rate_per_minute: float = 0.0
+    raw_minute_scaled_mean: float = 0.0  # rate × expected_minutes before env / usage
+    expected_field_goal_attempts_proxy: float = 0.0
+    expected_three_point_attempts_proxy: float = 0.0
+    projection_audit_flags: list[str] = field(default_factory=list)
+
 
 @dataclass
 class PropProbability:
@@ -263,6 +292,7 @@ class PropProbability:
 
     sportsbook_odds: int       # American odds from best book
     best_book: BookName = BookName.SAMPLE
+    best_book_key: str = ""    # Odds API bookmaker key for the priced line (display)
 
     confidence: ConfidenceTier = ConfidenceTier.MEDIUM
     distribution_type: DistributionType = DistributionType.NORMAL
@@ -270,6 +300,15 @@ class PropProbability:
 
     # All available lines across books (for line shopping display)
     all_lines: list[OddsLine] = field(default_factory=list)
+
+    # Debug payload — populated in PropEvaluator when verbose mode is enabled.
+    # Contains intermediate projection factors for inspection.
+    debug_payload: Optional[dict] = None
+
+    baseline_projection: float = 0.0
+    adjusted_projection: float = 0.0
+    expected_minutes: float = 0.0
+    calibration_warnings: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -298,6 +337,7 @@ class ParlayLeg:
 
     confidence: ConfidenceTier = ConfidenceTier.MEDIUM
     explanation: str = ""
+    best_book_key: str = ""    # Odds API key for display (when sportsbook == OTHER)
 
 
 @dataclass

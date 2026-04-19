@@ -39,6 +39,7 @@ def _make_game(
         away_team_abbr=away,
         game_date=today,
         tip_off_time=tip_time,
+        status="Scheduled",
         game_total=total,
         home_spread=spread,
         home_implied_total=home_impl,

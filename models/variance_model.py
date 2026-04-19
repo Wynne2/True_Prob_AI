@@ -9,7 +9,13 @@ Estimates the standard deviation of a player's stat line, incorporating:
 
 from __future__ import annotations
 
-from domain.constants import VARIANCE_INFLATION, STD_MIN_FRACTION, STD_ABSOLUTE_MIN
+from domain.constants import (
+    LOW_LINE_THRESHOLD,
+    LOW_LINE_VARIANCE_BOOST,
+    STD_ABSOLUTE_MIN,
+    STD_MIN_FRACTION,
+    VARIANCE_INFLATION,
+)
 from domain.entities import Player
 from domain.enums import PropType
 from utils.distributions import sample_std
@@ -25,6 +31,7 @@ class VarianceModel:
         prop_type: PropType,
         projected_mean: float,
         use_recent_form: bool = True,
+        prop_line: float | None = None,
     ) -> float:
         """
         Return the estimated standard deviation for *prop_type* for *player*.
@@ -37,6 +44,14 @@ class VarianceModel:
         raw_std = self._raw_std(player, prop_type, projected_mean, use_recent_form)
         inflation = VARIANCE_INFLATION.get(prop_type, 1.20)
         inflated = raw_std * inflation
+
+        line_boost = 1.0
+        if prop_line is not None and prop_line <= LOW_LINE_THRESHOLD:
+            line_boost = max(line_boost, LOW_LINE_VARIANCE_BOOST)
+        if prop_type in (PropType.THREES, PropType.BLOCKS, PropType.STEALS):
+            if projected_mean < 2.0 or (prop_line is not None and prop_line <= 1.5):
+                line_boost = max(line_boost, 1.18)
+        inflated *= line_boost
         # Minimum floor: larger of (fraction × mean) and absolute minimum.
         # These wider floors prevent overconfident distributions when the
         # projected mean is far from the prop line.

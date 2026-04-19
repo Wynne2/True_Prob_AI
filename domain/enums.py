@@ -69,6 +69,7 @@ class BookName(str, Enum):
     MYBOOKIE = "mybookie"
     LOWVIG = "lowvig"
     BETONLINE = "betonline"
+    OTHER = "other"            # mapped book not in enum; use OddsLine.book_key for display
     SAMPLE = "sample"          # internal sample data book
 
 

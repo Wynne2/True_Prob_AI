@@ -85,6 +85,11 @@ class PRAModel(BaseStatModel):
         # Combined std with covariance inflation
         std = self._stat_std(player, projected)
 
+        baseline_sum = (
+            pts_proj.baseline_projection
+            + reb_proj.baseline_projection
+            + ast_proj.baseline_projection
+        )
         stat_proj = self._build_projection(
             player, game, is_home, projected,
             pts_proj.minutes_factor, pts_proj.usage_factor, pts_proj.pace_factor,
@@ -92,6 +97,16 @@ class PRAModel(BaseStatModel):
             pts_proj.fpa_factor, pts_proj.recent_form_factor,
             pts_proj.injury_factor, pts_proj.home_away_factor,
             confidence,
+            baseline_projection=baseline_sum,
+            expected_minutes=pts_proj.expected_minutes,
+            environment_multiplier=(
+                (
+                    pts_proj.environment_multiplier
+                    + reb_proj.environment_multiplier
+                    + ast_proj.environment_multiplier
+                )
+                / 3.0
+            ),
         )
         stat_proj.dist_std = std
         return stat_proj

@@ -33,6 +33,7 @@ from domain.constants import (
 from domain.entities import Parlay, ParlayLeg, PropProbability
 from domain.enums import BookName, ConfidenceTier, PropType
 from engine.correlation_engine import (
+    combo_avg_correlation,
     correlation_risk_score,
     diversification_bonus,
     is_blocked,
@@ -43,7 +44,7 @@ from odds.parlay_math import (
     parlay_combined_decimal,
     parlay_combined_edge,
     parlay_combined_implied_probability,
-    parlay_combined_true_probability,
+    parlay_combined_true_probability_calibrated,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ def _prop_to_leg(prop: PropProbability) -> ParlayLeg:
         fair_odds=prop.fair_odds,
         confidence=prop.confidence,
         explanation=prop.explanation,
+        best_book_key=getattr(prop, "best_book_key", "") or "",
     )
 
 
@@ -182,7 +184,13 @@ def build_parlays(
 
             combined_decimal = parlay_combined_decimal(leg_odds)
             combined_american = decimal_to_american(combined_decimal)
-            combined_true = parlay_combined_true_probability(leg_true_probs)
+            avg_corr = combo_avg_correlation(legs)
+            combined_true = parlay_combined_true_probability_calibrated(
+                leg_true_probs,
+                legs=legs,
+                avg_pairwise_correlation=avg_corr,
+                combined_american_odds=combined_american,
+            )
             combined_implied = parlay_combined_implied_probability(leg_implied_probs)
             combined_edge = parlay_combined_edge(combined_true, combined_implied)
 

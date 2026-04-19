@@ -21,14 +21,15 @@ from data.loaders.sportsdataio_loader import (
     fetch_team_season_stats,
     index_by_team_id,
 )
+from domain.constants import NBA_SEASON, SDIO_SEASON
 from domain.provider_models import MatchupContext
 from services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 _CACHE = get_cache("derived", default_ttl=21_600)
 
-_CURRENT_SEASON_SDIO = "2026"
-_CURRENT_SEASON_NBA = "2025-26"
+_CURRENT_SEASON_SDIO = SDIO_SEASON
+_CURRENT_SEASON_NBA = NBA_SEASON
 
 # League-average references (2024-25 estimates)
 _LEAGUE_AVG_DEF_RATING = 113.1
@@ -92,22 +93,38 @@ def get_matchup_context(
     nba = _team_pace_index.get(defense_team_id, {})
 
     # Defensive efficiency (SOURCE: nba_api primary for def_rating)
-    def_rating = float(nba.get("def_rating", 0) or _LEAGUE_AVG_DEF_RATING)
+    def_rating = float(nba.get("def_rating", 0) or 0)
     opp_pace = float(nba.get("pace", 0) or _LEAGUE_AVG_PACE)
 
     # Points allowed (SOURCE: SportsDataIO for raw pts allowed)
-    pts_allowed = float(sdio.get("opp_pts", 0) or 0)
-
-    # Normalised defense factor (>1.0 = weaker defense = good for bettors)
-    if def_rating > 0:
-        defense_factor = def_rating / _LEAGUE_AVG_DEF_RATING
-    elif pts_allowed > 0:
-        defense_factor = pts_allowed / _LEAGUE_AVG_PTS_ALLOWED
+    # SDIO reports raw pts/game; normalize to per-100-poss so it's comparable
+    # to nba_api def_rating (which is also per-100-poss).
+    pts_allowed_raw = float(sdio.get("opp_pts", 0) or 0)
+    if pts_allowed_raw > 0 and opp_pace > 0:
+        # pts_per_game → pts_per_100_poss = pts_per_game * (100 / pace * 48)
+        pts_allowed_per100 = pts_allowed_raw * (100.0 / (opp_pace / 48.0)) / 48.0
     else:
-        defense_factor = 1.0
+        pts_allowed_per100 = 0.0
+
+    # Prefer nba_api def_rating (already per-100-poss); fall back to normalised SDIO
+    if def_rating > 0:
+        effective_def_rating = def_rating
+    elif pts_allowed_per100 > 0:
+        effective_def_rating = pts_allowed_per100
+    else:
+        effective_def_rating = _LEAGUE_AVG_DEF_RATING
+
+    # Normalised defense factor (>1.0 = weaker defense = boost for offence)
+    defense_factor = effective_def_rating / _LEAGUE_AVG_DEF_RATING
+
+    # Use raw pts/game as the readable "pts_allowed_per_game" for display only
+    pts_allowed = pts_allowed_raw if pts_allowed_raw > 0 else (
+        effective_def_rating * opp_pace / (100.0 * 48.0 / 48.0)
+    )
 
     # Clamp to ±20%
     defense_factor = max(0.80, min(1.20, defense_factor))
+    def_rating = effective_def_rating  # expose the normalized rating
 
     # Recent defense trend — use last-10 from nba_api if available, else season
     recent_defense_factor = defense_factor   # no last-10 team split in simple pull; use season

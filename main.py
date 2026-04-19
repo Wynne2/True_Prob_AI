@@ -17,6 +17,15 @@ import json
 import sys
 from datetime import date
 
+# Force UTF-8 output on Windows so Rich markup and Unicode chars don't crash
+# cp1252 terminals with UnicodeEncodeError.
+if sys.platform == "win32":
+    import io
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -29,11 +38,17 @@ from engine.parlay_builder import ParlayConstraints, build_parlays
 from engine.ranking_engine import rank_parlays
 from engine.slate_scanner import SlateScanner
 from utils.date_utils import parse_date, today_eastern
-from utils.formatting import format_american, format_edge, format_prob, format_currency
+from utils.formatting import (
+    book_display_name,
+    format_american,
+    format_currency,
+    format_edge,
+    format_prob,
+)
 from utils.api_debug import redact_url
 from utils.logging_utils import setup_logging
 
-console = Console()
+console = Console(legacy_windows=False)
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +148,11 @@ Examples:
         "--debug-api", action="store_true",
         help="Print raw JSON response from every API call (for verifying data sources)",
     )
+    parser.add_argument(
+        "--playoff",
+        action="store_true",
+        help="Treat slate as NBA playoffs (slightly higher minute projections for rotation)",
+    )
     return parser.parse_args()
 
 
@@ -165,42 +185,55 @@ def print_provider_status() -> None:
     console.print(table)
 
 
+def _book_label(book, api_key: str = "") -> str:
+    return book_display_name(book, api_key)
+
+
 def print_props_table(props: list, top_n: int = 20) -> None:
-    """Print top qualifying props sorted by edge."""
+    """Print top qualifying props as individual cards, sorted by edge."""
     sorted_props = sorted(props, key=lambda p: p.edge, reverse=True)[:top_n]
     if not sorted_props:
         console.print("[yellow]No qualifying props found.[/yellow]")
         return
 
-    table = Table(title=f"Top {top_n} Qualifying Props by Edge", box=box.ROUNDED)
-    table.add_column("Player", style="bold white", min_width=20)
-    table.add_column("Prop", style="cyan")
-    table.add_column("Line", justify="right")
-    table.add_column("Side", justify="center")
-    table.add_column("Proj", justify="right")
-    table.add_column("True%", justify="right", style="green")
-    table.add_column("Impl%", justify="right", style="yellow")
-    table.add_column("Edge", justify="right", style="bold green")
-    table.add_column("Odds", justify="right")
-    table.add_column("Book", style="dim")
-    table.add_column("Conf", style="dim")
+    console.print(f"\n[bold white]-- Top {len(sorted_props)} Qualifying Props by Edge --[/bold white]\n")
 
-    for p in sorted_props:
-        edge_color = "green" if p.edge >= 0.08 else "yellow" if p.edge >= 0.05 else "red"
-        table.add_row(
-            p.player_name,
-            p.prop_type.value,
-            f"{p.line:.1f}",
-            p.side.value.upper(),
-            f"{p.projected_value:.1f}",
-            format_prob(p.true_probability),
-            format_prob(p.implied_probability),
-            f"[{edge_color}]{format_edge(p.edge)}[/{edge_color}]",
-            format_american(p.sportsbook_odds),
-            p.best_book.value,
-            p.confidence.value,
+    for i, p in enumerate(sorted_props, 1):
+        edge_pct = p.edge * 100
+        edge_color = "bold green" if edge_pct >= 8 else "yellow" if edge_pct >= 5 else "red"
+        side_color = "cyan" if p.side.value.upper() == "OVER" else "magenta"
+        book = _book_label(p.best_book, getattr(p, "best_book_key", "") or "")
+
+        # Header line: rank, player, prop, side, line, odds, book
+        header = (
+            f"[dim]{i:>2}.[/dim]  "
+            f"[bold white]{p.player_name}[/bold white]  "
+            f"[cyan]{p.prop_type.value.title()}[/cyan]  "
+            f"[{side_color}]{p.side.value.upper()}[/{side_color}] "
+            f"[bold]{p.line:.1f}[/bold]  "
+            f"[bold yellow]{format_american(p.sportsbook_odds)}[/bold yellow]  "
+            f"[bold cyan]{book}[/bold cyan]"
         )
-    console.print(table)
+        # Detail line: projection, true prob, implied, edge, confidence
+        base = getattr(p, "baseline_projection", None) or p.projected_value
+        expm = getattr(p, "expected_minutes", 0.0)
+        detail = (
+            f"      Proj [bold]{p.projected_value:.1f}[/bold]  "
+            f"(baseline ~{base:.1f}"
+            + (f", exp {expm:.0f} min" if expm else "")
+            + ")  "
+            f"True [green]{format_prob(p.true_probability)}[/green]  "
+            f"Impl [yellow]{format_prob(p.implied_probability)}[/yellow]  "
+            f"Edge [{edge_color}]{format_edge(p.edge)}[/{edge_color}]  "
+            f"[dim]{p.confidence.value}[/dim]"
+        )
+        console.print(header)
+        console.print(detail)
+        warns = getattr(p, "calibration_warnings", None) or []
+        if warns:
+            console.print(f"      [dim]Calibration: {', '.join(warns)}[/dim]")
+        if i < len(sorted_props):
+            console.print()
 
 
 def print_parlays(parlays: list, top_n: int = 10) -> None:
@@ -223,29 +256,22 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
         )
         console.print(Panel(title, expand=False, border_style="blue"))
 
-        # Legs table
-        leg_table = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
-        leg_table.add_column("Player", min_width=22)
-        leg_table.add_column("Prop")
-        leg_table.add_column("Line", justify="right")
-        leg_table.add_column("Side", justify="center")
-        leg_table.add_column("Proj", justify="right")
-        leg_table.add_column("True%", justify="right")
-        leg_table.add_column("Edge", justify="right", style="green")
-        leg_table.add_column("Odds", justify="right")
-
-        for leg in parlay.legs:
-            leg_table.add_row(
-                leg.player_name,
-                leg.prop_type.value,
-                f"{leg.line:.1f}",
-                leg.side.value.upper(),
-                f"{leg.projected_value:.1f}",
-                format_prob(leg.true_probability),
-                format_edge(leg.edge),
-                format_american(leg.sportsbook_odds),
+        for leg_i, leg in enumerate(parlay.legs, 1):
+            side_color = "cyan" if leg.side.value.upper() == "OVER" else "magenta"
+            book = _book_label(leg.sportsbook, getattr(leg, "best_book_key", "") or "")
+            console.print(
+                f"  [dim]{leg_i}.[/dim] [bold white]{leg.player_name}[/bold white]  "
+                f"[cyan]{leg.prop_type.value.title()}[/cyan]  "
+                f"[{side_color}]{leg.side.value.upper()}[/{side_color}] "
+                f"[bold]{leg.line:.1f}[/bold]  "
+                f"[bold yellow]{format_american(leg.sportsbook_odds)}[/bold yellow]  "
+                f"[bold cyan]{book}[/bold cyan]"
             )
-        console.print(leg_table)
+            console.print(
+                f"       Proj [bold]{leg.projected_value:.1f}[/bold]  "
+                f"True [green]{format_prob(leg.true_probability)}[/green]  "
+                f"Edge [bold green]{format_edge(leg.edge)}[/bold green]"
+            )
 
         # Payout summary
         if parlay.stake > 0:
@@ -295,8 +321,15 @@ def main() -> None:
     # Scan slate
     console.print(f"\n[cyan]Scanning NBA slate for {game_date}...[/cyan]")
     scanner = SlateScanner()
-    all_props = scanner.scan(game_date, prop_types=prop_types)
-    console.print(f"[green]Evaluated {len(all_props)} prop lines.[/green]")
+    all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    n = len(all_props)
+    console.print(
+        f"[green]Evaluated {n} prop line{'s' if n != 1 else ''}.[/green]"
+    )
+    if n:
+        console.print(
+            "[dim]Pregame only: games in progress or final are excluded from the slate.[/dim]"
+        )
 
     if not all_props:
         if game_date > today_eastern():
@@ -304,11 +337,20 @@ def main() -> None:
                 f"[yellow]No props found for {game_date}.[/yellow] "
                 f"This is a future date — lines may not be posted yet."
             )
+        elif (
+            getattr(scanner, "last_raw_slate_game_count", 0) > 0
+            and getattr(scanner, "last_pregame_slate_game_count", 0) == 0
+        ):
+            console.print(
+                f"[yellow]No pregame props for {game_date}.[/yellow] "
+                f"The slate had [bold]{scanner.last_raw_slate_game_count}[/bold] game(s), "
+                f"but every one had already started or finished — only upcoming games are evaluated."
+            )
         else:
             console.print(
                 f"[red]No props found for {game_date}.[/red] "
-                f"Check your data providers or API keys. "
-                f"There may be no games scheduled on this date."
+                f"No games from the schedule provider, or odds/lines missing. "
+                f"Check API keys and that games are scheduled for this date."
             )
         sys.exit(0)
 
