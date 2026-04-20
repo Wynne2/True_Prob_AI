@@ -32,7 +32,12 @@ from domain.constants import (
     LOW_LINE_THRESHOLD,
     MAX_PROBABILITY_CEILING,
     MIN_PROBABILITY_FLOOR,
+    NEGBIN_VARIANCE_INFLATION,
     PROBABILITY_SHRINKAGE_FACTOR,
+    REBOUNDS_OVER_AMERICAN_LONGSHOT,
+    REBOUNDS_OVER_LINE_STRESS,
+    REBOUNDS_OVER_PROB_SHRINK_LONGSHOT,
+    REBOUNDS_OVER_PROB_SHRINK_MINUTES,
 )
 from domain.entities import Game, OddsLine, Player, PropProbability, StatProjection, TeamDefense
 from domain.enums import (
@@ -127,6 +132,40 @@ _MODELS: dict[PropType, object] = {
 }
 
 
+def _negbinom_inflation(projection: StatProjection) -> float:
+    vi = float(getattr(projection, "negbinom_variance_inflation", 0) or 0)
+    return vi if vi > 0 else NEGBIN_VARIANCE_INFLATION
+
+
+def _rebound_over_adjust_raw_prob(
+    raw_prob: float,
+    projection: StatProjection,
+    line: float,
+    american_odds: int,
+) -> float:
+    """
+    Pull rebound OVER tail probability toward 50% when minutes are insufficient
+    vs implied rate, or when the line/price is a longshot profile.
+    """
+    ctx = getattr(projection, "model_context", None) or {}
+    rpm = float(ctx.get("blended_rebounds_per_minute") or 0.0)
+    if rpm <= 0:
+        rpm = max(float(projection.season_rate_per_minute or 0.0), 0.06)
+    exp_m = float(projection.expected_minutes or 0.0)
+    req_min = line / max(rpm, 1e-6)
+    p = raw_prob
+    if exp_m > 1.0 and req_min > exp_m * REBOUNDS_OVER_PROB_SHRINK_MINUTES:
+        p = 0.5 + (p - 0.5) * 0.82
+    if (
+        line >= REBOUNDS_OVER_LINE_STRESS
+        and american_odds >= REBOUNDS_OVER_AMERICAN_LONGSHOT
+        and exp_m > 1.0
+        and req_min > exp_m * 0.93
+    ):
+        p = 0.5 + (p - 0.5) * REBOUNDS_OVER_PROB_SHRINK_LONGSHOT
+    return clamp(p, 0.001, 0.999)
+
+
 def _true_prob(projection: StatProjection, line: float, side: PropSide) -> float:
     """Convert a StatProjection to P(stat OP line) for the given side."""
     dist = projection.distribution_type
@@ -135,6 +174,7 @@ def _true_prob(projection: StatProjection, line: float, side: PropSide) -> float
     lam = projection.dist_lambda or mean
     n = projection.dist_n or 1
     p_binom = projection.dist_p or 0.35
+    vi = _negbinom_inflation(projection)
 
     if side == PropSide.OVER:
         if dist == DistributionType.NORMAL:
@@ -142,7 +182,7 @@ def _true_prob(projection: StatProjection, line: float, side: PropSide) -> float
         elif dist == DistributionType.POISSON:
             return poisson_prob_over(lam, line)
         elif dist == DistributionType.NEGATIVE_BINOMIAL:
-            return negbinom_prob_over(mean, line=line)
+            return negbinom_prob_over(mean, variance_inflation=vi, line=line)
         elif dist == DistributionType.BINOMIAL:
             return binomial_prob_over(n, p_binom, line)
     else:
@@ -151,7 +191,7 @@ def _true_prob(projection: StatProjection, line: float, side: PropSide) -> float
         elif dist == DistributionType.POISSON:
             return poisson_prob_under(lam, line)
         elif dist == DistributionType.NEGATIVE_BINOMIAL:
-            return negbinom_prob_under(mean, line=line)
+            return negbinom_prob_under(mean, variance_inflation=vi, line=line)
         elif dist == DistributionType.BINOMIAL:
             return binomial_prob_under(n, p_binom, line)
     return 0.5
@@ -340,6 +380,10 @@ class PropEvaluator:
             # --- 3-step probability calibration pipeline ---
             # Step 1: raw tail probability from the chosen distribution
             raw_prob = clamp(_true_prob(projection, numeric_line, side), 0.001, 0.999)
+            if prop_type == PropType.REBOUNDS and side == PropSide.OVER:
+                raw_prob = _rebound_over_adjust_raw_prob(
+                    raw_prob, projection, numeric_line, best.best_odds,
+                )
 
             # Step 2: shrinkage toward 50% — accounts for inherent single-game
             # unpredictability that distributions cannot fully capture.
@@ -471,6 +515,26 @@ class PropEvaluator:
                     "expected_fga_proxy": round(projection.expected_field_goal_attempts_proxy, 3),
                     "expected_3pa_proxy": round(projection.expected_three_point_attempts_proxy, 3),
                     "projection_audit_flags": list(projection.projection_audit_flags or []),
+                    "negbinom_variance_inflation": round(_negbinom_inflation(projection), 4),
+                    "rebound_model_context": dict(getattr(projection, "model_context", None) or {}),
+                    "required_minutes_to_clear_line": (
+                        round(
+                            numeric_line
+                            / max(
+                                float(
+                                    (getattr(projection, "model_context", None) or {}).get(
+                                        "blended_rebounds_per_minute"
+                                    )
+                                    or projection.season_rate_per_minute
+                                    or 0.08
+                                ),
+                                0.08,
+                            ),
+                            2,
+                        )
+                        if prop_type == PropType.REBOUNDS
+                        else None
+                    ),
                     "raw_over_prob": round(over_raw, 4),
                     "raw_under_prob": round(under_raw, 4),
                     "raw_prob": round(raw_prob, 4),

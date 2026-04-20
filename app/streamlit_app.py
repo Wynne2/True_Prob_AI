@@ -54,6 +54,46 @@ st.markdown("""
 
 
 # ---------------------------------------------------------------------------
+# Sidebar odds helpers (text fields: native number_input cannot show leading +)
+# ---------------------------------------------------------------------------
+
+def _parse_american_sidebar_text(raw: str) -> int | None:
+    t = (raw or "").strip().replace("−", "-").replace(",", "")
+    if not t:
+        return None
+    if t.startswith("+"):
+        t = t[1:]
+    try:
+        return int(float(t))
+    except ValueError:
+        return None
+
+
+def _sidebar_american_text_input(
+    label: str,
+    *,
+    default: int,
+    key: str,
+    help_text: str | None = None,
+) -> int:
+    """
+    American odds bound with explicit +/− in the field. ``st.number_input`` with
+    ``%+`` format leaves positives blank (HTML number inputs reject a leading '+').
+    """
+    valid_key = f"{key}__valid_int"
+    if key not in st.session_state:
+        st.session_state[key] = format_american(default)
+    if valid_key not in st.session_state:
+        st.session_state[valid_key] = default
+    typed = st.text_input(label, key=key, help=help_text)
+    parsed = _parse_american_sidebar_text(typed)
+    if parsed is not None:
+        st.session_state[valid_key] = parsed
+        return parsed
+    return int(st.session_state[valid_key])
+
+
+# ---------------------------------------------------------------------------
 # Sidebar: Constraints
 # ---------------------------------------------------------------------------
 
@@ -101,15 +141,35 @@ def render_sidebar() -> dict:
         )
         col1, col2 = st.columns(2)
         with col1:
-            min_leg_odds = st.number_input("Min Leg Odds", value=-200, step=10)
+            min_leg_odds = _sidebar_american_text_input(
+                "Min Leg Odds",
+                default=-200,
+                key="sb_min_leg_odds",
+                help_text="American odds (favorites negative, dogs positive), e.g. −600 or +250.",
+            )
         with col2:
-            max_leg_odds = st.number_input("Max Leg Odds", value=400, step=10)
+            max_leg_odds = _sidebar_american_text_input(
+                "Max Leg Odds",
+                default=400,
+                key="sb_max_leg_odds",
+                help_text="American odds, e.g. −110 or +400.",
+            )
 
         col3, col4 = st.columns(2)
         with col3:
-            min_parlay_odds = st.number_input("Min Parlay Odds", value=-10000, step=50)
+            min_parlay_odds = _sidebar_american_text_input(
+                "Min Parlay Odds",
+                default=-10000,
+                key="sb_min_parlay_odds",
+                help_text="Combined parlay price lower bound (American).",
+            )
         with col4:
-            max_parlay_odds = st.number_input("Max Parlay Odds", value=100000, step=50)
+            max_parlay_odds = _sidebar_american_text_input(
+                "Max Parlay Odds",
+                default=100000,
+                key="sb_max_parlay_odds",
+                help_text="Combined parlay price upper bound (American).",
+            )
 
         st.divider()
         st.subheader("Prop Filters")
@@ -146,10 +206,10 @@ def render_sidebar() -> dict:
         "min_edge": min_edge,
         "max_legs": int(max_legs),
         "min_legs": int(min_legs),
-        "min_leg_odds": int(min_leg_odds),
-        "max_leg_odds": int(max_leg_odds),
-        "min_parlay_odds": int(min_parlay_odds),
-        "max_parlay_odds": int(max_parlay_odds),
+        "min_leg_odds": min_leg_odds,
+        "max_leg_odds": max_leg_odds,
+        "min_parlay_odds": min_parlay_odds,
+        "max_parlay_odds": max_parlay_odds,
         "prop_types": [PropType(p) for p in selected_props] if selected_props else None,
         "min_confidence": None if min_confidence == "Any" else min_confidence,
         "stake": float(stake),
@@ -690,7 +750,8 @@ def main() -> None:
             qualifying = _qualifying_props_for_display(all_props, params)
             st.markdown(
                 f"**{len(qualifying)} qualifying props** with ≥{format_edge(params['min_edge'])} edge "
-                f"and leg odds in [{params['min_leg_odds']}, {params['max_leg_odds']}] "
+                f"and leg odds in [{format_american(params['min_leg_odds'])}, "
+                f"{format_american(params['max_leg_odds'])}] "
                 f"(out of {len(all_props)} total evaluated)"
             )
             render_props_table(qualifying)

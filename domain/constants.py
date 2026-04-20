@@ -179,7 +179,7 @@ FORM_WINDOW_LONG: int = 20
 
 VARIANCE_INFLATION: dict[PropType, float] = {
     PropType.POINTS:    1.55,   # was 1.15 — empirical NBA game-to-game scoring spread
-    PropType.REBOUNDS:  1.80,   # was 1.20 — high overdispersion in rebounding
+    PropType.REBOUNDS:  2.05,   # rebounding is high-variance; overs need conservative std
     PropType.ASSISTS:   1.65,   # was 1.25
     PropType.THREES:    2.00,   # was 1.30 — shooting is highly volatile night-to-night
     PropType.PRA:       1.45,   # was 1.10
@@ -216,6 +216,26 @@ STD_ABSOLUTE_MIN: dict[PropType, float] = {
 # NegBin overdispersion — empirical NBA value (was hardcoded 1.3 in distributions.py)
 # Var = mean × NEGBIN_VARIANCE_INFLATION.  2.0 matches observed rebound/assist spread.
 NEGBIN_VARIANCE_INFLATION: float = 2.0
+
+# ---------------------------------------------------------------------------
+# Rebounds model — conservative rates + environment (see models/rebounds_support.py)
+# ---------------------------------------------------------------------------
+REBOUNDS_RATE_BLEND_SEASON: float = 0.70
+REBOUNDS_RATE_BLEND_RECENT: float = 0.30
+REBOUNDS_RECENT_RPM_MIN_RATIO: float = 0.92
+REBOUNDS_RECENT_RPM_MAX_RATIO: float = 1.08
+REBOUNDS_ENV_BAND_MIN: float = 0.96
+REBOUNDS_ENV_BAND_MAX: float = 1.04
+REBOUNDS_PACE_SENSITIVITY_MULT: float = 0.50   # scales PACE_SENSITIVITY[REBOUNDS]
+REBOUNDS_POS_MATCHUP_CLAMP: tuple[float, float] = (0.90, 1.10)
+REBOUNDS_NEGBIN_INFLATION_BASE: float = 2.45
+REBOUNDS_NEGBIN_INFLATION_MINUTES_STRESS: float = 0.25
+REBOUNDS_NEGBIN_INFLATION_HIGH_VOLATILITY: float = 3.15
+# Prop evaluator: rebound overs at high lines / plus money
+REBOUNDS_OVER_LINE_STRESS: float = 10.5
+REBOUNDS_OVER_AMERICAN_LONGSHOT: int = 155
+REBOUNDS_OVER_PROB_SHRINK_MINUTES: float = 0.82  # required_min vs exp min
+REBOUNDS_OVER_PROB_SHRINK_LONGSHOT: float = 0.88
 
 # ---------------------------------------------------------------------------
 # Probability calibration pipeline constants

@@ -61,6 +61,17 @@ def build_explanation(
             + "."
         )
 
+    if prop_type == PropType.REBOUNDS and getattr(projection, "model_context", None):
+        ctx = projection.model_context
+        if ctx.get("blended_rebounds_per_minute"):
+            parts.append(
+                f"Reb/min blend {ctx.get('blended_rebounds_per_minute'):.3f}, "
+                f"env ×{ctx.get('rebound_environment_factor', 1.0):.2f}, "
+                f"role stab ×{ctx.get('role_stability_factor', 1.0):.2f}, "
+                f"competition ×{ctx.get('teammate_competition_factor', 1.0):.2f} "
+                "(FPA not used for glass)."
+            )
+
     # Pace context
     if defense and defense.pace > 0:
         pace_note = "high" if defense.pace > 102 else "low" if defense.pace < 98 else "average"

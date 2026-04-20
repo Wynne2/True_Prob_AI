@@ -371,6 +371,8 @@ class BaseStatModel(ABC):
         expected_field_goal_attempts_proxy: float = 0.0,
         expected_three_point_attempts_proxy: float = 0.0,
         projection_audit_flags: Optional[list[str]] = None,
+        negbinom_variance_inflation: float = 0.0,
+        model_context: Optional[dict] = None,
     ) -> StatProjection:
         """Construct and return a StatProjection dataclass."""
         bp = baseline_projection if baseline_projection is not None else projected_mean
@@ -401,4 +403,6 @@ class BaseStatModel(ABC):
             expected_field_goal_attempts_proxy=expected_field_goal_attempts_proxy,
             expected_three_point_attempts_proxy=expected_three_point_attempts_proxy,
             projection_audit_flags=list(projection_audit_flags or []),
+            negbinom_variance_inflation=negbinom_variance_inflation,
+            model_context=dict(model_context or {}),
         )

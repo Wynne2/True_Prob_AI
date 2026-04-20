@@ -271,6 +271,11 @@ class StatProjection:
     expected_three_point_attempts_proxy: float = 0.0
     projection_audit_flags: list[str] = field(default_factory=list)
 
+    # Negative binomial tail probs (rebounds / assists / turnovers): if <= 0, evaluator uses global NEGBIN inflation.
+    negbinom_variance_inflation: float = 0.0
+    # Prop-type-specific diagnostics (e.g. rebounds: rates, factors, required minutes).
+    model_context: dict = field(default_factory=dict)
+
 
 @dataclass
 class PropProbability:
