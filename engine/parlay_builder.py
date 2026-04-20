@@ -109,15 +109,23 @@ def _min_confidence_met(prop: PropProbability, min_conf: Optional[str]) -> bool:
     return prop_level >= min_level
 
 
+def leg_odds_match_constraints(odds: int, min_odds: int, max_odds: int) -> bool:
+    """
+    Return True if *odds* lies in the user's per-leg American odds band.
+
+    Min/max are **order-independent** (swapping the two inputs is OK). Bounds are
+    compared on the signed integer line, e.g. favorites -600 to -100 means
+    ``-600 <= odds <= -100``; +200 does not match that band.
+    """
+    return _leg_odds_ok(odds, min_odds, max_odds)
+
+
 def _leg_odds_ok(odds: int, min_odds: int, max_odds: int) -> bool:
     """Return True if *odds* is within the user's per-leg range."""
     if not is_valid_american(odds):
         return False
-    if odds < 0:
-        # Negative odds: the number must be between min and max
-        # e.g. min=-200 means odds like -110 are OK but -250 is not
-        return min_odds <= odds <= -100 or 100 <= odds <= max_odds
-    return 100 <= odds <= max_odds
+    lo, hi = min(min_odds, max_odds), max(min_odds, max_odds)
+    return lo <= odds <= hi
 
 
 def build_parlays(
@@ -150,7 +158,9 @@ def build_parlays(
     for prop in all_props:
         if prop.edge < constraints.min_edge:
             continue
-        if not _leg_odds_ok(prop.sportsbook_odds, constraints.min_leg_odds, constraints.max_leg_odds):
+        if not leg_odds_match_constraints(
+            prop.sportsbook_odds, constraints.min_leg_odds, constraints.max_leg_odds
+        ):
             continue
         if not _min_confidence_met(prop, constraints.min_confidence):
             continue

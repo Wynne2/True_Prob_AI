@@ -23,7 +23,7 @@ from engine.correlation_engine import (
     diversification_bonus,
     correlation_risk_score,
 )
-from engine.parlay_builder import ParlayConstraints, build_parlays
+from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays, summary_stats
 from engine.slate_scanner import SlateScanner
 
@@ -124,6 +124,21 @@ class TestCorrelationEngine:
         bonus = diversification_bonus(legs)
         # Less than max possible
         assert bonus < 0.20
+
+
+class TestLegOddsConstraints:
+    def test_favorite_band_excludes_positive_odds(self):
+        assert leg_odds_match_constraints(-150, -600, -100) is True
+        assert leg_odds_match_constraints(+200, -600, -100) is False
+
+    def test_min_max_order_independent_for_negatives(self):
+        assert leg_odds_match_constraints(-200, -600, -100) == leg_odds_match_constraints(
+            -200, -100, -600
+        )
+
+    def test_default_wide_range_allows_typical_prices(self):
+        assert leg_odds_match_constraints(-110, -200, 400) is True
+        assert leg_odds_match_constraints(+250, -200, 400) is True
 
 
 class TestParlayBuilder:

@@ -34,7 +34,7 @@ from rich import box
 from config import get_credentials
 from domain.enums import PropType, SortField
 from engine.bankroll_engine import apply_stake_to_all
-from engine.parlay_builder import ParlayConstraints, build_parlays
+from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays
 from engine.slate_scanner import SlateScanner
 from utils.date_utils import parse_date, today_eastern
@@ -354,9 +354,16 @@ def main() -> None:
             )
         sys.exit(0)
 
-    # Filter qualifying props
-    qualifying = [p for p in all_props if p.edge >= args.min_edge]
-    console.print(f"[green]{len(qualifying)} props with >={format_edge(args.min_edge)} edge.[/green]")
+    # Filter qualifying props (same leg-odds band as parlays)
+    qualifying = [
+        p for p in all_props
+        if p.edge >= args.min_edge
+        and leg_odds_match_constraints(p.sportsbook_odds, args.min_odds, args.max_odds)
+    ]
+    console.print(
+        f"[green]{len(qualifying)} props with >={format_edge(args.min_edge)} edge "
+        f"and leg odds in [{args.min_odds}, {args.max_odds}] (American).[/green]"
+    )
 
     print_props_table(qualifying, top_n=20)
 

@@ -22,7 +22,7 @@ import streamlit as st
 
 from domain.enums import ConfidenceTier, PropType, SortField
 from engine.bankroll_engine import apply_stake_to_all, payout_summary
-from engine.parlay_builder import ParlayConstraints, build_parlays
+from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays, summary_stats
 from engine.slate_scanner import SlateScanner
 from utils.api_debug import capture_api_responses
@@ -95,6 +95,10 @@ def render_sidebar() -> dict:
 
         st.divider()
         st.subheader("Odds Range")
+        st.caption(
+            "Applies to **Straight Bets**, **Props Analysis**, **Line Shopping**, and **Parlays**. "
+            "Bounds are numeric (e.g. favorites only −600 to −110: enter −600 and −110; order can be swapped)."
+        )
         col1, col2 = st.columns(2)
         with col1:
             min_leg_odds = st.number_input("Min Leg Odds", value=-200, step=10)
@@ -183,6 +187,17 @@ def render_provider_status() -> None:
                 st.markdown("_All providers configured_")
 
 
+def _qualifying_props_for_display(all_props: list, params: dict) -> list:
+    """Edge + per-leg American odds band (same rules as parlay legs)."""
+    return [
+        p for p in all_props
+        if p.edge >= params["min_edge"]
+        and leg_odds_match_constraints(
+            p.sportsbook_odds, params["min_leg_odds"], params["max_leg_odds"]
+        )
+    ]
+
+
 def render_games_slate(games: list) -> None:
     """Show today's NBA slate — game time (ET), arena, and city."""
     if not games:
@@ -259,7 +274,10 @@ def render_props_table(props: list) -> None:
 def render_straight_bets(props: list, stake: float, top_n: int) -> None:
     """Render top straight-bet recommendations as individual cards with payouts."""
     if not props:
-        st.warning("No qualifying straight bets found. Try lowering the min edge.")
+        st.warning(
+            "No qualifying straight bets found. Try lowering min edge or widening the **leg odds** range "
+            "(same filter as parlays)."
+        )
         return
 
     sorted_props = sorted(props, key=lambda p: p.edge, reverse=True)[:top_n]
@@ -656,7 +674,7 @@ def main() -> None:
 
     with tab_straight:
         if all_props:
-            qualifying = [p for p in all_props if p.edge >= params["min_edge"]]
+            qualifying = _qualifying_props_for_display(all_props, params)
             render_straight_bets(qualifying, params["stake"], params["top_straight"])
         else:
             st.info("Click 'Scan & Build' in the sidebar to get started.")
@@ -669,9 +687,10 @@ def main() -> None:
 
     with tab_props:
         if all_props:
-            qualifying = [p for p in all_props if p.edge >= params["min_edge"]]
+            qualifying = _qualifying_props_for_display(all_props, params)
             st.markdown(
                 f"**{len(qualifying)} qualifying props** with ≥{format_edge(params['min_edge'])} edge "
+                f"and leg odds in [{params['min_leg_odds']}, {params['max_leg_odds']}] "
                 f"(out of {len(all_props)} total evaluated)"
             )
             render_props_table(qualifying)
@@ -680,7 +699,7 @@ def main() -> None:
 
     with tab_lines:
         if all_props:
-            qualifying = [p for p in all_props if p.edge >= params["min_edge"]]
+            qualifying = _qualifying_props_for_display(all_props, params)
             render_line_shopping(qualifying[:50])
         else:
             st.info("Run the scan to see line shopping data.")
