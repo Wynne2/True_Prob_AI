@@ -127,7 +127,12 @@ Examples:
     parser.add_argument("--max-legs", type=int, default=3, help="Max legs per parlay (default 3)")
     parser.add_argument("--min-legs", type=int, default=2, help="Min legs per parlay (default 2)")
     parser.add_argument("--stake", type=float, default=100.0, help="Stake amount in $ (default 100)")
-    parser.add_argument("--min-odds", type=int, default=-200, help="Min per-leg American odds (default -200)")
+    parser.add_argument(
+        "--min-odds",
+        type=int,
+        default=-600,
+        help="Min per-leg American odds (default -600; includes heavy favorites)",
+    )
     parser.add_argument("--max-odds", type=int, default=400, help="Max per-leg American odds (default +400)")
     parser.add_argument("--min-parlay-odds", type=int, default=-10000, help="Min combined parlay odds")
     parser.add_argument("--max-parlay-odds", type=int, default=100000, help="Max combined parlay odds")

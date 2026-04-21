@@ -10,8 +10,8 @@ For each (player, prop_type, line, side) combination, the evaluator:
 3. Runs the appropriate stat model to get a projection.
 4. Converts the projection to a true probability using the correct distribution.
 5. Retrieves the best available sportsbook odds (SOURCE: The Odds API).
-6. Computes vig-removed implied probability.
-7. Calculates edge.
+6. Computes raw (vig-included) implied probability for the priced side.
+7. Calculates edge (true probability minus that raw implied).
 8. Attaches confidence tier and explanation.
 
 The FeatureVector is pre-built by the SlateScanner (STEP 5 in the pipeline)
@@ -27,6 +27,8 @@ from typing import Optional
 from domain.constants import (
     AUDIT_FLAG_SHRINK_MAX_STEPS,
     AUDIT_FLAG_TRUE_PROB_SHRINK_STEP,
+    FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH,
+    FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW,
     FPA_LEAGUE_AVG,
     LEAGUE_AVG_DEF_EFF,
     LOW_LINE_THRESHOLD,
@@ -60,9 +62,15 @@ from models.threes_model import ThreesModel
 from models.turnovers_model import TurnoversModel
 from engine.final_calibration_gate import apply_final_calibration_gate
 from engine.market_calibration import calibrate_true_probability
+from models.points_low_usage_suppression import (
+    apply_low_usage_points_suppression,
+    cap_over_probability,
+    classify_scorer_bucket,
+    PointsLowUsageSuppressionResult,
+)
 from models.variance_model import VarianceModel
 from odds.fair_odds import calculate_edge, true_prob_to_american_odds
-from odds.implied_probability import implied_prob_for_side
+from odds.implied_probability import raw_implied_prob_for_side
 from odds.line_shopping import shop_lines
 from odds.normalizer import american_to_decimal
 from utils.distributions import (
@@ -78,6 +86,25 @@ from utils.distributions import (
 from utils.math_helpers import clamp
 
 logger = logging.getLogger(__name__)
+
+
+# #region agent log
+def _agent_debug_heavy_fav(payload: dict) -> None:
+    """Append one NDJSON line for debug session 9df441 (heavy-favorite audit)."""
+    import json
+    import time
+    from pathlib import Path
+
+    row = {"sessionId": "9df441", "timestamp": int(time.time() * 1000), **payload}
+    path = Path(__file__).resolve().parent.parent / "debug-9df441.log"
+    try:
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, default=str) + "\n")
+    except Exception:
+        pass
+
+
+# #endregion
 
 
 def _sync_season_stat_from_feature_vector(player: Player, fv: FeatureVector) -> None:
@@ -164,6 +191,30 @@ def _rebound_over_adjust_raw_prob(
     ):
         p = 0.5 + (p - 0.5) * REBOUNDS_OVER_PROB_SHRINK_LONGSHOT
     return clamp(p, 0.001, 0.999)
+
+
+def _true_prob_with_mean(
+    projection: StatProjection,
+    line: float,
+    side: PropSide,
+    mean: float,
+) -> float:
+    """Like ``_true_prob`` but uses *mean* for the distribution location (points Normal tails)."""
+    dist = projection.distribution_type
+    std = projection.dist_std
+    if side == PropSide.OVER:
+        if dist == DistributionType.NORMAL:
+            return normal_prob_over(mean, std, line)
+    else:
+        if dist == DistributionType.NORMAL:
+            return normal_prob_under(mean, std, line)
+    # Non-Normal: fall back to projection.dist_mean path
+    saved = projection.dist_mean
+    projection.dist_mean = mean
+    try:
+        return _true_prob(projection, line, side)
+    finally:
+        projection.dist_mean = saved
 
 
 def _true_prob(projection: StatProjection, line: float, side: PropSide) -> float:
@@ -372,23 +423,85 @@ class PropEvaluator:
         for best in best_lines:
             numeric_line = best.line
             side = PropSide(best.side)
-
-            projection.dist_std = self._variance_model.std(
-                player, prop_type, projection.projected_value, prop_line=numeric_line
+            in_favorite_audit_band = (
+                FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW
+                <= best.best_odds
+                <= FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH
             )
+            hf_log = in_favorite_audit_band
+            hf: dict = {}
+
+            points_sup: Optional[PointsLowUsageSuppressionResult] = None
+            effective_mean = float(projection.dist_mean)
+            if prop_type == PropType.POINTS:
+                _bucket, _ = classify_scorer_bucket(player, projection, game)
+                points_sup = apply_low_usage_points_suppression(
+                    player, game, projection, numeric_line, _bucket,
+                )
+                effective_mean = float(points_sup.adjusted_mean)
+
+            std_input_mean = (
+                effective_mean
+                if prop_type == PropType.POINTS and points_sup and points_sup.active
+                else projection.projected_value
+            )
+            base_std = self._variance_model.std(
+                player, prop_type, std_input_mean, prop_line=numeric_line
+            )
+            projection.dist_std = base_std
+            if hf_log:
+                hf["raw_dist_mean"] = round(float(projection.dist_mean), 4)
+                hf["effective_mean"] = round(float(effective_mean), 4)
+                hf["dist_std"] = round(float(base_std), 4)
+                hf["prop_type"] = prop_type.value
+                hf["side"] = side.value
 
             # --- 3-step probability calibration pipeline ---
             # Step 1: raw tail probability from the chosen distribution
-            raw_prob = clamp(_true_prob(projection, numeric_line, side), 0.001, 0.999)
+            mean_for_tail = (
+                effective_mean if prop_type == PropType.POINTS else projection.dist_mean
+            )
+            if prop_type == PropType.POINTS:
+                raw_prob = clamp(
+                    _true_prob_with_mean(projection, numeric_line, side, mean_for_tail),
+                    0.001,
+                    0.999,
+                )
+            else:
+                raw_prob = clamp(_true_prob(projection, numeric_line, side), 0.001, 0.999)
+
+            uncapped_over_for_cap: Optional[float] = None
+            if (
+                prop_type == PropType.POINTS
+                and points_sup
+                and points_sup.active
+                and side == PropSide.OVER
+            ):
+                uncapped_over_for_cap = raw_prob
+                raw_prob, _ceiling_hit = cap_over_probability(
+                    raw_prob,
+                    effective_mean,
+                    numeric_line,
+                    points_sup.bucket,
+                    side,
+                    points_sup.active,
+                )
+
+            tail_after_distribution_and_points_cap = float(raw_prob)
             if prop_type == PropType.REBOUNDS and side == PropSide.OVER:
                 raw_prob = _rebound_over_adjust_raw_prob(
                     raw_prob, projection, numeric_line, best.best_odds,
                 )
+            tail_prob_pre_probability_shrink = float(raw_prob)
+            if hf_log:
+                hf["tail_after_step1"] = round(float(raw_prob), 5)
 
             # Step 2: shrinkage toward 50% — accounts for inherent single-game
             # unpredictability that distributions cannot fully capture.
             # Example: raw=99.9% → shrunk=89.9%  |  raw=80% → shrunk=74%
             shrunk_prob = 0.5 + (raw_prob - 0.5) * PROBABILITY_SHRINKAGE_FACTOR
+            if hf_log:
+                hf["shrunk"] = round(float(shrunk_prob), 5)
 
             # Step 3: data-completeness penalty — blend toward 50% when feature
             # inputs are sparse / unreliable (fv.data_completeness from builder,
@@ -402,22 +515,35 @@ class PropEvaluator:
                 base_completeness = min(base_completeness, effective_completeness)
             completeness = clamp(base_completeness, 0.20, 1.0)
             calibrated_prob = shrunk_prob * completeness + 0.5 * (1.0 - completeness)
+            if hf_log:
+                hf["completeness"] = round(float(completeness), 4)
+                hf["after_completeness"] = round(float(calibrated_prob), 5)
 
             # Step 4: hard ceiling / floor — no single-game prop should ever
             # reach near certainty without extraordinary evidence.
             true_prob = clamp(calibrated_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+            if hf_log:
+                hf["after_step4_clamp"] = round(float(true_prob), 5)
 
             audit_flags = list(getattr(projection, "projection_audit_flags", None) or [])
+            if points_sup and points_sup.flags:
+                audit_flags.extend(points_sup.flags)
             if audit_flags:
                 n_audit = min(len(audit_flags), AUDIT_FLAG_SHRINK_MAX_STEPS)
                 shrink = AUDIT_FLAG_TRUE_PROB_SHRINK_STEP ** n_audit
                 true_prob = 0.5 + (true_prob - 0.5) * shrink
                 true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+            if hf_log:
+                hf["after_audit_flags"] = round(float(true_prob), 5)
+                hf["audit_flags"] = list(audit_flags)
 
             if numeric_line <= LOW_LINE_THRESHOLD and prop_type in volatile_low_line:
                 true_prob = 0.5 + (true_prob - 0.5) * 0.90
+            if hf_log:
+                hf["after_volatile_low_line"] = round(float(true_prob), 5)
 
-            # Vig-removed implied probability (SOURCE: The Odds API pricing).
+            # Raw implied probability (vig included) for the priced side — same
+            # definition as the posted American odds, so edge is vs the number on the ticket.
             # Use the SAME book that produced the best odds so edge is self-consistent.
             # Primary: the best-line object itself if it carries over/under odds.
             # Fallback: first matching OddsLine from the same line value.
@@ -434,17 +560,39 @@ class PropEvaluator:
             if ref is None:
                 continue
 
-            implied = implied_prob_for_side(best.side, ref.over_odds, ref.under_odds)
+            implied = raw_implied_prob_for_side(best.side, ref.over_odds, ref.under_odds)
+            if hf_log:
+                from odds.implied_probability import implied_prob_for_side as _fair_side_hf
+                from odds.normalizer import american_to_raw_implied_prob as _raw_imp_hf
 
+                raw_side_odds = ref.over_odds if side == PropSide.OVER else ref.under_odds
+                hf["american_best"] = int(best.best_odds)
+                hf["ref_over_amer"] = int(ref.over_odds)
+                hf["ref_under_amer"] = int(ref.under_odds)
+                hf["raw_implied_side"] = round(float(_raw_imp_hf(raw_side_odds)), 5)
+                hf["fair_implied_side"] = round(
+                    float(_fair_side_hf(best.side, ref.over_odds, ref.under_odds)), 5
+                )
+                hf["line"] = float(numeric_line)
+
+            true_prob_pre_market = float(true_prob)
             true_prob, cal_warnings = calibrate_true_probability(
                 true_prob, implied, best.best_odds,
             )
+            market_calibration_warnings = list(cal_warnings)
             true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+            true_prob_after_market_calibration = float(true_prob)
+            if hf_log:
+                hf["true_pre_market_cal"] = round(true_prob_pre_market, 5)
+                hf["after_market_cal"] = round(float(true_prob), 5)
+                hf["market_cal_warnings"] = list(market_calibration_warnings)
 
             cal_warnings = list(cal_warnings)
             cal_warnings.extend(audit_flags)
 
             edge = calculate_edge(true_prob, implied)
+            if hf_log:
+                hf["edge_pre_gate"] = round(float(edge), 5)
 
             consistency = self._variance_model.consistency_score(
                 player, prop_type, projection.projected_value
@@ -471,6 +619,32 @@ class PropEvaluator:
             )
             true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
             edge = calculate_edge(true_prob, implied)
+            if hf_log:
+                hf["after_final_gate"] = round(float(true_prob), 5)
+                hf["edge_final"] = round(float(edge), 5)
+                hf["gate_warnings"] = list(gate_warnings)
+                hf["would_fail_default_min_edge_5pct"] = bool(edge < 0.05)
+                hf["prob_drop_tail_to_pre_market"] = round(
+                    true_prob_pre_market - float(hf.get("tail_after_step1", true_prob_pre_market)),
+                    5,
+                )
+                hf["prob_drop_pre_market_to_final"] = round(
+                    true_prob_pre_market - float(true_prob), 5,
+                )
+                if points_sup and points_sup.flags:
+                    hf["points_suppression_flags"] = list(points_sup.flags)
+                _agent_debug_heavy_fav(
+                    {
+                        "hypothesisId": "H_heavy_fav_pipeline",
+                        "location": "prop_evaluator.evaluate",
+                        "message": "heavy_favorite_leg_trace",
+                        "data": {
+                            "player": player.name,
+                            **hf,
+                        },
+                    }
+                )
+
             fair_odds_american = true_prob_to_american_odds(true_prob)
             cal_warnings = list(cal_warnings) + gate_warnings
 
@@ -481,21 +655,83 @@ class PropEvaluator:
                     f"{explanation} Conservative final check applied "
                     f"({len(gate_warnings)} signal(s): {', '.join(gate_warnings[:6])})."
                 )
+            if points_sup and points_sup.active and points_sup.flags:
+                explanation = (
+                    f"{explanation} Low-usage points layer: "
+                    f"{', '.join(points_sup.flags[:5])}"
+                    f"{'…' if len(points_sup.flags) > 5 else ''}."
+                )
 
-            # --- Debug payload ---
+            # --- Points diagnostics (always for POINTS) + verbose debug ---
             import os
+            from odds.implied_probability import get_fair_implied_probabilities
+            from odds.normalizer import american_to_raw_implied_prob
+
             _verbose = os.environ.get("VERBOSE", "0") in ("1", "true", "yes")
             _debug = getattr(self, "_debug_mode", False) or _verbose
-            debug_payload = None
+
+            fair_over_f, fair_under_f = get_fair_implied_probabilities(
+                ref.over_odds, ref.under_odds
+            )
+            raw_imp_over = american_to_raw_implied_prob(ref.over_odds)
+            raw_imp_under = american_to_raw_implied_prob(ref.under_odds)
+            fair_side = fair_over_f if side == PropSide.OVER else fair_under_f
+            raw_side = raw_imp_over if side == PropSide.OVER else raw_imp_under
+
+            debug_payload: Optional[dict] = None
+            if prop_type == PropType.POINTS and points_sup is not None:
+                usg_n = float(player.usage_rate or 0.0)
+                if usg_n > 1.0:
+                    usg_n /= 100.0
+                uncapped_over_diag = clamp(
+                    _true_prob_with_mean(
+                        projection, numeric_line, PropSide.OVER, effective_mean
+                    ),
+                    0.001,
+                    0.999,
+                )
+                capped_over_diag: Optional[float] = None
+                if (
+                    points_sup.active
+                    and side == PropSide.OVER
+                    and uncapped_over_for_cap is not None
+                ):
+                    capped_over_diag, _ = cap_over_probability(
+                        uncapped_over_for_cap,
+                        effective_mean,
+                        numeric_line,
+                        points_sup.bucket,
+                        PropSide.OVER,
+                        True,
+                    )
+                debug_payload = {
+                    "points_diagnostics": {
+                        "raw_projected_points": round(points_sup.raw_mean, 3),
+                        "adjusted_mean_points": round(effective_mean, 3),
+                        "usage_rate": round(usg_n, 4),
+                        "projected_fga": round(
+                            float(projection.expected_field_goal_attempts_proxy or 0.0), 3
+                        ),
+                        "projected_playoff_minutes": round(float(projection.expected_minutes or 0.0), 2),
+                        "scorer_bucket": points_sup.bucket.value,
+                        "uncapped_over_probability": round(uncapped_over_diag, 4),
+                        "capped_over_probability": (
+                            round(capped_over_diag, 4) if capped_over_diag is not None else None
+                        ),
+                        "implied_raw_over": round(raw_imp_over, 4),
+                        "implied_raw_under": round(raw_imp_under, 4),
+                        "implied_fair_over": round(fair_over_f, 4),
+                        "implied_fair_under": round(fair_under_f, 4),
+                        "edge_vs_raw_implied": round(float(true_prob) - raw_side, 4),
+                        "edge_vs_fair_implied": round(float(true_prob) - fair_side, 4),
+                        "suppression_flags": list(points_sup.flags),
+                    },
+                }
             if _debug:
-                # Compute both sides' raw probability for visibility
+                # Compute both sides' raw probability for visibility (model mean)
                 over_raw = clamp(_true_prob(projection, numeric_line, PropSide.OVER), 0.001, 0.999)
                 under_raw = clamp(_true_prob(projection, numeric_line, PropSide.UNDER), 0.001, 0.999)
-                from odds.implied_probability import get_fair_implied_probabilities
-                fair_over_impl, fair_under_impl = get_fair_implied_probabilities(
-                    ref.over_odds, ref.under_odds
-                )
-                debug_payload = {
+                verbose_block = {
                     "season_avg": getattr(feature_vector, "season_avg", player.points_per_game) if feature_vector else player.points_per_game,
                     "recent_10_avg": getattr(feature_vector, "recent_10_avg", 0.0) if feature_vector else 0.0,
                     "recent_5_avg": getattr(feature_vector, "recent_5_avg", 0.0) if feature_vector else 0.0,
@@ -542,16 +778,63 @@ class PropEvaluator:
                     "calibrated_prob": round(calibrated_prob, 4),
                     "over_probability": round(0.5 + (over_raw - 0.5) * PROBABILITY_SHRINKAGE_FACTOR * completeness, 4),
                     "under_probability": round(0.5 + (under_raw - 0.5) * PROBABILITY_SHRINKAGE_FACTOR * completeness, 4),
-                    "over_implied": round(fair_over_impl, 4),
-                    "under_implied": round(fair_under_impl, 4),
+                    "over_implied": round(raw_imp_over, 4),
+                    "under_implied": round(raw_imp_under, 4),
                     "data_completeness": round(completeness, 4),
                     "selected_side": side.value,
                     "reason_selected": (
                         f"edge={edge:.3f} (true_prob={true_prob:.3f} vs implied={implied:.3f})"
                     ),
                 }
+                if debug_payload is not None:
+                    debug_payload = {**debug_payload, **verbose_block}
+                else:
+                    debug_payload = verbose_block
 
             bp = projection.baseline_projection or projection.projected_value
+            adj_display = (
+                effective_mean if prop_type == PropType.POINTS else projection.projected_value
+            )
+
+            favorite_band_audit = None
+            if in_favorite_audit_band:
+                uncapped_user = (
+                    float(uncapped_over_for_cap)
+                    if uncapped_over_for_cap is not None
+                    else tail_after_distribution_and_points_cap
+                )
+                favorite_band_audit = {
+                    "american_odds": int(best.best_odds),
+                    "raw_implied_probability": round(float(implied), 6),
+                    "fair_implied_probability": round(float(fair_side), 6),
+                    "raw_projected_mean": round(float(projection.dist_mean), 4),
+                    "adjusted_projected_mean": round(float(adj_display), 4),
+                    "uncapped_true_probability": round(float(uncapped_user), 5),
+                    "step1_tail_before_probability_shrink": round(
+                        float(tail_prob_pre_probability_shrink), 5,
+                    ),
+                    "tail_after_distribution_and_points_cap": round(
+                        float(tail_after_distribution_and_points_cap), 5,
+                    ),
+                    "probability_shrinkage_factor": float(PROBABILITY_SHRINKAGE_FACTOR),
+                    "after_shrink_probability": round(float(shrunk_prob), 5),
+                    "after_completeness_probability": round(float(calibrated_prob), 5),
+                    "true_probability_before_market_calibration": round(
+                        float(true_prob_pre_market), 5,
+                    ),
+                    "true_probability_after_market_calibration": round(
+                        float(true_prob_after_market_calibration), 5,
+                    ),
+                    "final_true_probability": round(float(true_prob), 5),
+                    "final_edge": round(float(edge), 5),
+                    "confidence_tier": confidence.value,
+                    "market_calibration_warnings": list(market_calibration_warnings),
+                    "gate_warnings": list(gate_warnings),
+                    "projection_audit_flags": list(projection.projection_audit_flags or []),
+                    "points_suppression_flags": list(points_sup.flags) if points_sup else [],
+                    "points_suppression_active": bool(points_sup and points_sup.active),
+                }
+
             results.append(PropProbability(
                 player_id=player.player_id,
                 player_name=player.name,
@@ -568,7 +851,7 @@ class PropEvaluator:
                 side=side,
                 projected_value=projection.projected_value,
                 baseline_projection=bp,
-                adjusted_projection=projection.projected_value,
+                adjusted_projection=adj_display,
                 expected_minutes=projection.expected_minutes,
                 calibration_warnings=cal_warnings,
                 true_probability=true_prob,
@@ -583,6 +866,7 @@ class PropEvaluator:
                 explanation=explanation,
                 all_lines=player_lines,
                 debug_payload=debug_payload,
+                favorite_band_audit=favorite_band_audit,
             ))
 
         return results

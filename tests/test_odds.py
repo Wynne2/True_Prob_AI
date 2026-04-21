@@ -21,6 +21,7 @@ from odds.implied_probability import (
     remove_vig_simple,
     remove_vig_shin,
     get_fair_implied_probabilities,
+    raw_implied_prob_for_side,
 )
 from odds.fair_odds import (
     true_prob_to_decimal_odds,
@@ -87,6 +88,12 @@ class TestRawImpliedProb:
     def test_plus_200_near_33pct(self):
         prob = american_to_raw_implied_prob(200)
         assert abs(prob - 0.333) < 0.001
+
+    def test_raw_implied_prob_for_side_uses_posted_side(self):
+        p_over = raw_implied_prob_for_side("over", -200, 170)
+        p_under = raw_implied_prob_for_side("under", -200, 170)
+        assert p_over == pytest.approx(american_to_raw_implied_prob(-200))
+        assert p_under == pytest.approx(american_to_raw_implied_prob(170))
 
 
 class TestVigRemoval:

@@ -291,8 +291,8 @@ class PropProbability:
 
     projected_value: float
     true_probability: float    # model-derived probability this leg hits
-    implied_probability: float # sportsbook implied probability (vig-removed)
-    edge: float                # true_prob - implied_prob
+    implied_probability: float # raw implied from posted American (vig included)
+    edge: float                # true_prob - implied_probability
     fair_odds: int             # American odds reflecting true probability
 
     sportsbook_odds: int       # American odds from best book
@@ -314,6 +314,10 @@ class PropProbability:
     adjusted_projection: float = 0.0
     expected_minutes: float = 0.0
     calibration_warnings: list[str] = field(default_factory=list)
+
+    # Populated in PropEvaluator when best American odds lie in the favorite audit band
+    # (see domain.constants FAVORITE_STRAIGHT_BET_AUDIT_BAND_*).
+    favorite_band_audit: Optional[dict] = None
 
 
 # ---------------------------------------------------------------------------

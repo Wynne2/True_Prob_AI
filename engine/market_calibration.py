@@ -1,5 +1,5 @@
 """
-Compare model true probability to vig-removed market implied; apply haircuts and warnings.
+Compare model true probability to market implied (raw / vig-included); apply haircuts and warnings.
 """
 
 from __future__ import annotations

@@ -20,11 +20,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pandas as pd
 import streamlit as st
 
+from domain.constants import (
+    FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH,
+    FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW,
+)
 from domain.enums import ConfidenceTier, PropType, SortField
 from engine.bankroll_engine import apply_stake_to_all, payout_summary
 from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays, summary_stats
 from engine.slate_scanner import SlateScanner
+from engine.straight_bet_audit import (
+    build_favorite_band_audit_table,
+    format_favorite_band_summary_markdown,
+    pipeline_drop_averages_for_positive_edge_favorites,
+    top_uncapped_minus_fair_gap,
+)
 from utils.api_debug import capture_api_responses
 from utils.date_utils import today_eastern
 from utils.formatting import book_display_name, format_american, format_edge, format_prob, format_currency
@@ -51,46 +61,6 @@ st.markdown("""
     div[data-testid="stSidebar"] { background-color: #181825; }
 </style>
 """, unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------------------
-# Sidebar odds helpers (text fields: native number_input cannot show leading +)
-# ---------------------------------------------------------------------------
-
-def _parse_american_sidebar_text(raw: str) -> int | None:
-    t = (raw or "").strip().replace("−", "-").replace(",", "")
-    if not t:
-        return None
-    if t.startswith("+"):
-        t = t[1:]
-    try:
-        return int(float(t))
-    except ValueError:
-        return None
-
-
-def _sidebar_american_text_input(
-    label: str,
-    *,
-    default: int,
-    key: str,
-    help_text: str | None = None,
-) -> int:
-    """
-    American odds bound with explicit +/− in the field. ``st.number_input`` with
-    ``%+`` format leaves positives blank (HTML number inputs reject a leading '+').
-    """
-    valid_key = f"{key}__valid_int"
-    if key not in st.session_state:
-        st.session_state[key] = format_american(default)
-    if valid_key not in st.session_state:
-        st.session_state[valid_key] = default
-    typed = st.text_input(label, key=key, help=help_text)
-    parsed = _parse_american_sidebar_text(typed)
-    if parsed is not None:
-        st.session_state[valid_key] = parsed
-        return parsed
-    return int(st.session_state[valid_key])
 
 
 # ---------------------------------------------------------------------------
@@ -137,39 +107,33 @@ def render_sidebar() -> dict:
         st.subheader("Odds Range")
         st.caption(
             "Applies to **Straight Bets**, **Props Analysis**, **Line Shopping**, and **Parlays**. "
-            "Bounds are numeric (e.g. favorites only −600 to −110: enter −600 and −110; order can be swapped)."
+            "Bounds are numeric (e.g. favorites −600 to −110: enter −600 and −110; order can be swapped). "
+            "**Min Leg Odds** must be ≤ the steepest favorite you want (e.g. −600 includes −210 and −250)."
         )
         col1, col2 = st.columns(2)
         with col1:
-            min_leg_odds = _sidebar_american_text_input(
+            min_leg_odds = st.number_input(
                 "Min Leg Odds",
-                default=-200,
-                key="sb_min_leg_odds",
-                help_text="American odds (favorites negative, dogs positive), e.g. −600 or +250.",
+                value=-600,
+                step=10,
+                key="min_leg_odds_band_v3",
+                help="American odds lower bound (signed). Favorites are negative; "
+                "must be ≤ your longest prices (e.g. −600 includes −210, −250). "
+                "If you still see no heavy favorites after an update, this value was reset to −600.",
             )
         with col2:
-            max_leg_odds = _sidebar_american_text_input(
+            max_leg_odds = st.number_input(
                 "Max Leg Odds",
-                default=400,
-                key="sb_max_leg_odds",
-                help_text="American odds, e.g. −110 or +400.",
+                value=400,
+                step=10,
+                key="max_leg_odds_band_v3",
             )
 
         col3, col4 = st.columns(2)
         with col3:
-            min_parlay_odds = _sidebar_american_text_input(
-                "Min Parlay Odds",
-                default=-10000,
-                key="sb_min_parlay_odds",
-                help_text="Combined parlay price lower bound (American).",
-            )
+            min_parlay_odds = st.number_input("Min Parlay Odds", value=-10000, step=50)
         with col4:
-            max_parlay_odds = _sidebar_american_text_input(
-                "Max Parlay Odds",
-                default=100000,
-                key="sb_max_parlay_odds",
-                help_text="Combined parlay price upper bound (American).",
-            )
+            max_parlay_odds = st.number_input("Max Parlay Odds", value=100000, step=50)
 
         st.divider()
         st.subheader("Prop Filters")
@@ -206,10 +170,10 @@ def render_sidebar() -> dict:
         "min_edge": min_edge,
         "max_legs": int(max_legs),
         "min_legs": int(min_legs),
-        "min_leg_odds": min_leg_odds,
-        "max_leg_odds": max_leg_odds,
-        "min_parlay_odds": min_parlay_odds,
-        "max_parlay_odds": max_parlay_odds,
+        "min_leg_odds": int(min_leg_odds),
+        "max_leg_odds": int(max_leg_odds),
+        "min_parlay_odds": int(min_parlay_odds),
+        "max_parlay_odds": int(max_parlay_odds),
         "prop_types": [PropType(p) for p in selected_props] if selected_props else None,
         "min_confidence": None if min_confidence == "Any" else min_confidence,
         "stake": float(stake),
@@ -331,6 +295,17 @@ def render_props_table(props: list) -> None:
     st.dataframe(styled, width="stretch", hide_index=True)
 
 
+def _prop_leg_key(prop) -> tuple:
+    """Identity for one evaluated leg (same book price can vary; odds included for dedupe)."""
+    return (
+        prop.player_id,
+        prop.prop_type,
+        prop.line,
+        prop.side,
+        prop.sportsbook_odds,
+    )
+
+
 def render_straight_bets(props: list, stake: float, top_n: int) -> None:
     """Render top straight-bet recommendations as individual cards with payouts."""
     if not props:
@@ -340,7 +315,16 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
         )
         return
 
+    # Any minus-money price: still filtered by sidebar leg band + min edge, but no longer
+    # limited to ≤−200 only (e.g. −115 to −198 favorites were never shown here before).
     sorted_props = sorted(props, key=lambda p: p.edge, reverse=True)[:top_n]
+    top_keys = {_prop_leg_key(p) for p in sorted_props}
+    favorite_sorted = sorted(
+        (p for p in props if p.sportsbook_odds < 0),
+        key=lambda p: p.edge,
+        reverse=True,
+    )
+    favorite_not_in_top = [p for p in favorite_sorted if _prop_leg_key(p) not in top_keys][:35]
 
     st.markdown(
         f"### Top {len(sorted_props)} Straight Bets "
@@ -365,18 +349,10 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
         else:
             return wager * (100 / abs(american_odds))
 
-    for rank, prop in enumerate(sorted_props, 1):
-        edge_pct = prop.edge * 100
+    def _straight_bet_expander(rank: int, prop, expanded_top: int) -> None:
         book_label = book_display_name(prop.best_book, getattr(prop, "best_book_key", "") or "")
         net_profit = _payout(prop.sportsbook_odds, stake)
         total_return = stake + net_profit
-
-        if edge_pct >= 8:
-            edge_color = "#50fa7b"
-        elif edge_pct >= 5:
-            edge_color = "#f1fa8c"
-        else:
-            edge_color = "#ff9955"
 
         header = (
             f"#{rank}  {prop.player_name}  —  "
@@ -385,7 +361,7 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
             f"Edge: {format_edge(prop.edge)}"
         )
 
-        with st.expander(header, expanded=(rank <= 3)):
+        with st.expander(header, expanded=(rank <= expanded_top)):
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("True Prob", format_prob(prop.true_probability))
             c2.metric("Implied Prob", format_prob(prop.implied_probability))
@@ -418,6 +394,91 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
 
             if hasattr(prop, "explanation") and prop.explanation:
                 st.caption(prop.explanation)
+
+    for rank, prop in enumerate(sorted_props, 1):
+        _straight_bet_expander(rank, prop, expanded_top=3)
+
+    if favorite_not_in_top:
+        st.divider()
+        st.markdown(
+            f"### Favorite-priced legs (minus money, not in top {top_n} by edge)"
+        )
+        st.caption(
+            "Includes −115 through −600 style prices. Those legs can miss the headline list when "
+            "higher-edge plays are mostly on plus-money. Same min-edge and leg-odds filters apply."
+        )
+        for rank, prop in enumerate(favorite_not_in_top, 1):
+            _straight_bet_expander(rank, prop, expanded_top=2)
+
+
+def render_favorite_band_straight_audit(all_props: list, params: dict) -> None:
+    """
+    Full audit for legs whose best American price is in the evaluator favorite band
+    (see domain.constants FAVORITE_STRAIGHT_BET_AUDIT_BAND_*).
+    """
+    st.subheader(
+        f"Favorite-band audit (evaluator: {FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW} to "
+        f"{FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH})"
+    )
+    st.caption(
+        "Straight bets use **only** min edge + leg odds (same as the qualifying table). "
+        "**Min confidence** applies to **parlays** only, not this tab."
+    )
+    rows, summary = build_favorite_band_audit_table(
+        all_props,
+        params["min_leg_odds"],
+        params["max_leg_odds"],
+        params["min_edge"],
+    )
+    if not rows:
+        st.info(
+            f"No evaluated legs in [{FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW}, "
+            f"{FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH}] on this slate (or scan not run)."
+        )
+        return
+    df = pd.DataFrame(rows)
+    st.dataframe(df, width="stretch", hide_index=True)
+    st.markdown(format_favorite_band_summary_markdown(summary))
+
+    st.subheader("Top 10: uncapped true prob − fair implied (model vs de-vig market)")
+    top10 = top_uncapped_minus_fair_gap(
+        all_props,
+        params["min_leg_odds"],
+        params["max_leg_odds"],
+        params["min_edge"],
+        top_n=10,
+    )
+    if not top10:
+        st.caption("_No band legs to rank._")
+    else:
+        st.dataframe(pd.DataFrame(top10), width="stretch", hide_index=True)
+
+    st.subheader("Pipeline drop averages (final edge > 0, favorite band)")
+    drops = pipeline_drop_averages_for_positive_edge_favorites(all_props)
+    st.json(drops)
+    if drops.get("n_positive_edge_in_band", 0) > 0:
+        winner = drops.get("largest_among_user_steps_1_to_4")
+        lav = drops.get("largest_avg_value")
+        struct = drops.get("avg_drop_structural_pre_market")
+        st.markdown(
+            f"**Largest average drop among steps 1–4 (shrink / completeness / "
+            f"market cal / final gate):** `{winner}` "
+            f"(≈ **{lav}** per leg). "
+            f"**Step 5 (UI)** does not change evaluated probabilities (avg drop **0**). "
+            f"Structural block **after_completeness → pre-market** averages **{struct}**."
+        )
+
+    if summary["positive_edge_in_band"] and not summary["positive_edge_passing_straight_filters"]:
+        st.warning(
+            "Some legs in this band have **positive model edge** but fail the **current** "
+            "min-edge or leg-odds widgets. Lower min edge or widen the odds band, then re-scan "
+            "if you changed filters after the last scan."
+        )
+    if summary["props_in_evaluator_band"] and not summary["positive_edge_in_band"]:
+        st.info(
+            "No positive final edges in this band on this run — the model is below raw implied "
+            "for every leg here (compression, completeness, gates, or projection vs line)."
+        )
 
 
 def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
@@ -736,6 +797,8 @@ def main() -> None:
         if all_props:
             qualifying = _qualifying_props_for_display(all_props, params)
             render_straight_bets(qualifying, params["stake"], params["top_straight"])
+            st.divider()
+            render_favorite_band_straight_audit(all_props, params)
         else:
             st.info("Click 'Scan & Build' in the sidebar to get started.")
 
@@ -750,8 +813,7 @@ def main() -> None:
             qualifying = _qualifying_props_for_display(all_props, params)
             st.markdown(
                 f"**{len(qualifying)} qualifying props** with ≥{format_edge(params['min_edge'])} edge "
-                f"and leg odds in [{format_american(params['min_leg_odds'])}, "
-                f"{format_american(params['max_leg_odds'])}] "
+                f"and leg odds in [{params['min_leg_odds']}, {params['max_leg_odds']}] "
                 f"(out of {len(all_props)} total evaluated)"
             )
             render_props_table(qualifying)

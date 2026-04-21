@@ -53,7 +53,8 @@ def calculate_edge(true_prob: float, implied_prob: float) -> float:
 
     Args:
         true_prob: Model-derived true probability.
-        implied_prob: Sportsbook vig-removed implied probability.
+        implied_prob: Sportsbook implied probability for the priced side
+            (this codebase uses raw / vig-included implied from American odds).
 
     Returns:
         Edge as a signed fraction (e.g. 0.07 = 7% edge).

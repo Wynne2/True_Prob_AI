@@ -115,6 +115,50 @@ POINTS_ENV_DAMPEN_LOW_USAGE_AND_MINUTES_DOWN: float = 0.45
 LOW_USAGE_POINTS_MAX_ABOVE_MINUTE_ANCHOR: float = 1.15  # vs season_ppg × (exp_min / mpg) when minutes down
 LOW_USAGE_MINUTES_VACUUM_RELAX: float = 2.0          # extra minutes from absences → allow slightly higher bump
 
+# --- Low-usage points suppression (post-projection layer in PropEvaluator; see models/points_low_usage_suppression.py)
+# Hard gate: all must hold to apply mean suppression / over caps (non-primary buckets only).
+POINTS_SUPPRESSION_LINE_MAX: float = 10.5
+POINTS_SUPPRESSION_USAGE_MAX: float = 0.19   # strictly below (fraction 0–1)
+POINTS_SUPPRESSION_FGA_MAX: float = 7.5      # strictly below projected FGA proxy
+
+# Primary scorer heuristics — bypass suppression entirely.
+POINTS_BUCKET_PRIMARY_USAGE: float = 0.22
+POINTS_BUCKET_PRIMARY_ALT_USAGE: float = 0.19
+POINTS_BUCKET_PRIMARY_ALT_FGA: float = 7.5
+POINTS_BUCKET_PRIMARY_MPG: float = 30.0
+POINTS_BUCKET_PRIMARY_MPG_USAGE: float = 0.20
+
+# Low-usage volatile signals (count toward volatile if >= POINTS_VOLATILE_MIN_SIGNALS).
+POINTS_VOLATILE_SIGNAL_USAGE: float = 0.18
+POINTS_VOLATILE_SIGNAL_FGA: float = 7.0
+POINTS_VOLATILE_3PA_SHARE_OF_FGA: float = 0.52
+POINTS_VOLATILE_FTA_PER_FGA_MAX: float = 0.14
+POINTS_VOLATILE_POINTS_CV: float = 0.34
+POINTS_VOLATILE_MIN_SIGNALS: int = 2
+
+# Mean multipliers applied to raw projected points when suppression active.
+POINTS_SUPPRESSION_MEAN_MULT_SECONDARY: float = 0.94
+POINTS_SUPPRESSION_MEAN_MULT_VOLATILE: float = 0.86
+
+# Extra multiplicative haircut from FGA floor-risk (scaled when FGA below POINTS_SUPPRESSION_FGA_MAX).
+POINTS_SUPPRESSION_FGA_FLOOR_SLOPE: float = 0.018   # per FGA below 7.5, capped by max
+POINTS_SUPPRESSION_FGA_FLOOR_MAX_EXTRA: float = 0.08
+
+# Playoff fragility (low-touch players): extra haircut when game.is_playoff.
+POINTS_SUPPRESSION_PLAYOFF_MULT_SECONDARY: float = 0.97
+POINTS_SUPPRESSION_PLAYOFF_MULT_VOLATILE: float = 0.94
+
+# Role stability (bench / minute volatility / questionable).
+POINTS_SUPPRESSION_BENCH_MULT: float = 0.985
+POINTS_SUPPRESSION_MINUTES_CV_THRESHOLD: float = 0.22
+POINTS_SUPPRESSION_QUESTIONABLE_MULT: float = 0.98
+
+# Over-probability cap after Normal tail (before global shrink): mean-to-line gap → max P(over).
+POINTS_OVER_CAP_GAP_VOLATILE: float = 1.15
+POINTS_OVER_CAP_MAX_P_VOLATILE_NEAR: float = 0.54
+POINTS_OVER_CAP_GAP_SECONDARY: float = 1.35
+POINTS_OVER_CAP_MAX_P_SECONDARY_NEAR: float = 0.58
+
 # When expected_minutes < season MPG: cap projection vs minute-scaled season anchor (all usages).
 MINUTES_DOWN_SCALED_CEILING_BASE: float = 1.10
 MINUTES_DOWN_SCALED_CEILING_HIGH_USG: float = 1.15   # usage_rate >= this fraction
@@ -331,9 +375,14 @@ CONFIDENCE_LOW_THRESHOLD: float = 0.30
 
 DEFAULT_MIN_EDGE: float = 0.05          # 5% minimum edge
 DEFAULT_MAX_LEGS: int = 3
-DEFAULT_MIN_ODDS: int = -200
+DEFAULT_MIN_ODDS: int = -600
 DEFAULT_MAX_ODDS: int = 400
 DEFAULT_STAKE: float = 100.0
+
+# Straight-bet favorite diagnostic band (American odds on the priced side).
+# Evaluator attaches `favorite_band_audit` to each leg whose best price falls here.
+FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW: int = -600
+FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH: int = -220
 
 # ---------------------------------------------------------------------------
 # Correlation engine thresholds

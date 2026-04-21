@@ -139,6 +139,8 @@ class TestLegOddsConstraints:
     def test_default_wide_range_allows_typical_prices(self):
         assert leg_odds_match_constraints(-110, -200, 400) is True
         assert leg_odds_match_constraints(+250, -200, 400) is True
+        # Heavy favorites are below −200 on the number line; wide min includes them.
+        assert leg_odds_match_constraints(-250, -600, 400) is True
 
 
 class TestParlayBuilder:

@@ -146,4 +146,5 @@ class PointsModel(BaseStatModel):
             raw_minute_scaled_mean=raw_mean,
             expected_field_goal_attempts_proxy=fga_proxy,
             projection_audit_flags=audit_flags,
+            model_context={"points_raw_projected": float(projected)},
         )

@@ -150,3 +150,14 @@ def implied_prob_for_side(
         over_odds, under_odds, method, shin_z
     )
     return fair_over if side.lower() == "over" else fair_under
+
+
+def raw_implied_prob_for_side(side: str, over_odds: int, under_odds: int) -> float:
+    """
+    Return the sportsbook's raw implied probability (vig included) for one side.
+
+    This is the inverse of the posted American odds for that outcome only,
+    without normalising the two-way market to sum to 1.
+    """
+    american = over_odds if side.lower() == "over" else under_odds
+    return american_to_raw_implied_prob(american)
