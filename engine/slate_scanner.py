@@ -23,6 +23,7 @@ class SlateScanner:
         # Populated by scan() for CLI/UI messaging (pregame filter vs empty slate).
         self.last_raw_slate_game_count: int = 0
         self.last_pregame_slate_game_count: int = 0
+        self.last_games: list[Game] = []
         self.last_exclusions: list[dict[str, str]] = []
         self.last_updates: list = []
         self._last_odds: list[OddsLine] = []
@@ -52,6 +53,7 @@ class SlateScanner:
         logger.info("SlateScanner: scanning slate for %s", game_date)
         self.last_raw_slate_game_count = 0
         self.last_pregame_slate_game_count = 0
+        self.last_games = []
 
         # ----------------------------------------------------------
         # Step 1: pull one-provider schedule and player-prop quote observations.
@@ -93,6 +95,7 @@ class SlateScanner:
             return []
 
         self.last_pregame_slate_game_count = len(games)
+        self.last_games = list(games)
         logger.info("SlateScanner: %d pregame games, %d odds lines loaded", len(games), len(all_odds))
 
         # ----------------------------------------------------------

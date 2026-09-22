@@ -129,7 +129,7 @@ def test_injury_feed_failure_preserves_unknown_availability(monkeypatch):
 
 def test_live_mode_with_no_key_never_falls_back_to_sample(monkeypatch):
     monkeypatch.setenv("APP_MODE", "live")
-    monkeypatch.delenv("BALLDONTLIE_API_KEY", raising=False)
+    monkeypatch.setenv("BALLDONTLIE_API_KEY", "")
     from config import reload_config
     reload_config()
 

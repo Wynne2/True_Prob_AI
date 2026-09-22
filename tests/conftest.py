@@ -11,7 +11,9 @@ import pytest
 def deterministic_runtime(monkeypatch):
     monkeypatch.setenv("APP_MODE", "demo")
     monkeypatch.setenv("DISK_CACHE_ENABLED", "false")
-    monkeypatch.delenv("BALLDONTLIE_API_KEY", raising=False)
+    # Keep an explicit empty value so python-dotenv cannot repopulate a real
+    # developer credential from the ignored local .env during reload_config().
+    monkeypatch.setenv("BALLDONTLIE_API_KEY", "")
     from config import reload_config
 
     reload_config()

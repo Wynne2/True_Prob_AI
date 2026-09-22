@@ -1,6 +1,6 @@
-# NBA Prop AI
+# True Prob
 
-NBA Prop AI is a local Streamlit research workspace for NBA player-prop
+True Prob is a local Streamlit research workspace for NBA player-prop
 forecasts. It records quote provenance and model inputs, shows data-quality
 exclusions, and settles saved forecasts after final statistics are available.
 It does **not** execute wagers or claim profitability.
@@ -50,15 +50,21 @@ above in `.env`; do not commit credentials.
 
 Open `http://127.0.0.1:8501`.
 
-The dashboard follows this flow:
+The redesigned workspace follows four deliberate product areas:
 
-1. **Overview** — mode, provider state, scan summary, top current edge.
-2. **Straight Bets** — individual P/R/A research offers.
-3. **Parlays** — theoretical same-book combinations only; verify an actual
-   ticket price independently.
-4. **Prop Table** and **Line Shopping** — detailed analyst views.
-5. **Model Evaluation** — settled forecast calibration and simulated returns.
-6. **Diagnostics** — redacted provider connectivity/payload inspection.
+1. **Home** — a decision board with the highest-priority signal, slate map,
+   trust indicators, matchup cards, quote activity, and transparent exclusions.
+2. **Research** — searchable recommendations, evidence drawers, a compact
+   market grid, line shopping, and the demo/replay-only theoretical parlay lab.
+3. **Performance** — prospective calibration, proper scoring metrics, and
+   observed-vs-predicted reliability once forecasts settle.
+4. **System** — provider state, diagnostics, data-quality exclusions, quote
+   activity, and advanced model audit tools separated from the primary flow.
+
+The interface uses native keyboard-accessible Streamlit controls, visible focus
+states, high-contrast tokens, responsive layouts, and reduced-motion support.
+Advanced pricing and parlay controls are progressively disclosed so the default
+scan path stays fast and understandable.
 
 ## CLI
 
