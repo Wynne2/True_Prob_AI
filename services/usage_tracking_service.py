@@ -151,7 +151,10 @@ def get_usage_context(
     poss = _lookup(_poss_tracking_index, _poss_name_index)
     passing = _lookup(_passing_tracking_index, _passing_name_index)
     rebounding = _lookup(_rebound_tracking_index, _rebound_name_index)
-    team_pace = _team_pace_index.get(team_id, {})
+    # Prefer the NBA team ID returned with the resolved player record. This
+    # avoids using a SportsDataIO team ID against NBA dashboard indexes.
+    canonical_team_id = str(adv.get("team_id") or team_id)
+    team_pace = _team_pace_index.get(canonical_team_id, {})
 
     # nba_api returns USG_PCT as a 0-1 fraction (e.g. 0.213 = 21.3%).
     # Do NOT divide by 100 — the value is already in the domain's 0-1 contract.
@@ -177,6 +180,16 @@ def get_usage_context(
     )
 
 
+def resolve_nba_player_id(external_player_id: str, player_name: str) -> str:
+    """Resolve an external player identifier to an NBA dashboard identifier."""
+    if not _usage_index:
+        refresh()
+    if external_player_id in _usage_index:
+        return external_player_id
+    record = _usage_name_index.get(_normalize_name(player_name), {})
+    return str(record.get("player_id") or external_player_id)
+
+
 def get_team_pace(team_id: str) -> float:
     """Return pace (possessions per 48 min) for *team_id*."""
     if not _team_pace_index:
@@ -187,3 +200,14 @@ def get_team_pace(team_id: str) -> float:
 def get_all_usage() -> dict[str, dict]:
     """Return the full player_id → advanced stats index."""
     return _usage_index
+
+
+def get_usage_record(player_id: str, player_name: str = "") -> dict:
+    """Return the resolved advanced record without exposing cache internals."""
+    if not _usage_index:
+        refresh()
+    return (
+        _usage_index.get(player_id)
+        or _usage_name_index.get(_normalize_name(player_name))
+        or {}
+    )

@@ -30,6 +30,7 @@ This ensures nba_api is called in batches (STEP 3) and never once per prop.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import date
 from typing import Optional
 
@@ -49,6 +50,7 @@ class SlateScanner:
         # Populated by scan() for CLI/UI messaging (pregame filter vs empty slate).
         self.last_raw_slate_game_count: int = 0
         self.last_pregame_slate_game_count: int = 0
+        self._last_feature_store: dict = {}
 
     def scan(
         self,
@@ -89,7 +91,12 @@ class SlateScanner:
 
         pre_count = len(games)
         self.last_raw_slate_game_count = pre_count
-        games = filter_pregame_games(games)
+        from config import get_settings
+        games = (
+            filter_pregame_games(games)
+            if get_settings().app_mode == "live"
+            else games
+        )
         skipped = pre_count - len(games)
         if skipped:
             logger.info(
@@ -132,12 +139,28 @@ class SlateScanner:
             prop_types=target_prop_types,
             game_date=game_date,
         )
+        self._record_forecasts(all_props, self._last_feature_store)
 
         logger.info(
             "SlateScanner: complete — %d prop evaluations across %d games",
             len(all_props), len(games),
         )
         return all_props
+
+    def _record_forecasts(
+        self,
+        props: list[PropProbability],
+        feature_store: Optional[dict] = None,
+    ) -> None:
+        """Append a reproducible record of every evaluated offer."""
+        if not props:
+            return
+        try:
+            from services.evaluation_store import EvaluationStore
+
+            EvaluationStore().record_forecasts(props, feature_store or {})
+        except Exception as exc:
+            logger.warning("SlateScanner: forecast ledger write failed: %s", exc)
 
     # ------------------------------------------------------------------
     # Internal pipeline steps
@@ -155,7 +178,40 @@ class SlateScanner:
         from data.loaders import load_games, load_odds
         games = load_games(game_date)
         all_odds = load_odds(game_date)
-        return games, all_odds
+        return games, self._canonicalize_odds_event_ids(games, all_odds)
+
+    @staticmethod
+    def _canonicalize_odds_event_ids(
+        games: list[Game],
+        odds: list[OddsLine],
+    ) -> list[OddsLine]:
+        """Map provider event IDs to one unambiguous canonical slate game ID."""
+        games_by_id = {game.game_id: game for game in games}
+        canonical: list[OddsLine] = []
+        rejected = 0
+        for quote in odds:
+            if quote.game_id in games_by_id:
+                canonical.append(quote)
+                continue
+            quote_teams = {
+                quote.event_home_team_abbr.upper(),
+                quote.event_away_team_abbr.upper(),
+            } - {""}
+            matches = [
+                game for game in games
+                if quote_teams
+                and {game.home_team_abbr.upper(), game.away_team_abbr.upper()} == quote_teams
+            ]
+            if len(matches) == 1:
+                canonical.append(replace(quote, game_id=matches[0].game_id))
+            else:
+                rejected += 1
+        if rejected:
+            logger.warning(
+                "SlateScanner: rejected %d odds quotes without an unambiguous event mapping",
+                rejected,
+            )
+        return canonical
 
     def _warm_services(self, game_date: date) -> None:
         """
@@ -168,6 +224,11 @@ class SlateScanner:
           - nba_api    → UsageTrackingService, SplitsService
           - SportsDataIO → PlayerContextService, InjuryContextService, MatchupContextService
         """
+        from config import get_settings
+        if get_settings().app_mode != "live":
+            logger.info("SlateScanner: skipping live service warm-up outside APP_MODE=live")
+            return
+
         from services import (
             injury_context_service,
             matchup_context_service,
@@ -214,12 +275,17 @@ class SlateScanner:
 
         for game in games:
             game_map[game.game_id] = game
-            players = get_players_for_game(
-                game.game_id,
-                game.home_team_id,
-                game.away_team_id,
-                game_date,
-            )
+            from config import get_settings
+            if get_settings().app_mode == "demo":
+                from providers.sample_provider import SampleProvider
+                players = SampleProvider().get_players_for_game(game.game_id)
+            else:
+                players = get_players_for_game(
+                    game.game_id,
+                    game.home_team_id,
+                    game.away_team_id,
+                    game_date,
+                )
             if not players:
                 # Fallback: use the registry directly (SportsDataIO game participants)
                 from data.loaders import load_players_for_game
@@ -248,8 +314,11 @@ class SlateScanner:
         Feature vectors are built ONCE for all (player, prop_type) pairs,
         then each prop evaluation reads from the pre-built store.
         """
+        from config import get_settings
         from data.builders.player_feature_builder import build_feature_store
-        from services.dvp_service import refresh_dvp_tables
+
+        if get_settings().app_mode == "demo":
+            return self._evaluate_demo(games, players_by_game, all_odds, prop_types)
 
         # Build DvP tables from available game logs before evaluation
         self._ensure_dvp_tables(game_date)
@@ -286,6 +355,7 @@ class SlateScanner:
             spread_map=spread_map,
             game_date=game_date,
         )
+        self._last_feature_store = feature_store
 
         # STEP 6: Evaluate each prop using cached feature vectors
         all_prop_results: list[PropProbability] = []
@@ -309,6 +379,34 @@ class SlateScanner:
 
         return all_prop_results
 
+    def _evaluate_demo(
+        self,
+        games: list[Game],
+        players_by_game: dict[str, list[Player]],
+        all_odds: list[OddsLine],
+        prop_types: list[PropType],
+    ) -> list[PropProbability]:
+        """Evaluate deterministic sample data without invoking live enrichment."""
+        results: list[PropProbability] = []
+        for game in games:
+            for player in players_by_game.get(game.game_id, []):
+                is_home = player.team_id == game.home_team_id
+                defense = self._load_defense(
+                    game.away_team_id if is_home else game.home_team_id
+                )
+                results.extend(
+                    self._evaluator.evaluate_all_props(
+                        player,
+                        game,
+                        defense,
+                        all_odds,
+                        is_home,
+                        prop_types,
+                    )
+                )
+        self._last_feature_store = {}
+        return results
+
     def _load_defense(self, team_id: str):
         """Load TeamDefense for *team_id* from the service layer."""
         if not team_id:
@@ -328,7 +426,7 @@ class SlateScanner:
         """
         from services.dvp_service import is_loaded, refresh_dvp_tables
 
-        if is_loaded():
+        if is_loaded(game_date):
             return
 
         try:

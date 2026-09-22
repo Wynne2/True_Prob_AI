@@ -56,8 +56,8 @@ def build_team_defense(team_id: str) -> Optional[TeamDefense]:
     """
     Return a fully populated TeamDefense for *team_id*, or None if no SDIO data.
 
-    Falls back to flat team-level opponent points for any position bucket missing
-    from the per-position feed (injury / API sparsity).
+    Missing positional fields remain missing (zero) rather than being replaced
+    with team totals, which are not comparable per-position measurements.
     """
     season = SDIO_SEASON
     team_map = {r["team_id"]: r for r in fetch_team_season_stats(season)}
@@ -86,25 +86,25 @@ def build_team_defense(team_id: str) -> Optional[TeamDefense]:
         r = by_pos.get(pk)
         if r and (r.get("pts_allowed") or 0) > 0:
             return float(r["pts_allowed"])
-        return opp_pts
+        return 0.0
 
     def _reb(pk: str) -> float:
         r = by_pos.get(pk)
         if r and (r.get("reb_allowed") or 0) > 0:
             return float(r["reb_allowed"])
-        return opp_reb
+        return 0.0
 
     def _ast(pk: str) -> float:
         r = by_pos.get(pk)
         if r and (r.get("ast_allowed") or 0) > 0:
             return float(r["ast_allowed"])
-        return opp_ast
+        return 0.0
 
     def _threes(pk: str) -> float:
         r = by_pos.get(pk)
         if r and (r.get("fg3m_allowed") or 0) >= 0:
             return float(r["fg3m_allowed"])
-        return opp_fg3m
+        return 0.0
 
     def _fpa(pk: str) -> float:
         r = by_pos.get(pk)

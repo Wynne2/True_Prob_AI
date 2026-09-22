@@ -30,7 +30,7 @@ from domain.constants import (
     PARLAY_RANK_WEIGHT_CORR_RISK,
     PARLAY_RANK_WEIGHT_EDGE,
 )
-from domain.entities import Parlay, ParlayLeg, PropProbability
+from domain.entities import OddsLine, Parlay, ParlayLeg, PropProbability
 from domain.enums import BookName, ConfidenceTier, PropType
 from engine.correlation_engine import (
     combo_avg_correlation,
@@ -38,13 +38,19 @@ from engine.correlation_engine import (
     diversification_bonus,
     is_blocked,
 )
-from odds.normalizer import american_to_decimal, decimal_to_american, is_valid_american
+from odds.normalizer import (
+    american_to_decimal,
+    american_to_raw_implied_prob,
+    decimal_to_american,
+    is_valid_american,
+)
 from odds.parlay_math import (
     parlay_combined_american,
     parlay_combined_decimal,
     parlay_combined_edge,
     parlay_combined_implied_probability,
     parlay_combined_true_probability_calibrated,
+    parlay_expected_value,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,10 +69,66 @@ class ParlayConstraints:
     min_confidence: Optional[str] = None        # 'high', 'medium', 'low', 'very_low'
     allowed_prop_types: Optional[list[PropType]] = None
     max_results: int = 200                      # cap on parlays returned
+    min_ticket_ev: float = 0.0                  # Expected profit per $1 stake after adjustments.
 
 
-def _prop_to_leg(prop: PropProbability) -> ParlayLeg:
-    """Convert a PropProbability to a ParlayLeg."""
+def _quote_key(quote: OddsLine) -> str:
+    return quote.book_key or quote.book.value
+
+
+def _quote_odds_for_prop(quote: OddsLine, prop: PropProbability) -> int:
+    return quote.over_odds if prop.side.value == "over" else quote.under_odds
+
+
+def _latest_quotes_for_prop(prop: PropProbability) -> dict[str, OddsLine]:
+    """
+    Return the freshest exact-line quote for each raw bookmaker key.
+
+    Synthetic callers may not retain source quotes. In that case, the selected
+    single-bet quote is the only available price and retains its own book key.
+    """
+    candidates = [
+        quote for quote in prop.all_lines
+        if quote.player_id == prop.player_id
+        and quote.prop_type == prop.prop_type
+        and quote.line == prop.line
+        and (not quote.game_id or not prop.game_id or quote.game_id == prop.game_id)
+    ]
+    if prop.selected_quote is not None:
+        candidates.append(prop.selected_quote)
+    if not candidates:
+        candidates.append(OddsLine(
+            book=prop.best_book,
+            player_id=prop.player_id,
+            player_name=prop.player_name,
+            prop_type=prop.prop_type,
+            line=prop.line,
+            over_odds=prop.sportsbook_odds,
+            under_odds=prop.sportsbook_odds,
+            game_id=prop.game_id,
+            team_abbr=prop.team_abbr,
+            opponent_abbr=prop.opponent_abbr,
+            book_key=prop.best_book_key,
+        ))
+
+    latest: dict[str, OddsLine] = {}
+    for quote in candidates:
+        key = _quote_key(quote)
+        current = latest.get(key)
+        if current is None or _quote_timestamp(quote) >= _quote_timestamp(current):
+            latest[key] = quote
+    return latest
+
+
+def _quote_timestamp(quote: OddsLine) -> float:
+    """Return a comparable timestamp without mixing naive and aware datetimes."""
+    return quote.timestamp.timestamp() if quote.timestamp else float("-inf")
+
+
+def _prop_to_leg(prop: PropProbability, quote: Optional[OddsLine] = None) -> ParlayLeg:
+    """Convert a PropProbability to a ParlayLeg using its exact book quote."""
+    odds = _quote_odds_for_prop(quote, prop) if quote else prop.sportsbook_odds
+    implied = american_to_raw_implied_prob(odds)
     return ParlayLeg(
         player_id=prop.player_id,
         player_name=prop.player_name,
@@ -76,16 +138,16 @@ def _prop_to_leg(prop: PropProbability) -> ParlayLeg:
         prop_type=prop.prop_type,
         line=prop.line,
         side=prop.side,
-        sportsbook=prop.best_book,
-        sportsbook_odds=prop.sportsbook_odds,
+        sportsbook=quote.book if quote else prop.best_book,
+        sportsbook_odds=odds,
         projected_value=prop.projected_value,
         true_probability=prop.true_probability,
-        implied_probability=prop.implied_probability,
-        edge=prop.edge,
+        implied_probability=implied,
+        edge=prop.true_probability - implied,
         fair_odds=prop.fair_odds,
         confidence=prop.confidence,
         explanation=prop.explanation,
-        best_book_key=getattr(prop, "best_book_key", "") or "",
+        best_book_key=(quote.book_key if quote else getattr(prop, "best_book_key", "")) or "",
     )
 
 
@@ -187,69 +249,80 @@ def build_parlays(
             if is_blocked(legs):
                 continue
 
-            # Step 4: Compute combined metrics
-            leg_odds = [l.sportsbook_odds for l in legs]
-            leg_true_probs = [l.true_probability for l in legs]
-            leg_implied_probs = [l.implied_probability for l in legs]
+            # A parlay cannot combine selected singles from different books.
+            # Intersect raw provider keys rather than lossy BookName values.
+            quotes_by_leg = [_latest_quotes_for_prop(prop) for prop in legs]
+            common_books = set.intersection(*(set(quotes) for quotes in quotes_by_leg)) if quotes_by_leg else set()
+            if not common_books:
+                continue
 
-            combined_decimal = parlay_combined_decimal(leg_odds)
-            combined_american = decimal_to_american(combined_decimal)
             avg_corr = combo_avg_correlation(legs)
-            combined_true = parlay_combined_true_probability_calibrated(
-                leg_true_probs,
-                legs=legs,
-                avg_pairwise_correlation=avg_corr,
-                combined_american_odds=combined_american,
-            )
-            combined_implied = parlay_combined_implied_probability(leg_implied_probs)
-            combined_edge = parlay_combined_edge(combined_true, combined_implied)
+            for book_key in sorted(common_books):
+                ticket_quotes = [quotes[book_key] for quotes in quotes_by_leg]
+                ticket_legs = [_prop_to_leg(prop, quote) for prop, quote in zip(legs, ticket_quotes)]
+                leg_odds = [leg.sportsbook_odds for leg in ticket_legs]
+                leg_true_probs = [leg.true_probability for leg in ticket_legs]
+                leg_implied_probs = [leg.implied_probability for leg in ticket_legs]
 
-            # Step 5: Filter by combined parlay odds
-            if not (constraints.min_parlay_odds <= combined_american <= constraints.max_parlay_odds):
-                if combined_american < constraints.min_parlay_odds or combined_american > constraints.max_parlay_odds:
+                combined_decimal = parlay_combined_decimal(leg_odds)
+                combined_american = decimal_to_american(combined_decimal)
+                combined_true = parlay_combined_true_probability_calibrated(
+                    leg_true_probs,
+                    legs=legs,
+                    avg_pairwise_correlation=avg_corr,
+                    combined_american_odds=combined_american,
+                )
+                combined_implied = parlay_combined_implied_probability(leg_implied_probs)
+                combined_edge = parlay_combined_edge(combined_true, combined_implied)
+                ticket_ev = parlay_expected_value(1.0, combined_decimal, combined_true)
+
+                # Step 5: Filter by combined parlay odds and final expected
+                # return. Per-leg edge does not guarantee a positive ticket.
+                if not (constraints.min_parlay_odds <= combined_american <= constraints.max_parlay_odds):
+                    continue
+                if ticket_ev <= constraints.min_ticket_ev:
                     continue
 
-            # Build Parlay entity
-            corr_risk = correlation_risk_score(legs)
-            div_bonus = diversification_bonus(legs)
+                # Build Parlay entity. The provider does not return a priced
+                # parlay ticket, so this same-book multiplication is explicit
+                # theoretical pricing rather than a purchasable quote.
+                corr_risk = correlation_risk_score(legs)
+                div_bonus = diversification_bonus(legs)
 
-            # Dominant confidence = worst among legs
-            tier_order = [ConfidenceTier.HIGH, ConfidenceTier.MEDIUM, ConfidenceTier.LOW, ConfidenceTier.VERY_LOW]
-            dominant_confidence = max(
-                [leg.confidence for leg in legs],
-                key=lambda t: tier_order.index(t),
-            )
+                # Dominant confidence = worst among legs
+                tier_order = [ConfidenceTier.HIGH, ConfidenceTier.MEDIUM, ConfidenceTier.LOW, ConfidenceTier.VERY_LOW]
+                dominant_confidence = max(
+                    [leg.confidence for leg in legs],
+                    key=lambda t: tier_order.index(t),
+                )
 
-            # Balanced score (for ranking)
-            avg_conf = sum(_confidence_tier_to_num(l.confidence) for l in legs) / len(legs)
-            balanced = (
-                PARLAY_RANK_WEIGHT_EDGE * combined_edge
-                + PARLAY_RANK_WEIGHT_CONFIDENCE * avg_conf * 0.15  # scale to ~0-0.15
-                - PARLAY_RANK_WEIGHT_CORR_RISK * corr_risk * 0.10
-                + div_bonus * 0.05
-            )
+                # Balanced score (for ranking)
+                avg_conf = sum(_confidence_tier_to_num(l.confidence) for l in legs) / len(legs)
+                balanced = (
+                    PARLAY_RANK_WEIGHT_EDGE * combined_edge
+                    + PARLAY_RANK_WEIGHT_CONFIDENCE * avg_conf * 0.15  # scale to ~0-0.15
+                    - PARLAY_RANK_WEIGHT_CORR_RISK * corr_risk * 0.10
+                    + div_bonus * 0.05
+                )
 
-            parlay = Parlay(
-                parlay_id=str(uuid.uuid4())[:8],
-                legs=[_prop_to_leg(p) for p in legs],
-                combined_american_odds=combined_american,
-                combined_decimal_odds=combined_decimal,
-                combined_implied_probability=combined_implied,
-                combined_true_probability=combined_true,
-                combined_edge=combined_edge,
-                confidence_tier=dominant_confidence,
-                correlation_risk_score=corr_risk,
-                diversification_bonus=div_bonus,
-                balanced_score=balanced,
-            )
-            parlays.append(parlay)
-
-            if len(parlays) >= constraints.max_results * 10:
-                # Safety valve: stop early, we'll trim in ranking
-                break
-
-        if len(parlays) >= constraints.max_results * 10:
-            break
+                parlay = Parlay(
+                    parlay_id=str(uuid.uuid4())[:8],
+                    legs=ticket_legs,
+                    combined_american_odds=combined_american,
+                    combined_decimal_odds=combined_decimal,
+                    combined_implied_probability=combined_implied,
+                    combined_true_probability=combined_true,
+                    combined_edge=combined_edge,
+                    expected_return=ticket_ev,
+                    ticket_book=ticket_quotes[0].book,
+                    ticket_book_key=book_key,
+                    is_theoretical_price=True,
+                    confidence_tier=dominant_confidence,
+                    correlation_risk_score=corr_risk,
+                    diversification_bonus=div_bonus,
+                    balanced_score=balanced,
+                )
+                parlays.append(parlay)
 
     logger.info(
         "Generated %d parlays from %d combinations (%d qualifying legs)",
@@ -258,4 +331,7 @@ def build_parlays(
         len(qualifying),
     )
 
-    return parlays[:constraints.max_results * 10]
+    # Ranking happens after all requested leg lengths are evaluated. This keeps
+    # results invariant to input order and avoids silently excluding later,
+    # higher-ranked combinations.
+    return parlays

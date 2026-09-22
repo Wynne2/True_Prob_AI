@@ -88,6 +88,9 @@ class Player:
 
     # Injury redistribution context (set by PlayerContextService)
     minutes_vacuum: float = 0.0    # extra minutes available due to teammate absences
+    # A game-specific estimate sourced from a lineup/injury projection. It is
+    # distinct from season MPG and is consumed by MinutesModel when present.
+    expected_minutes_override: float = 0.0
 
     data_source: DataSource = DataSource.SAMPLE
 
@@ -206,7 +209,7 @@ class Game:
 # Odds
 # ---------------------------------------------------------------------------
 
-@dataclass
+@dataclass(frozen=True)
 class OddsLine:
     """A single sportsbook's price for one player prop."""
     book: BookName
@@ -219,10 +222,12 @@ class OddsLine:
     game_id: str = ""
     team_abbr: str = ""
     opponent_abbr: str = ""
+    event_home_team_abbr: str = ""
+    event_away_team_abbr: str = ""
     timestamp: Optional[datetime] = None
     is_alternate_line: bool = False
     data_source: DataSource = DataSource.SAMPLE
-    book_key: str = ""             # raw Odds API bookmaker key (for display when book == OTHER)
+    book_key: str = ""             # Canonical provider bookmaker key; never use BookName as identity.
 
 
 # ---------------------------------------------------------------------------
@@ -297,7 +302,8 @@ class PropProbability:
 
     sportsbook_odds: int       # American odds from best book
     best_book: BookName = BookName.SAMPLE
-    best_book_key: str = ""    # Odds API bookmaker key for the priced line (display)
+    best_book_key: str = ""    # Canonical provider bookmaker key for the priced line.
+    selected_quote: Optional[OddsLine] = None
 
     confidence: ConfidenceTier = ConfidenceTier.MEDIUM
     distribution_type: DistributionType = DistributionType.NORMAL
@@ -360,6 +366,10 @@ class Parlay:
     combined_implied_probability: float = 0.0
     combined_true_probability: float = 0.0
     combined_edge: float = 0.0
+    expected_return: float = 0.0  # Expected profit per $1 stake after all adjustments.
+    ticket_book: BookName = BookName.SAMPLE
+    ticket_book_key: str = ""
+    is_theoretical_price: bool = True
 
     confidence_tier: ConfidenceTier = ConfidenceTier.MEDIUM
     correlation_risk_score: float = 0.0   # 0 = no risk, 1 = fully correlated

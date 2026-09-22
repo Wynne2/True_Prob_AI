@@ -17,7 +17,7 @@ from typing import Optional
 
 from domain.constants import PROP_STATS_ALLOWING_ZERO_SEASON_AVG
 from domain.entities import Player
-from domain.feature_vector import FeatureVector
+from domain.feature_vector import FeatureVector, GameObservation
 from domain.provider_models import DvPEntry, MatchupContext
 from services import (
     dvp_service,
@@ -119,8 +119,12 @@ def build_feature_vector(
     # ------------------------------------------------------------------
     # SPLITS  (SOURCE: nba_api primary)
     # ------------------------------------------------------------------
+    nba_player_id = usage_tracking_service.resolve_nba_player_id(
+        player.player_id,
+        player.name,
+    )
     split_ctx = splits_service.get_split_context(
-        player_id=player.player_id,
+        player_id=nba_player_id,
         prop_type=prop_type,
         opponent_team_id=opponent_team_id,
         is_home=is_home,
@@ -128,7 +132,7 @@ def build_feature_vector(
     )
     # Enrich with game-log level data for rolling std dev
     split_ctx = splits_service.enrich_split_context_with_logs(
-        split_ctx, player.player_id, prop_type
+        split_ctx, nba_player_id, prop_type
     )
 
     # Prefer nba_api season average when available — it matches game logs and fixes SDIO drift.
@@ -142,9 +146,7 @@ def build_feature_vector(
     fv.recent_10_avg = split_ctx.last_10_avg or fv.season_avg
     fv.recent_std_dev = split_ctx.last_10_std_dev
 
-    # Push per-game log arrays back into the Player entity so stat models can
-    # compute per-36 efficiency factors (which require paired stat + minutes data).
-    _enrich_player_recent_logs(player, prop_type, split_ctx)
+    fv.recent_observations = _observations_from_split_context(split_ctx, prop_type)
 
     # Home/away split factor
     if is_home:
@@ -164,6 +166,7 @@ def build_feature_vector(
         defense_team_id=opponent_team_id,
         game_total=game_total,
         point_spread=point_spread,
+        defense_team_abbr=opponent_team_abbr,
     )
     fv.opponent_defense_factor = matchup.defense_factor
     fv.opponent_recent_defense_factor = matchup.recent_defense_factor
@@ -222,62 +225,41 @@ def _fill_base_production(fv: FeatureVector, player: Player, prop_type: str) -> 
     )
 
 
-def _enrich_player_recent_logs(
-    player: Player,
-    prop_type: str,
+def _observations_from_split_context(
     split_ctx,
-) -> None:
-    """
-    Write per-game log arrays from the split context back into the Player entity.
-
-    This gives the stat models paired (stat, minutes) arrays so they can compute
-    per-36 efficiency factors rather than raw per-game ratios.  Only overwrites
-    a list if the log data is richer (multi-element) than the existing data.
-    """
+    prop_type: str,
+) -> tuple[GameObservation, ...]:
+    """Build immutable, aligned stat/minute observations without mutating Player."""
     from domain.provider_models import SplitContext as SC
     if not isinstance(split_ctx, SC):
-        return
+        return ()
 
-    # Per-game stat values from game logs (multi-element list)
-    log10 = split_ctx.last_10_games  # list[float], most-recent game first
-    log5 = split_ctx.last_5_games
-    min10 = split_ctx.last_10_minutes
-    min5 = split_ctx.last_5_minutes
+    values = split_ctx.last_10_games
+    minutes = split_ctx.last_10_minutes
+    if len(values) != len(minutes) or len(values) < 3:
+        return ()
 
-    # Only update if the log arrays are richer than the existing single-element lists
-    def _maybe_set(current: list[float], candidate: list[float]) -> list[float]:
-        if len(candidate) > len(current):
-            return candidate
-        return current
+    field = {
+        "points": "points",
+        "rebounds": "rebounds",
+        "assists": "assists",
+        "threes": "threes",
+        "blocks": "blocks",
+        "steals": "steals",
+        "turnovers": "turnovers",
+    }.get(prop_type)
+    if field is None:
+        return ()
 
-    # Overwrite paired minutes lists (always prefer richer data from logs)
-    if min10:
-        player.last10_minutes = _maybe_set(player.last10_minutes, min10)
-    if min5:
-        player.last5_minutes = _maybe_set(player.last5_minutes, min5)
-
-    # Stat-specific lists
-    if prop_type == "points":
-        player.last10_points = _maybe_set(player.last10_points, log10)
-        player.last5_points = _maybe_set(player.last5_points, log5)
-    elif prop_type == "rebounds":
-        player.last10_rebounds = _maybe_set(player.last10_rebounds, log10)
-        player.last5_rebounds = _maybe_set(player.last5_rebounds, log5)
-    elif prop_type == "assists":
-        player.last10_assists = _maybe_set(player.last10_assists, log10)
-        player.last5_assists = _maybe_set(player.last5_assists, log5)
-    elif prop_type == "threes":
-        player.last10_threes = _maybe_set(player.last10_threes, log10)
-        player.last5_threes = _maybe_set(player.last5_threes, log5)
-    elif prop_type == "blocks":
-        player.last10_blocks = _maybe_set(player.last10_blocks, log10)
-        player.last5_blocks = _maybe_set(player.last5_blocks, log5)
-    elif prop_type == "steals":
-        player.last10_steals = _maybe_set(player.last10_steals, log10)
-        player.last5_steals = _maybe_set(player.last5_steals, log5)
-    elif prop_type == "turnovers":
-        player.last10_turnovers = _maybe_set(player.last10_turnovers, log10)
-        player.last5_turnovers = _maybe_set(player.last5_turnovers, log5)
+    return tuple(
+        GameObservation(
+            game_id=f"recent-{index}",
+            game_date="",
+            minutes=float(minute),
+            **{field: float(value)},
+        )
+        for index, (value, minute) in enumerate(zip(values, minutes))
+    )
 
 
 def _assess_completeness(fv: FeatureVector) -> tuple[float, list[str]]:
@@ -322,8 +304,8 @@ def build_feature_store(
     prop_types: list[str],
     is_home_map: dict[str, bool],
     game_id_map: dict[str, str],
-    game_total_map: dict[str, float] = {},
-    spread_map: dict[str, float] = {},
+    game_total_map: Optional[dict[str, float]] = None,
+    spread_map: Optional[dict[str, float]] = None,
     game_date: Optional[date] = None,
 ) -> dict[tuple[str, str], FeatureVector]:
     """
@@ -332,6 +314,8 @@ def build_feature_store(
     Returns dict keyed by (player_id, prop_type) for fast prop-eval lookup.
     """
     store: dict[tuple[str, str], FeatureVector] = {}
+    game_total_map = game_total_map or {}
+    spread_map = spread_map or {}
 
     for player in players:
         opp_info = opponent_map.get(player.player_id, ("", ""))

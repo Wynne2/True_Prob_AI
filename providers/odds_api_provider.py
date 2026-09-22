@@ -16,59 +16,33 @@ Endpoints used:
 from __future__ import annotations
 
 import logging
-import ssl
 import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-import urllib3
 import requests
-from requests.adapters import HTTPAdapter
-
-# Suppress the InsecureRequestWarning emitted when verify=False is used for
-# the Odds API (see _LaxSSLAdapter docstring for why this is necessary).
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from config import get_odds_api_config
-
-
-class _LaxSSLAdapter(HTTPAdapter):
-    """
-    Custom HTTPAdapter for api.the-odds-api.com.
-
-    Two TLS quirks on this host require a custom adapter:
-      1. The server advertises cipher suites that Python's default SECLEVEL=2
-         blocks. Lowering to SECLEVEL=1 allows the handshake to complete.
-      2. The server's intermediate CA certificate is not in the system or
-         certifi trust stores on some machines, causing chain verification to
-         fail even though the connection is encrypted and the hostname is
-         correct.
-
-    Both issues are resolved by injecting a SECLEVEL=1 SSL context and
-    overriding urllib3's certificate check in send().
-
-    Note: the connection is still TLS-encrypted — only chain verification is
-    bypassed.  This is acceptable for a research/data-analysis tool.
-    """
-
-    def init_poolmanager(self, *args, **kwargs):
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        kwargs["ssl_context"] = ctx
-        super().init_poolmanager(*args, **kwargs)
-
-    def send(self, *args, **kwargs):
-        # Force urllib3 to skip certificate verification for this host
-        kwargs["verify"] = False
-        return super().send(*args, **kwargs)
 from domain.constants import PROP_ALIAS_MAP
 from domain.entities import Game, OddsLine, Player, TeamDefense
 from domain.enums import BookName, DataSource, PropType
 from providers.base_provider import BaseProvider
 
 logger = logging.getLogger(__name__)
+
+_TEAM_ABBREVIATIONS = {
+    "Atlanta Hawks": "ATL", "Boston Celtics": "BOS", "Brooklyn Nets": "BKN",
+    "Charlotte Hornets": "CHA", "Chicago Bulls": "CHI", "Cleveland Cavaliers": "CLE",
+    "Dallas Mavericks": "DAL", "Denver Nuggets": "DEN", "Detroit Pistons": "DET",
+    "Golden State Warriors": "GSW", "Houston Rockets": "HOU", "Indiana Pacers": "IND",
+    "LA Clippers": "LAC", "Los Angeles Clippers": "LAC", "Los Angeles Lakers": "LAL",
+    "Memphis Grizzlies": "MEM", "Miami Heat": "MIA", "Milwaukee Bucks": "MIL",
+    "Minnesota Timberwolves": "MIN", "New Orleans Pelicans": "NOP",
+    "New York Knicks": "NYK", "Oklahoma City Thunder": "OKC", "Orlando Magic": "ORL",
+    "Philadelphia 76ers": "PHI", "Phoenix Suns": "PHX", "Portland Trail Blazers": "POR",
+    "Sacramento Kings": "SAC", "San Antonio Spurs": "SAS", "Toronto Raptors": "TOR",
+    "Utah Jazz": "UTA", "Washington Wizards": "WAS",
+}
 
 # Map Odds API bookmaker keys to internal BookName enum.
 # Keys: https://the-odds-api.com/sports-odds-data/bookmaker-apis.html
@@ -107,6 +81,17 @@ _BOOK_MAP: dict[str, BookName] = {
 }
 
 
+def _parse_provider_timestamp(value: str) -> datetime | None:
+    """Parse an Odds API ISO timestamp while preserving its timezone."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        logger.warning("The Odds API returned an invalid quote timestamp")
+        return None
+
+
 class OddsAPIProvider(BaseProvider):
     """
     The Odds API provider for live multi-book odds and player props.
@@ -117,12 +102,8 @@ class OddsAPIProvider(BaseProvider):
     def __init__(self, api_key: str) -> None:
         self._key = api_key
         self._cfg = get_odds_api_config()
-        # Use a persistent session with a custom SSL adapter to work around
-        # the TLS handshake failure on api.the-odds-api.com, which requires
-        # SECLEVEL=1 cipher negotiation (Python default is SECLEVEL=2).
+        # Requests verifies TLS certificates and hostnames by default.
         self._session = requests.Session()
-        adapter = _LaxSSLAdapter()
-        self._session.mount("https://", adapter)
 
     def is_available(self) -> bool:
         return bool(self._key)
@@ -175,12 +156,12 @@ class OddsAPIProvider(BaseProvider):
                 if attempt < max_attempts - 1:
                     wait = 1.5 * (2 ** attempt)
                     logger.warning(
-                        "The Odds API: request failed (%s) — retry in %.1fs (%d/%d)",
-                        exc, wait, attempt + 1, max_attempts,
+                        "The Odds API request failed (%s) — retry in %.1fs (%d/%d)",
+                        type(exc).__name__, wait, attempt + 1, max_attempts,
                     )
                     time.sleep(wait)
                     continue
-                logger.error("The Odds API request error: %s", exc)
+                logger.error("The Odds API request failed after retries (%s)", type(exc).__name__)
                 return None
         return None
 
@@ -272,13 +253,19 @@ class OddsAPIProvider(BaseProvider):
         events = self._get_events(game_date)
         all_lines: list[OddsLine] = []
 
-        # The prop markets we request, split into two batches to avoid API limits
-        markets_batch1 = "player_points,player_rebounds,player_assists"
-        markets_batch2 = "player_threes,player_blocks,player_steals"
+        # Keep the requested market coverage in one configuration value and
+        # batch requests to stay within provider endpoint limits.
+        markets = [market.strip() for market in self._cfg.markets.split(",") if market.strip()]
+        market_batches = [
+            ",".join(markets[index:index + 4])
+            for index in range(0, len(markets), 4)
+        ]
 
         for evt in events:
             event_id = evt.get("id", "")
-            for markets in (markets_batch1, markets_batch2):
+            home_abbr = self._abbr(evt.get("home_team", ""))
+            away_abbr = self._abbr(evt.get("away_team", ""))
+            for markets in market_batches:
                 data = self._get(
                     f"sports/{self._cfg.sport_key}/events/{event_id}/odds",
                     regions=self._cfg.regions,
@@ -292,6 +279,9 @@ class OddsAPIProvider(BaseProvider):
                 for book_data in bookmakers:
                     book_key = book_data.get("key", "") or ""
                     book = _BOOK_MAP.get(book_key, BookName.OTHER)
+                    quote_timestamp = _parse_provider_timestamp(
+                        book_data.get("last_update", "") or ""
+                    )
 
                     for market in book_data.get("markets", []):
                         market_key = market.get("key", "")
@@ -333,6 +323,9 @@ class OddsAPIProvider(BaseProvider):
                                 over_odds=odds["over_odds"],
                                 under_odds=odds["under_odds"],
                                 game_id=event_id,
+                                event_home_team_abbr=home_abbr,
+                                event_away_team_abbr=away_abbr,
+                                timestamp=quote_timestamp,
                                 data_source=DataSource.ODDS_API,
                                 book_key=book_key,
                             )
@@ -343,9 +336,5 @@ class OddsAPIProvider(BaseProvider):
 
     @staticmethod
     def _abbr(full_name: str) -> str:
-        """Extract a 3-letter abbreviation from a team full name."""
-        # Very rough; real code would use a lookup table
-        parts = full_name.split()
-        if len(parts) >= 2:
-            return parts[-1][:3].upper()
-        return full_name[:3].upper()
+        """Return the canonical NBA abbreviation for an Odds API team name."""
+        return _TEAM_ABBREVIATIONS.get(full_name, full_name[:3].upper())

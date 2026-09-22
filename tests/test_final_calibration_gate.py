@@ -73,7 +73,7 @@ def test_gate_passes_clean_prop():
     assert conf == ConfidenceTier.MEDIUM
 
 
-def test_extreme_projection_triggers_flag_and_shrink():
+def test_extreme_projection_triggers_flag_without_manual_probability_change():
     p = _minimal_player()
     proj = StatProjection(
         player_id=p.player_id,
@@ -108,7 +108,7 @@ def test_extreme_projection_triggers_flag_and_shrink():
         -110,
     )
     assert flags
-    assert t < 0.62
+    assert t == 0.62
     assert conf != ConfidenceTier.HIGH or "fg_" in "".join(flags)
 
 

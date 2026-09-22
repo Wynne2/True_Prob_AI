@@ -73,6 +73,7 @@ def get_matchup_context(
     defense_team_id: str,
     game_total: float = 0.0,
     point_spread: float = 0.0,
+    defense_team_abbr: str = "",
 ) -> MatchupContext:
     """
     Build a MatchupContext for the team facing *defense_team_id*.
@@ -91,6 +92,15 @@ def get_matchup_context(
 
     sdio = _team_stats_index.get(defense_team_id, {})
     nba = _team_pace_index.get(defense_team_id, {})
+    if not nba and defense_team_abbr:
+        normalized_abbr = defense_team_abbr.strip().upper()
+        nba = next(
+            (
+                record for record in _team_pace_index.values()
+                if str(record.get("team_abbr", "")).upper() == normalized_abbr
+            ),
+            {},
+        )
 
     # Defensive efficiency (SOURCE: nba_api primary for def_rating)
     def_rating = float(nba.get("def_rating", 0) or 0)

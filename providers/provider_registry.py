@@ -38,6 +38,7 @@ from datetime import date
 from typing import Optional
 
 from config import get_credentials
+from config import get_settings
 from domain.entities import Game, OddsLine, Player, TeamDefense
 from domain.enums import DataSource, PropType
 from providers.base_provider import BaseProvider
@@ -56,12 +57,34 @@ def _build_providers() -> dict[str, list[BaseProvider]]:
       'general'  - fallback for any unrouted call
     """
     creds = get_credentials()
+    settings = get_settings()
     groups: dict[str, list[BaseProvider]] = {
         "slate": [],
         "modeling": [],
         "odds": [],
         "general": [],
     }
+
+    if settings.app_mode not in {"demo", "live", "replay"}:
+        raise ValueError(
+            f"Unsupported APP_MODE={settings.app_mode!r}; expected demo, live, or replay"
+        )
+
+    if settings.app_mode == "demo":
+        from providers.sample_provider import SampleProvider
+
+        sample = SampleProvider()
+        for group in ("slate", "modeling", "odds", "general"):
+            groups[group].append(sample)
+        logger.warning(
+            "APP_MODE=demo: serving deterministic sample data. "
+            "Sample forecasts and prices are not wagering recommendations."
+        )
+        return groups
+
+    if settings.app_mode == "replay":
+        logger.info("APP_MODE=replay: live providers are disabled; use the evaluation ledger.")
+        return groups
 
     # ------------------------------------------------------------------
     # SLATE: Sportradar primary -> SportsDataIO fallback

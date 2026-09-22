@@ -72,6 +72,13 @@ class TestPoisson:
         p = poisson_prob_over(0.5, 100)
         assert p >= 0.0
 
+    def test_whole_number_under_includes_push_and_is_not_used_for_recommendations(self):
+        # A whole-number player prop can push at equality. The helper reports
+        # P(X <= line), which includes that mass, so PropEvaluator rejects
+        # whole-number lines until market-specific settlement support exists.
+        p_under = poisson_prob_under(3.0, 3.0)
+        assert p_under == pytest.approx(0.6472318888)
+
 
 class TestNegBinom:
     def test_reasonable_range(self):

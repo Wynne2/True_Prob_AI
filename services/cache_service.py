@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import time
+from tempfile import NamedTemporaryFile
 from pathlib import Path
 from typing import Any, Optional
 
@@ -50,6 +51,12 @@ class CacheService:
         # In-memory store:  key -> (value, expires_at)
         self._mem: dict[str, tuple[Any, float]] = {}
 
+    @staticmethod
+    def _disk_enabled() -> bool:
+        from config import get_settings
+
+        return get_settings().disk_cache_enabled
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -64,6 +71,9 @@ class CacheService:
             del self._mem[key]
 
         # Fall back to disk
+        if not self._disk_enabled():
+            return None
+
         path = self._disk_path(key)
         if path.exists():
             try:
@@ -96,19 +106,32 @@ class CacheService:
         # Memory
         self._mem[key] = (value, expires_at_mono)
 
-        # Disk
+        if not self._disk_enabled():
+            return
+
+        # Disk writes are replace-atomic so readers never consume partial JSON.
         path = self._disk_path(key)
         try:
             envelope = {"expires_at": expires_at_wall, "value": value}
-            with open(path, "w", encoding="utf-8") as fh:
+            with NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=path.parent,
+                prefix=f"{path.stem}.",
+                suffix=".tmp",
+                delete=False,
+            ) as fh:
                 json.dump(envelope, fh, default=str)
+                temporary_path = Path(fh.name)
+            os.replace(temporary_path, path)
         except (OSError, TypeError) as exc:
             logger.warning("Cache write error for %s/%s: %s", self._namespace, key, exc)
 
     def invalidate(self, key: str) -> None:
         """Remove a single key from both memory and disk."""
         self._mem.pop(key, None)
-        self._disk_path(key).unlink(missing_ok=True)
+        if self._disk_enabled():
+            self._disk_path(key).unlink(missing_ok=True)
 
     def invalidate_stale(self) -> int:
         """Remove all expired disk entries; return count of purged files."""
@@ -129,6 +152,8 @@ class CacheService:
     def clear_namespace(self) -> None:
         """Wipe all entries for this namespace (disk + memory)."""
         self._mem.clear()
+        if not self._disk_enabled():
+            return
         for path in self._cache_dir.glob("*.json"):
             path.unlink(missing_ok=True)
 

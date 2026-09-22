@@ -15,6 +15,22 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 
+@dataclass(frozen=True)
+class GameObservation:
+    """One dated player game observation used for rate and variance estimates."""
+
+    game_id: str
+    game_date: str
+    minutes: float
+    points: float = 0.0
+    rebounds: float = 0.0
+    assists: float = 0.0
+    threes: float = 0.0
+    blocks: float = 0.0
+    steals: float = 0.0
+    turnovers: float = 0.0
+
+
 @dataclass
 class FeatureVector:
     """
@@ -53,6 +69,8 @@ class FeatureVector:
     recent_5_avg: float = 0.0        # last-5 games rolling average
     recent_10_avg: float = 0.0       # last-10 games rolling average
     recent_std_dev: float = 0.0      # rolling std dev over last 10
+    # Immutable game-level evidence. Window averages never replace this data.
+    recent_observations: tuple[GameObservation, ...] = ()
 
     # ------------------------------------------------------------------
     # USAGE / TRACKING  [nba_api PRIMARY]

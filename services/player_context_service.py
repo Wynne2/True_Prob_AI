@@ -144,8 +144,6 @@ def get_player(
 
     # --- Identity / name for cross-source lookups ---
     player_name = str(sdio.get("player_name") or depth.get("player_name") or "")
-    norm_name = splits_service._normalize_name(player_name) if player_name else ""
-
     # --- Usage / tracking (SOURCE: nba_api primary, name-fallback for ID mismatch) ---
     usage_ctx = usage_tracking_service.get_usage_context(
         player_id, team_id, player_name=player_name
@@ -156,24 +154,15 @@ def get_player(
     # in the feature builder, not here.
     splits_svc = splits_service
 
-    def _adv_lookup(id_idx: dict, name_idx: dict) -> dict:
-        rec = id_idx.get(player_id, {})
-        if not rec and norm_name:
-            rec = name_idx.get(norm_name, {})
-        return rec
-
-    adv_season = _adv_lookup(
-        usage_tracking_service._usage_index,
-        usage_tracking_service._usage_name_index,
-    )
+    adv_season = usage_tracking_service.get_usage_record(player_id, player_name)
 
     # Home / away averages from splits index (name fallback)
-    home_ppg = float(_adv_lookup(splits_svc._home_index, splits_svc._home_name_index).get("pts", 0) or 0)
-    away_ppg = float(_adv_lookup(splits_svc._away_index, splits_svc._away_name_index).get("pts", 0) or 0)
+    home_ppg = float(splits_svc.get_player_split_record(player_id, player_name, "home").get("pts", 0) or 0)
+    away_ppg = float(splits_svc.get_player_split_record(player_id, player_name, "away").get("pts", 0) or 0)
 
     # Recent form from last-5 and last-10 split indexes (name fallback)
-    def _split_stat(id_idx: dict, name_idx: dict, key: str) -> list[float]:
-        rec = _adv_lookup(id_idx, name_idx)
+    def _split_stat(split: str, key: str) -> list[float]:
+        rec = splits_svc.get_player_split_record(player_id, player_name, split)
         if not rec:
             return []
         # Split dashboards return averages not game arrays; return a single-element
@@ -185,23 +174,23 @@ def get_player(
         # Use explicit None check (not falsy) so a real 0.0 average is preserved.
         return [val]
 
-    last5_pts  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "pts")
-    last5_reb  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "reb")
-    last5_ast  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "ast")
-    last5_min  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "min")
-    last5_fg3  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "fg3m")
-    last5_blk  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "blk")
-    last5_stl  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "stl")
-    last5_tov  = _split_stat(splits_svc._last5_index, splits_svc._last5_name_index, "tov")
+    last5_pts  = _split_stat("last5", "pts")
+    last5_reb  = _split_stat("last5", "reb")
+    last5_ast  = _split_stat("last5", "ast")
+    last5_min  = _split_stat("last5", "min")
+    last5_fg3  = _split_stat("last5", "fg3m")
+    last5_blk  = _split_stat("last5", "blk")
+    last5_stl  = _split_stat("last5", "stl")
+    last5_tov  = _split_stat("last5", "tov")
 
-    last10_pts = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "pts")
-    last10_reb = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "reb")
-    last10_ast = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "ast")
-    last10_min = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "min")
-    last10_fg3 = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "fg3m")
-    last10_blk = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "blk")
-    last10_stl = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "stl")
-    last10_tov = _split_stat(splits_svc._last10_index, splits_svc._last10_name_index, "tov")
+    last10_pts = _split_stat("last10", "pts")
+    last10_reb = _split_stat("last10", "reb")
+    last10_ast = _split_stat("last10", "ast")
+    last10_min = _split_stat("last10", "min")
+    last10_fg3 = _split_stat("last10", "fg3m")
+    last10_blk = _split_stat("last10", "blk")
+    last10_stl = _split_stat("last10", "stl")
+    last10_tov = _split_stat("last10", "tov")
 
     player = Player(
         player_id=player_id,
@@ -293,33 +282,32 @@ def get_players_for_game(
     game_id_str = str(game_id)
     team_ids = {home_team_id, away_team_id}
 
-    # --- Source 1: confirmed/projected starters ---
-    lineup_records = fetch_starting_lineups(today)
-    game_players = [
-        r for r in lineup_records
-        if str(r.get("game_id", "")) == game_id_str
-        or str(r.get("team_id", "")) in team_ids
-    ]
-
-    # --- Source 2: full projection roster (includes bench) ---
-    if not game_players:
-        proj_records = fetch_projected_lineups(today)
-        game_players = [
-            r for r in proj_records
-            if str(r.get("game_id", "")) == game_id_str
-            or str(r.get("team_id", "")) in team_ids
+    def _for_game(records: list[dict]) -> list[dict]:
+        return [
+            record for record in records
+            if str(record.get("game_id", "")) == game_id_str
+            or str(record.get("team_id", "")) in team_ids
         ]
 
-    # --- Source 3: depth-chart roster (always available) ---
-    if not game_players and _depth_index:
-        logger.debug(
-            "PlayerContextService: no lineup data for game %s, using full depth-chart roster",
-            game_id,
-        )
-        game_players = [
-            r for r in _depth_index.values()
-            if str(r.get("team_id", "")) in team_ids
-        ]
+    # Begin with the complete depth-chart roster, then overlay projections and
+    # starters. A nonempty starter feed must never remove bench players.
+    records_by_id: dict[str, dict] = {
+        str(record.get("player_id")): dict(record)
+        for record in _for_game(list(_depth_index.values()))
+        if record.get("player_id")
+    }
+    for source_records in (
+        _for_game(fetch_projected_lineups(today)),
+        _for_game(fetch_starting_lineups(today)),
+    ):
+        for record in source_records:
+            player_id = str(record.get("player_id", ""))
+            if not player_id:
+                continue
+            merged = records_by_id.get(player_id, {})
+            merged.update({key: value for key, value in record.items() if value not in (None, "")})
+            records_by_id[player_id] = merged
+    game_players = list(records_by_id.values())
 
     players: list[Player] = []
     seen: set[str] = set()

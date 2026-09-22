@@ -212,6 +212,25 @@ def get_split_context(
     )
 
 
+def get_player_split_record(
+    player_id: str,
+    player_name: str,
+    split: str,
+) -> dict:
+    """Return a resolved dashboard record for one supported split."""
+    if not _season_index:
+        refresh()
+    indexes = {
+        "season": (_season_index, _season_name_index),
+        "home": (_home_index, _home_name_index),
+        "away": (_away_index, _away_name_index),
+        "last5": (_last5_index, _last5_name_index),
+        "last10": (_last10_index, _last10_name_index),
+    }
+    id_index, name_index = indexes[split]
+    return id_index.get(player_id) or name_index.get(_normalize_name(player_name)) or {}
+
+
 def _compute_vs_opp(
     player_id: str,
     opponent_team_id: str,

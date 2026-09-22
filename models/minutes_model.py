@@ -51,25 +51,33 @@ class MinutesModel:
         if player.injury_status == InjuryStatus.OUT:
             return 0.0
 
-        base = player.minutes_per_game
+        has_game_specific_projection = player.expected_minutes_override > 0
+        base = (
+            player.expected_minutes_override
+            if has_game_specific_projection
+            else player.minutes_per_game
+        )
         if base <= 0:
             base = self._default_minutes(player.role)
 
-        # Explicit season vs L5 vs L10 blend (configurable weights).
+        # A source-provided game estimate is distinct from season MPG and is
+        # already role-aware. Infer from history only when it is unavailable.
         last5 = player.last5_minutes or []
         last10 = player.last10_minutes or []
-        s5 = mean(last5[-5:]) if last5 else base
-        s10 = mean(last10[-10:]) if len(last10) >= 3 else s5
-        w = MINUTES_BLEND_WEIGHTS
-        base = (
-            w["season_mpg"] * base
-            + w["last5_mpg"] * s5
-            + w["last10_mpg"] * s10
-        )
+        if not has_game_specific_projection:
+            s5 = mean(last5[-5:]) if last5 else base
+            s10 = mean(last10[-10:]) if len(last10) >= 3 else s5
+            w = MINUTES_BLEND_WEIGHTS
+            base = (
+                w["season_mpg"] * base
+                + w["last5_mpg"] * s5
+                + w["last10_mpg"] * s10
+            )
 
         # High-minute healthy starters: L5/L10 noise should not sit far below season MPG.
         if (
-            player.injury_status == InjuryStatus.ACTIVE
+            not has_game_specific_projection
+            and player.injury_status == InjuryStatus.ACTIVE
             and player.role == PlayerRole.STARTER
             and player.minutes_per_game >= STAR_MPG_SEASON_THRESHOLD
         ):
@@ -87,7 +95,8 @@ class MinutesModel:
         # (which can occur when a player ramps back from injury mid-season).
         # 28 min is a conservative floor for a genuine playoff starter.
         if (
-            player.injury_status == InjuryStatus.ACTIVE
+            not has_game_specific_projection
+            and player.injury_status == InjuryStatus.ACTIVE
             and player.role == PlayerRole.STARTER
             and 0 < base < 28.0
         ):
@@ -99,7 +108,7 @@ class MinutesModel:
         # We only blend UP (not down) to avoid collapsing projections for
         # bench players who had a garbage-time spike in one game.
         recent_min_list = player.last10_minutes or player.last5_minutes
-        if recent_min_list and base > 0:
+        if not has_game_specific_projection and recent_min_list and base > 0:
             recent_avg_min = sum(recent_min_list) / len(recent_min_list)
             if recent_avg_min > base * 1.10:   # meaningful increase (>10% above base)
                 # Blend: 30% base, 70% recent — weighted heavily toward current role
@@ -136,7 +145,8 @@ class MinutesModel:
         # but the floor must never exceed their season average (prevents bumping players
         # with low season averages UP beyond their own historical baseline).
         if (
-            player.injury_status == InjuryStatus.ACTIVE
+            not has_game_specific_projection
+            and player.injury_status == InjuryStatus.ACTIVE
             and player.role == PlayerRole.STARTER
             and player.minutes_per_game > 0
         ):

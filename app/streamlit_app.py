@@ -54,11 +54,28 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
-    .stMetric { background: #1e1e2e; border-radius: 8px; padding: 12px; }
-    .edge-high { color: #50fa7b; font-weight: bold; }
-    .edge-med  { color: #f1fa8c; font-weight: bold; }
-    .edge-low  { color: #ff5555; }
-    div[data-testid="stSidebar"] { background-color: #181825; }
+    .stApp { background: #0f172a; }
+    .stMetric {
+        background: #172033;
+        border: 1px solid #28364d;
+        border-radius: 12px;
+        padding: 14px;
+    }
+    div[data-testid="stSidebar"] { background: #111827; }
+    .mode-banner {
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 12px 16px;
+        background: #172033;
+        margin: 8px 0 20px;
+    }
+    .onboarding-card {
+        border-left: 4px solid #38bdf8;
+        padding: 12px 16px;
+        background: #172033;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -70,12 +87,12 @@ st.markdown("""
 def render_sidebar() -> dict:
     """Render sidebar controls and return constraint dict."""
     with st.sidebar:
-        st.title("🏀 NBA Prop AI")
-        st.caption("True Probability Parlay Builder")
+        st.title("NBA Prop AI")
+        st.caption("Research dashboard for player-prop forecasts")
         st.divider()
 
-        # Date selector
-        selected_date = st.date_input("Game Date", value=today_eastern(), key="game_date")
+        st.subheader("1. Run")
+        selected_date = st.date_input("Slate date", value=today_eastern(), key="game_date")
 
         if selected_date > today_eastern():
             st.warning(
@@ -86,7 +103,6 @@ def render_sidebar() -> dict:
         elif selected_date < today_eastern():
             st.caption(f"Historical date — showing data for {selected_date}.")
 
-        st.divider()
         is_playoff = st.checkbox(
             "Playoff slate",
             value=False,
@@ -94,22 +110,13 @@ def render_sidebar() -> dict:
         )
 
         st.divider()
-        st.subheader("Parlay Constraints")
+        st.subheader("2. Bet filters")
 
         min_edge = st.slider(
-            "Min Edge per Leg (%)", min_value=0, max_value=20, value=5, step=1
+            "Minimum edge (%)", min_value=0, max_value=20, value=5, step=1,
+            help="Applies to straight bets, tables, line shopping, and parlays.",
         ) / 100.0
-
-        max_legs = st.selectbox("Max Legs", options=[2, 3, 4, 5], index=1)
-        min_legs = st.selectbox("Min Legs", options=[2, 3], index=0)
-
-        st.divider()
-        st.subheader("Odds Range")
-        st.caption(
-            "Applies to **Straight Bets**, **Props Analysis**, **Line Shopping**, and **Parlays**. "
-            "Bounds are numeric (e.g. favorites −600 to −110: enter −600 and −110; order can be swapped). "
-            "**Min Leg Odds** must be ≤ the steepest favorite you want (e.g. −600 includes −210 and −250)."
-        )
+        st.caption("Example: −600 to +400 includes typical favorites and underdogs.")
         col1, col2 = st.columns(2)
         with col1:
             min_leg_odds = st.number_input(
@@ -117,9 +124,7 @@ def render_sidebar() -> dict:
                 value=-600,
                 step=10,
                 key="min_leg_odds_band_v3",
-                help="American odds lower bound (signed). Favorites are negative; "
-                "must be ≤ your longest prices (e.g. −600 includes −210, −250). "
-                "If you still see no heavy favorites after an update, this value was reset to −600.",
+                help="American odds lower bound; favorites are negative.",
             )
         with col2:
             max_leg_odds = st.number_input(
@@ -129,32 +134,30 @@ def render_sidebar() -> dict:
                 key="max_leg_odds_band_v3",
             )
 
-        col3, col4 = st.columns(2)
-        with col3:
-            min_parlay_odds = st.number_input("Min Parlay Odds", value=-10000, step=50)
-        with col4:
-            max_parlay_odds = st.number_input("Max Parlay Odds", value=100000, step=50)
-
-        st.divider()
-        st.subheader("Prop Filters")
-
         all_prop_types = [pt.value for pt in PropType]
         selected_props = st.multiselect(
             "Prop Types (blank = all)", options=all_prop_types, default=[]
         )
 
+        st.divider()
+        st.subheader("3. Parlay filters")
+        st.caption("Only affects theoretical same-book parlays.")
+        max_legs = st.selectbox("Maximum legs", options=[2, 3, 4, 5], index=1)
+        min_legs = st.selectbox("Minimum legs", options=[2, 3], index=0)
         min_confidence = st.selectbox(
-            "Min Confidence",
+            "Minimum confidence",
             options=["Any", "low", "medium", "high"],
             index=0,
         )
+        col3, col4 = st.columns(2)
+        with col3:
+            min_parlay_odds = st.number_input("Min parlay odds", value=-10000, step=50)
+        with col4:
+            max_parlay_odds = st.number_input("Max parlay odds", value=100000, step=50)
 
         st.divider()
-        st.subheader("Stake")
+        st.subheader("4. Display")
         stake = st.number_input("Stake Amount ($)", min_value=1.0, value=100.0, step=10.0)
-
-        st.divider()
-        st.subheader("Display")
         top_parlays = st.number_input("Top Parlays to Show", min_value=1, value=10, step=1)
         top_straight = st.number_input("Top Straight Bets to Show", min_value=1, value=15, step=5)
         sort_by = st.selectbox(
@@ -163,7 +166,7 @@ def render_sidebar() -> dict:
             index=0,
         )
 
-        run = st.button("🔍 Scan & Build", type="primary", use_container_width=True)
+        run = st.button("Scan slate", type="primary", use_container_width=True)
 
     return {
         "date": selected_date,
@@ -190,12 +193,19 @@ def render_sidebar() -> dict:
 # ---------------------------------------------------------------------------
 
 def render_provider_status() -> None:
-    from config import get_credentials
+    from config import get_credentials, get_settings
     creds = get_credentials()
+    settings = get_settings()
     available = creds.available_providers
     missing = creds.missing_providers
 
     with st.expander("Provider Status", expanded=False):
+        if settings.app_mode == "demo":
+            st.warning(
+                "Demo mode uses deterministic sample data. Do not treat output as live odds or a wagering recommendation."
+            )
+        elif settings.app_mode == "replay":
+            st.info("Replay mode disables live providers and reads only saved evaluation records.")
         col_a, col_b = st.columns(2)
         with col_a:
             st.markdown("**Active Providers**")
@@ -484,10 +494,16 @@ def render_favorite_band_straight_audit(all_props: list, params: dict) -> None:
 def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
     """Render each top parlay as an expander card with leg details."""
     if not parlays:
-        st.warning("No parlays generated. Try lowering min edge or expanding odds range.")
+        st.warning(
+            "No positive-EV same-book theoretical parlays were generated for the current filters."
+        )
         return
 
     st.markdown(f"### Top {min(top_n, len(parlays))} Parlays  _(of {len(parlays)} total)_")
+    st.caption(
+        "Combined prices are theoretical products of singles available from one bookmaker. "
+        "They are not provider-quoted parlay prices."
+    )
 
     # Summary metrics row
     stats = summary_stats(parlays)
@@ -510,12 +526,20 @@ def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
             f"{tag_label}",
             expanded=(parlay.edge_rank == 1),
         ):
+            ticket_book = book_display_name(
+                parlay.ticket_book,
+                getattr(parlay, "ticket_book_key", "") or "",
+            )
+            st.caption(
+                f"Theoretical same-book ticket at **{ticket_book}**. "
+                "Verify the offered parlay price before placing a wager."
+            )
             # Metrics
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("Combined Odds", format_american(parlay.combined_american_odds))
             c2.metric("True Prob", format_prob(parlay.combined_true_probability))
             c3.metric("Implied Prob", format_prob(parlay.combined_implied_probability))
-            c4.metric("Edge", format_edge(parlay.combined_edge))
+            c4.metric("Expected Return", f"{parlay.expected_return * 100:.1f}%")
             c5.metric("Corr Risk", f"{parlay.correlation_risk_score:.2f}")
 
             # Payout
@@ -568,20 +592,74 @@ def render_line_shopping(props: list) -> None:
     lines_by_player_prop: dict = defaultdict(list)
     for prop in props:
         for ol in prop.all_lines:
-            key = (prop.player_name, prop.prop_type.value, ol.line)
+            key = (ol.game_id, prop.player_name, prop.prop_type.value, ol.line)
             lines_by_player_prop[key].append(ol)
 
     rows = []
-    for (player, prop_type, line), book_lines in lines_by_player_prop.items():
-        row = {"Player": player, "Prop": prop_type, "Line": line}
+    for (event_id, player, prop_type, line), book_lines in lines_by_player_prop.items():
+        row = {"Event": event_id, "Player": player, "Prop": prop_type, "Line": line}
         for ol in book_lines:
-            row[f"{ol.book.value}_over"] = format_american(ol.over_odds)
-            row[f"{ol.book.value}_under"] = format_american(ol.under_odds)
+            book_key = ol.book_key or ol.book.value
+            row[f"{book_key}_over"] = format_american(ol.over_odds)
+            row[f"{book_key}_under"] = format_american(ol.under_odds)
         rows.append(row)
 
     if rows:
         df = pd.DataFrame(rows)
         st.dataframe(df.head(30), width="stretch", hide_index=True)
+
+
+# ---------------------------------------------------------------------------
+# Overview
+# ---------------------------------------------------------------------------
+
+def render_overview(games: list, props: list, parlays: list, params: dict) -> None:
+    """Provide a clear first-run path and a compact scan summary."""
+    if not props:
+        st.markdown(
+            """
+            <div class="onboarding-card">
+            <strong>Start here</strong><br/>
+            1. Choose a slate date and filters in the sidebar.<br/>
+            2. Select <strong>Scan slate</strong>.<br/>
+            3. Review individual forecasts before exploring theoretical parlays.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.info(
+            "No scan is loaded. Demo mode uses deterministic example data; "
+            "live mode requires configured providers."
+        )
+        return
+
+    qualifying = _qualifying_props_for_display(props, params)
+    best = max(qualifying, key=lambda prop: prop.edge) if qualifying else None
+    high_confidence = sum(
+        prop.confidence.value == "high" for prop in qualifying
+    )
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Pregame games", len(games))
+    c2.metric("Evaluated offers", len(props))
+    c3.metric("Qualifying straight bets", len(qualifying))
+    c4.metric("Theoretical parlays", len(parlays))
+
+    if best:
+        st.success(
+            f"Highest current edge: **{best.player_name} {best.prop_type.value.title()} "
+            f"{best.side.value.upper()} {best.line:g}** at "
+            f"**{book_display_name(best.best_book, best.best_book_key)}** "
+            f"({format_edge(best.edge)} edge)."
+        )
+    else:
+        st.warning(
+            "No offers meet the current filters. Lower minimum edge, widen the "
+            "odds band, or review the full Prop Table."
+        )
+    st.caption(
+        f"{high_confidence} qualifying offer(s) are marked high confidence. "
+        "Forecasts are research outputs, not guarantees."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -702,16 +780,53 @@ def render_api_debug_tab(game_date: date) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Evaluation tab
+# ---------------------------------------------------------------------------
+
+def render_evaluation_tab() -> None:
+    """Render the append-only historical forecast scorecard."""
+    st.subheader("📐 Forecast Evaluation")
+    st.caption(
+        "Scores only settled historical forecasts. Sample/demo results are useful for "
+        "testing the ledger, not evidence of live-model profitability."
+    )
+    from services.evaluation_store import EvaluationStore
+
+    report = EvaluationStore().report()
+    if report.settled_count == 0:
+        st.info("No settled win/loss forecasts are recorded yet.")
+        return
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Settled offers", report.settled_count)
+    c2.metric("Brier score", f"{report.brier_score:.4f}")
+    c3.metric("Log loss", f"{report.log_loss:.4f}")
+    c4.metric("Quoted return / unit", f"{report.quoted_return_per_unit * 100:.1f}%")
+    st.markdown("**Reliability by forecast-probability bucket**")
+    st.dataframe(pd.DataFrame(report.reliability), width="stretch", hide_index=True)
+
+
+# ---------------------------------------------------------------------------
 # App main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
     params = render_sidebar()
 
-    st.title("🏀 NBA Prop AI – True Probability Parlay Builder")
-    st.caption(
-        f"Scan today's NBA props, find positive-edge plays, and build optimised parlays. "
-        f"Viewing: **{params['date']}**"
+    from config import get_settings
+    settings = get_settings()
+    mode_label = settings.app_mode.upper()
+    mode_copy = {
+        "demo": "Deterministic examples only — not live odds or a wagering recommendation.",
+        "live": "Uses configured live providers. Review quote freshness before acting.",
+        "replay": "Live providers are disabled; results come from saved historical records.",
+    }.get(settings.app_mode, "Unknown runtime mode.")
+
+    st.title("NBA Prop AI")
+    st.caption(f"Player-prop research workspace · Viewing {params['date']}")
+    st.markdown(
+        f'<div class="mode-banner"><strong>{mode_label} MODE</strong> · {mode_copy}</div>',
+        unsafe_allow_html=True,
     )
 
     render_provider_status()
@@ -729,11 +844,13 @@ def main() -> None:
         st.session_state.debug_date = None
 
     if params["run"]:
-        with st.spinner("Scanning slate and evaluating props..."):
+        with st.status("Scanning slate", expanded=True) as scan_status:
+            st.write("Loading scheduled games and available prices…")
             from data.loaders import load_games, reset_registry
             reset_registry()
             games = load_games(params["date"])
             st.session_state.games = games
+            st.write("Evaluating eligible player props…")
             scanner = SlateScanner()
             all_props = scanner.scan(
                 params["date"],
@@ -741,6 +858,8 @@ def main() -> None:
                 is_playoff=params.get("is_playoff", False),
             )
             st.session_state.all_props = all_props
+            st.write("Building same-book theoretical parlays…")
+            scan_status.update(label="Slate scan complete", state="complete")
 
         if not all_props:
             if params["date"] > today_eastern():
@@ -779,19 +898,23 @@ def main() -> None:
             apply_stake_to_all(ranked, params["stake"])
             st.session_state.parlays = ranked
 
-        st.success(f"Generated {len(parlays)} valid parlays.")
+        st.success(f"Generated {len(parlays)} positive-EV theoretical parlays.")
 
     # Games slate (shown whenever games are available)
     if st.session_state.games:
         render_games_slate(st.session_state.games)
 
     # Tab layout
-    tab_straight, tab_parlays, tab_props, tab_lines, tab_debug = st.tabs([
-        "🎲 Straight Bets", "🎯 Parlays", "📊 Props Analysis", "🛒 Line Shopping", "🔬 API Debug"
+    tab_overview, tab_straight, tab_parlays, tab_props, tab_lines, tab_evaluation, tab_debug = st.tabs([
+        "Overview", "Straight Bets", "Parlays", "Prop Table", "Line Shopping",
+        "Model Evaluation", "Diagnostics"
     ])
 
     all_props = st.session_state.all_props
     parlays = st.session_state.parlays
+
+    with tab_overview:
+        render_overview(st.session_state.games, all_props, parlays, params)
 
     with tab_straight:
         if all_props:
@@ -826,6 +949,9 @@ def main() -> None:
             render_line_shopping(qualifying[:50])
         else:
             st.info("Run the scan to see line shopping data.")
+
+    with tab_evaluation:
+        render_evaluation_tab()
 
     with tab_debug:
         render_api_debug_tab(params["date"])

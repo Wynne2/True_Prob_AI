@@ -109,6 +109,6 @@ def get_dvp_factor(
     return mapping.get(stat, 1.0)
 
 
-def is_loaded() -> bool:
-    """Return True if DvP tables have been loaded for the current date."""
-    return bool(_dvp_tables) and _dvp_date == date.today()
+def is_loaded(for_date: Optional[date] = None) -> bool:
+    """Return True only when DvP tables match the requested slate date."""
+    return bool(_dvp_tables) and _dvp_date == (for_date or date.today())

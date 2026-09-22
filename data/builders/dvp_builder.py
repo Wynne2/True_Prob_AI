@@ -150,6 +150,13 @@ def build_dvp_tables(
     for (defense_team_id, position), logs in buckets.items():
         if not logs:
             continue
+        # Provider responses are not guaranteed to be pre-sorted. Windowed DvP
+        # calculations must always use the most recent observations globally.
+        logs = sorted(
+            logs,
+            key=lambda log: str(log.get("game_date") or log.get("date") or ""),
+            reverse=True,
+        )
 
         def _avg(key: str, window: Optional[int] = None) -> float:
             subset = logs[:window] if window else logs

@@ -180,6 +180,13 @@ class AppSettings:
 
     # Disk cache enabled (disable in testing if needed)
     disk_cache_enabled: bool = os.environ.get("DISK_CACHE_ENABLED", "true").lower() == "true"
+    # "demo" uses clearly labelled static data. "live" never substitutes sample
+    # opportunities when a configured provider is unavailable.
+    app_mode: str = os.environ.get("APP_MODE", "demo").strip().lower()
+    evaluation_db_path: str = os.environ.get(
+        "EVALUATION_DB_PATH", "data/evaluation/forecast_ledger.sqlite3"
+    )
+    max_quote_age_seconds: int = int(os.environ.get("MAX_QUOTE_AGE_SECONDS", "900"))
 
 
 # ---------------------------------------------------------------------------

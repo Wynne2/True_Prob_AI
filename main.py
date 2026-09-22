@@ -174,7 +174,9 @@ def print_header(game_date: date) -> None:
 
 
 def print_provider_status() -> None:
+    from config import get_settings
     creds = get_credentials()
+    settings = get_settings()
     available = creds.available_providers
     missing = creds.missing_providers
 
@@ -188,6 +190,13 @@ def print_provider_status() -> None:
         table.add_row(p, "[dim]-- no key (no data)[/dim]")
 
     console.print(table)
+    if settings.app_mode == "demo":
+        console.print(
+            "[bold yellow]Demo mode:[/bold yellow] deterministic sample data; "
+            "not live odds or a wagering recommendation."
+        )
+    elif settings.app_mode == "replay":
+        console.print("[cyan]Replay mode:[/cyan] live providers are disabled.")
 
 
 def _book_label(book, api_key: str = "") -> str:
@@ -244,10 +253,13 @@ def print_props_table(props: list, top_n: int = 20) -> None:
 def print_parlays(parlays: list, top_n: int = 10) -> None:
     """Print ranked parlays with leg details."""
     if not parlays:
-        console.print("[yellow]No qualifying parlays found with current constraints.[/yellow]")
+        console.print("[yellow]No positive-EV same-book theoretical parlays found with current constraints.[/yellow]")
         return
 
     console.print(f"\n[bold cyan]Top {min(top_n, len(parlays))} Ranked Parlays[/bold cyan]\n")
+    console.print(
+        "[dim]Combined prices are theoretical same-book products, not provider-quoted parlay prices.[/dim]\n"
+    )
 
     for parlay in parlays[:top_n]:
         tags = " | ".join(parlay.risk_profile_tags) if parlay.risk_profile_tags else ""
@@ -260,6 +272,13 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
             f"{tag_str}"
         )
         console.print(Panel(title, expand=False, border_style="blue"))
+        ticket_book = _book_label(
+            parlay.ticket_book,
+            getattr(parlay, "ticket_book_key", "") or "",
+        )
+        console.print(
+            f"  [dim]Theoretical same-book ticket at {ticket_book}; verify the offered price before placing a wager.[/dim]"
+        )
 
         for leg_i, leg in enumerate(parlay.legs, 1):
             side_color = "cyan" if leg.side.value.upper() == "OVER" else "magenta"
@@ -285,6 +304,7 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
                 f"Return: [bold green]{format_currency(parlay.total_return)}[/bold green]  "
                 f"Profit: [bold green]{format_currency(parlay.net_profit)}[/bold green]  "
                 f"True Prob: {format_prob(parlay.combined_true_probability)}  "
+                f"Expected Return: {parlay.expected_return * 100:.1f}%  "
                 f"Corr Risk: {parlay.correlation_risk_score:.2f}\n"
             )
 

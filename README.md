@@ -28,6 +28,8 @@ Estimates the **true probability** of NBA player prop outcomes, compares it agai
 pip install -r requirements.txt
 ```
 
+For a reproducible validated environment, use `pip install -r requirements.lock`.
+
 ### 2. Configure API keys
 
 ```bash
@@ -43,6 +45,10 @@ SPORTRADAR_API_KEY=     # game schedule / slate (primary source)
 ```
 
 `nba_api` uses public NBA.com endpoints and **requires no key**.
+
+Set `APP_MODE=live` after configuring providers. With no `.env` setting, the
+application starts in clearly labelled `demo` mode using deterministic sample
+data; it is not live pricing and must not be used as a wagering recommendation.
 
 ### 3. Verify provider status
 
@@ -95,15 +101,18 @@ python main.py --verbose                    # DEBUG-level log output
 streamlit run app/streamlit_app.py
 ```
 
-Opens at `http://localhost:8501`. The sidebar exposes the same constraint controls as the CLI. The main area is split into five tabs:
+Opens at `http://localhost:8501`. The sidebar separates run controls, bet filters, parlay filters, and display preferences. The main area is organized around an overview-first workflow:
 
 | Tab | Content |
 |---|---|
+| **Overview** | Scan status, top current edge, key counts, and the next recommended action |
 | **Straight Bets** | Top individual props by edge with payout calculator |
-| **Parlays** | Ranked parlays with leg detail and payout breakdown |
-| **Props Analysis** | Sortable DataFrame of all qualifying props |
+| **Parlays** | Ranked same-book theoretical parlays with leg detail and payout breakdown |
+| **Prop Table** | Sortable DataFrame of all qualifying props |
 | **Line Shopping** | Multi-book odds comparison table |
-| **API Debug** | Live diagnostic tool — fetches raw API responses and previews them in-browser |
+| **Model Evaluation** | Brier score, log loss, reliability, and quoted-return reporting for settled forecasts |
+| **Diagnostics** | Live provider connectivity and redacted raw-response inspection |
+| **Evaluation** | Brier score, log loss, quoted-return and reliability bins for settled forecasts |
 
 ### Tests
 
@@ -251,6 +260,9 @@ A probability shrinkage factor and floor/ceiling clamps prevent extreme outputs.
 ### Parlay Builder
 
 - Generates all valid leg combinations from qualifying props (up to `--max-legs`)
+- Restricts every candidate to quotes available at one exact provider bookmaker; it never multiplies best singles from different books
+- Labels combined prices as theoretical until a provider returns an actual parlay-ticket quote
+- Filters candidates whose final adjusted expected return is not positive
 - Blocks highly correlated leg combinations (e.g. same-player, same-game double-counting)
 - Scores each parlay with a **correlation risk score** and **diversification bonus**
 - Supports five ranking fields: `edge`, `confidence`, `combined_odds`, `correlation_risk`, `balanced_score`
@@ -304,11 +316,14 @@ NBA_API_TTL_SPLITS=86400    # disk cache TTL for split dashboards (seconds)
 ODDS_API_REGIONS=us,us2     # book regions to query (comma-separated)
 
 # Application
+APP_MODE=live              # live | demo | replay; demo data is never live pricing
 LOG_LEVEL=INFO              # DEBUG | INFO | WARNING | ERROR
 LOG_TO_FILE=false
 LOG_FILE=nba_prop_ai.log
 CACHE_TTL=300               # in-memory cache TTL in seconds (0 = disable)
 DISK_CACHE_ENABLED=true     # set to false to skip disk cache entirely
+EVALUATION_DB_PATH=data/evaluation/forecast_ledger.sqlite3
+MAX_QUOTE_AGE_SECONDS=900  # reject stale provider-updated odds before ranking
 
 # CSV import (optional overrides)
 CSV_PLAYERS_PATH=data/import/players.csv

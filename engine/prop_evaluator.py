@@ -22,6 +22,7 @@ SportsDataIO calls happen inside this class.
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from typing import Optional
 
 from domain.constants import (
@@ -259,6 +260,7 @@ def _hydrate_player_from_feature_vector(player: Player, fv: FeatureVector) -> Pl
     SOURCE: FeatureVector fields are sourced from nba_api (usage/tracking/splits)
             and SportsDataIO (season averages, injuries, lineups).
     """
+    player = deepcopy(player)
     _sync_season_stat_from_feature_vector(player, fv)
 
     # Usage and tracking (SOURCE: nba_api primary)
@@ -273,53 +275,33 @@ def _hydrate_player_from_feature_vector(player: Player, fv: FeatureVector) -> Pl
     if fv.rebound_chances:
         player.rebound_chances = fv.rebound_chances
 
-    # Splits (SOURCE: nba_api primary)
-    # Trigger if either window differs from season — don't require both to match.
-    if fv.recent_5_avg != fv.season_avg or fv.recent_10_avg != fv.season_avg:
-        _fill_recent_form_by_prop(player, fv)
-
-    # Do not set player.minutes_per_game to fv.projected_minutes — that is *tonight's*
-    # expected minutes; MinutesModel already computes exp_minutes. Season MPG must stay
-    # the season average for rate + baseline math.
+    _apply_observations_to_player(player, fv)
+    player.expected_minutes_override = fv.projected_minutes
 
     return player
 
 
-def _fill_recent_form_by_prop(player: Player, fv: FeatureVector) -> None:
-    """Populate the correct last5/last10 list on the Player from the FeatureVector."""
-    pt = fv.prop_type
-    val5 = [fv.recent_5_avg] if fv.recent_5_avg else []
-    val10 = [fv.recent_10_avg] if fv.recent_10_avg else []
-
-    if pt == "points":
-        if val5:
-            player.last5_points = val5
-        if val10:
-            player.last10_points = val10
-    elif pt == "rebounds":
-        if val5:
-            player.last5_rebounds = val5
-        if val10:
-            player.last10_rebounds = val10
-    elif pt == "assists":
-        if val5:
-            player.last5_assists = val5
-        if val10:
-            player.last10_assists = val10
-    elif pt == "threes":
-        if val5:
-            player.last5_threes = val5
-    elif pt == "pra":
-        # PRA composite: distribute across pts/reb/ast lists proportionally.
-        # Rough NBA split: pts ~55%, reb ~28%, ast ~17% of PRA total.
-        if fv.recent_5_avg:
-            player.last5_points    = [fv.recent_5_avg * 0.55]
-            player.last5_rebounds  = [fv.recent_5_avg * 0.28]
-            player.last5_assists   = [fv.recent_5_avg * 0.17]
-        if fv.recent_10_avg:
-            player.last10_points   = [fv.recent_10_avg * 0.55]
-            player.last10_rebounds = [fv.recent_10_avg * 0.28]
-            player.last10_assists  = [fv.recent_10_avg * 0.17]
+def _apply_observations_to_player(player: Player, fv: FeatureVector) -> None:
+    """Copy aligned evidence to an evaluation-local Player clone."""
+    observations = tuple(getattr(fv, "recent_observations", ()) or ())
+    if len(observations) < 3:
+        return
+    minutes = [observation.minutes for observation in observations]
+    player.last10_minutes = minutes
+    player.last5_minutes = minutes[:5]
+    field = {
+        "points": "points",
+        "rebounds": "rebounds",
+        "assists": "assists",
+        "threes": "threes",
+        "blocks": "blocks",
+        "steals": "steals",
+        "turnovers": "turnovers",
+    }.get(fv.prop_type)
+    if field:
+        values = [float(getattr(observation, field)) for observation in observations]
+        setattr(player, f"last10_{field}", values)
+        setattr(player, f"last5_{field}", values[:5])
 
 
 class PropEvaluator:
@@ -402,20 +384,32 @@ class PropEvaluator:
         # "nikola_jokic" while SportsDataIO uses integer IDs).
         player_lines = [
             ol for ol in all_odds
-            if ol.player_id == player.player_id and ol.prop_type == prop_type
+            if ol.game_id == game.game_id
+            and ol.player_id == player.player_id
+            and ol.prop_type == prop_type
         ]
         if not player_lines:
             norm_name = _normalize_name(player.name)
             player_lines = [
                 ol for ol in all_odds
-                if _normalize_name(ol.player_name) == norm_name and ol.prop_type == prop_type
+                if ol.game_id == game.game_id
+                and _normalize_name(ol.player_name) == norm_name
+                and ol.prop_type == prop_type
             ]
         if not player_lines:
             logger.debug("No odds found for %s %s", player.name, prop_type)
             return []
 
         # Shop for best line per (line_value, side)
-        best_lines = shop_lines(player_lines)
+        from config import get_settings
+        from config import get_settings
+        settings = get_settings()
+        min_books = 1 if settings.app_mode == "demo" else 2
+        best_lines = shop_lines(
+            player_lines,
+            min_books=min_books,
+            max_quote_age_seconds=get_settings().max_quote_age_seconds,
+        )
         results: list[PropProbability] = []
 
         volatile_low_line = {PropType.THREES, PropType.BLOCKS, PropType.STEALS}
@@ -423,6 +417,14 @@ class PropEvaluator:
         for best in best_lines:
             numeric_line = best.line
             side = PropSide(best.side)
+            if float(numeric_line).is_integer():
+                logger.info(
+                    "Skipping %s %s %.1f: whole-number lines require market-specific push settlement rules",
+                    player.name,
+                    prop_type.value,
+                    numeric_line,
+                )
+                continue
             in_favorite_audit_band = (
                 FAVORITE_STRAIGHT_BET_AUDIT_BAND_LOW
                 <= best.best_odds
@@ -542,24 +544,9 @@ class PropEvaluator:
             if hf_log:
                 hf["after_volatile_low_line"] = round(float(true_prob), 5)
 
-            # Raw implied probability (vig included) for the priced side — same
-            # definition as the posted American odds, so edge is vs the number on the ticket.
-            # Use the SAME book that produced the best odds so edge is self-consistent.
-            # Primary: the best-line object itself if it carries over/under odds.
-            # Fallback: first matching OddsLine from the same line value.
-            best_book_line = next(
-                (
-                    ol for ol in player_lines
-                    if ol.line == numeric_line and ol.book == best.best_book
-                ),
-                None,
-            )
-            ref = best_book_line or next(
-                (ol for ol in player_lines if ol.line == numeric_line), None
-            )
-            if ref is None:
-                continue
-
+            # The line-shopping result carries its exact immutable selected
+            # quote. Never reconstruct quote identity from a shared enum.
+            ref = best.selected_quote
             implied = raw_implied_prob_for_side(best.side, ref.over_odds, ref.under_odds)
             if hf_log:
                 from odds.implied_probability import implied_prob_for_side as _fair_side_hf
@@ -860,7 +847,8 @@ class PropEvaluator:
                 fair_odds=fair_odds_american,
                 sportsbook_odds=best.best_odds,
                 best_book=best.best_book,
-                best_book_key=getattr(ref, "book_key", "") or "",
+                best_book_key=best.best_book_key,
+                selected_quote=ref,
                 confidence=confidence,
                 distribution_type=projection.distribution_type,
                 explanation=explanation,
