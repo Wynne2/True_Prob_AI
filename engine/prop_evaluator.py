@@ -2,11 +2,9 @@
 Prop Evaluator  –  core evaluation pipeline.
 
 For each (player, prop_type, line, side) combination, the evaluator:
-1. Retrieves the pre-built FeatureVector from the feature store (if available).
-2. Hydrates the Player entity with enriched fields from the FeatureVector so
-   existing stat models work without modification (backward compatible). Season
-   averages from the FeatureVector (nba_api splits) override SDIO Player rows.
-   **Never** replace season MPG on Player with tonight's projected minutes.
+1. Receives a provider-normalized Player built from completed historical games.
+2. Optionally hydrates an immutable replay FeatureVector without changing the
+   source Player or replacing season MPG with game-specific minutes.
 3. Runs the appropriate stat model to get a projection.
 4. Converts the projection to a true probability using the correct distribution.
 5. Retrieves the best available sportsbook odds (SOURCE: The Odds API).
@@ -14,9 +12,8 @@ For each (player, prop_type, line, side) combination, the evaluator:
 7. Calculates edge (true probability minus that raw implied).
 8. Attaches confidence tier and explanation.
 
-The FeatureVector is pre-built by the SlateScanner (STEP 5 in the pipeline)
-and never fetched per-prop here.  This is the critical rule: no nba_api or
-SportsDataIO calls happen inside this class.
+The evaluator never performs provider I/O. The scanner/provider boundary owns
+all BALLDONTLIE access and the prediction ledger preserves the exact inputs.
 """
 
 from __future__ import annotations
@@ -112,8 +109,8 @@ def _sync_season_stat_from_feature_vector(player: Player, fv: FeatureVector) -> 
     """
     Align per-game season stats on Player with FeatureVector.season_avg.
 
-    The builder prefers nba_api split season lines over stale/wrong SDIO averages;
-    models read Player.*_per_game, so they must match the validated feature row.
+    A replay feature snapshot can override a matching historical season value;
+    models read Player.*_per_game, so the override remains evaluation-local.
     """
     sa = fv.season_avg
     if sa <= 0:
@@ -140,8 +137,8 @@ def _normalize_name(name: str) -> str:
     """
     Normalize a player name for fuzzy cross-source matching.
 
-    Handles the case where The Odds API uses slugs like 'nikola_jokic' while
-    SportsDataIO / nba_api use 'Nikola Jokic'.  Both normalize to 'nikolajokic'.
+    Handles provider IDs that cannot be matched directly but have an exact
+    normalized player name.
     """
     import re
     return re.sub(r"[^a-z0-9]", "", name.lower())
@@ -253,17 +250,14 @@ def _hydrate_player_from_feature_vector(player: Player, fv: FeatureVector) -> Pl
     """
     Enrich a Player entity with FeatureVector fields.
 
-    This allows existing stat models to benefit from the richer nba_api +
-    SportsDataIO data without requiring model changes.  Fields from the
-    FeatureVector override the Player defaults where non-zero.
-
-    SOURCE: FeatureVector fields are sourced from nba_api (usage/tracking/splits)
-            and SportsDataIO (season averages, injuries, lineups).
+    Replay FeatureVector fields override an evaluation-local Player clone where
+    they are present. The initial live BDL pipeline currently passes Players
+    directly and does not require this compatibility path.
     """
     player = deepcopy(player)
     _sync_season_stat_from_feature_vector(player, fv)
 
-    # Usage and tracking (SOURCE: nba_api primary)
+    # Optional replay tracking fields
     if fv.usage_rate:
         player.usage_rate = fv.usage_rate
     if fv.touches_per_game:
@@ -330,18 +324,23 @@ class PropEvaluator:
         """
         Evaluate all available lines for *player* / *prop_type*.
 
-        If *feature_vector* is provided, the Player entity is enriched with
-        nba_api advanced context before the stat model runs.
+        If *feature_vector* is provided, a replay Player clone is enriched
+        before the stat model runs.
 
         Returns one PropProbability per (line, side) with best book selected.
 
         SOURCE (data consumed here):
-          - Stat model inputs:   Player entity (enriched from FeatureVector)
-          - FeatureVector:       nba_api + SportsDataIO (pre-built by SlateScanner)
-          - Odds:                The Odds API (via all_odds list)
-          - DvP factors:         Derived internally (read from FeatureVector)
+          - Stat model inputs: Player entity built from BDL history
+          - FeatureVector: immutable replay snapshot when supplied
+          - Odds: normalized BALLDONTLIE quote observations
         """
-        if player.injury_status == InjuryStatus.OUT:
+        if player.injury_status in {
+            InjuryStatus.UNKNOWN,
+            InjuryStatus.QUESTIONABLE,
+            InjuryStatus.DOUBTFUL,
+            InjuryStatus.DAY_TO_DAY,
+            InjuryStatus.OUT,
+        }:
             return []
 
         model = _MODELS.get(prop_type)
@@ -547,6 +546,16 @@ class PropEvaluator:
             # The line-shopping result carries its exact immutable selected
             # quote. Never reconstruct quote identity from a shared enum.
             ref = best.selected_quote
+            quality_flags: list[str] = []
+            if ref.source_updated_at is None:
+                logger.info(
+                    "Quote %s/%s has no provider update timestamp; using retrieval freshness only.",
+                    ref.game_id,
+                    ref.provider_quote_id or ref.book_key,
+                )
+                quality_flags.append("source_quote_time_unknown")
+            if player.injury_status == InjuryStatus.UNREPORTED:
+                quality_flags.append("availability_unreported")
             implied = raw_implied_prob_for_side(best.side, ref.over_odds, ref.under_odds)
             if hf_log:
                 from odds.implied_probability import implied_prob_for_side as _fair_side_hf
@@ -841,6 +850,7 @@ class PropEvaluator:
                 adjusted_projection=adj_display,
                 expected_minutes=projection.expected_minutes,
                 calibration_warnings=cal_warnings,
+                data_quality_flags=quality_flags,
                 true_probability=true_prob,
                 implied_probability=implied,
                 edge=edge,

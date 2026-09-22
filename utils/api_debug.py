@@ -37,12 +37,7 @@ def provider_label_from_url(url: str) -> str:
     """Best-effort provider name derived from the request URL hostname."""
     host = urlparse(url).hostname or url
     mapping = {
-        "api.the-odds-api.com": "The Odds API",
-        "api.sportsdata.io": "SportsDataIO",
-        "api.sportradar.com": "Sportradar",
-        "api.fantasypros.com": "FantasyPros",
-        "api.nba.com": "NBA Official",
-        "www.statmuse.com": "StatMuse",
+        "api.balldontlie.io": "BALLDONTLIE",
     }
     for fragment, label in mapping.items():
         if fragment in host:

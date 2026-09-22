@@ -5,9 +5,8 @@ Re-exports all public loader functions so that existing imports like:
     from data.loaders import load_games, load_odds, load_players_for_game
 continue to work after data/loaders/ became a package directory.
 
-All functions delegate to the ProviderRegistry, which routes to the
-correct source (Sportradar/SportsDataIO for slate, The Odds API for odds,
-nba_api + SportsDataIO for player data).
+All functions delegate to the mode-aware ProviderRegistry. Live mode routes
+only to BALLDONTLIE; demo and replay never contact an external feed.
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ def _get_registry():
 
 
 # ---------------------------------------------------------------------------
-# Game slate  (SOURCE: Sportradar primary -> SportsDataIO fallback)
+# Game slate (BALLDONTLIE in live mode)
 # ---------------------------------------------------------------------------
 
 def load_games(game_date: date) -> list[Game]:
@@ -43,12 +42,14 @@ def load_games(game_date: date) -> list[Game]:
 
 
 # ---------------------------------------------------------------------------
-# Players  (SOURCE: SportsDataIO primary + nba_api supplement)
+# Players (BALLDONTLIE active roster plus historical pregame logs)
 # ---------------------------------------------------------------------------
 
-def load_players_for_game(game_id: str) -> list[Player]:
+def load_players_for_game(
+    game_id: str, candidate_player_ids: Optional[set[str]] = None
+) -> list[Player]:
     """Load all players for both teams in *game_id*."""
-    return _get_registry().get_players_for_game(game_id)
+    return _get_registry().get_players_for_game(game_id, candidate_player_ids)
 
 
 def load_all_players_for_date(game_date: date) -> list[Player]:
@@ -70,7 +71,8 @@ def load_player(player_id: str) -> Optional[Player]:
 
 
 # ---------------------------------------------------------------------------
-# Team defence  (SOURCE: SportsDataIO + dvp_service derived)
+# Team defense is currently omitted in live BDL mode until a validated
+# same-provider positional-defense contract is available.
 # ---------------------------------------------------------------------------
 
 def load_team_defense(team_id: str) -> Optional[TeamDefense]:
@@ -80,25 +82,19 @@ def load_team_defense(team_id: str) -> Optional[TeamDefense]:
 
 def load_defense_by_abbr(team_abbr: str) -> Optional[TeamDefense]:
     """Load defensive profile using team abbreviation."""
-    # Try registry first (SportsDataIO), fall back to sample data
     registry = _get_registry()
     defense = registry.get_team_defense(team_abbr)
     if defense:
         return defense
-    # Last resort: sample data lookup by abbr
-    try:
+    if registry.mode == "demo":
         from data.sample_teams import DEFENSE_BY_TEAM_ABBR
-        defense = DEFENSE_BY_TEAM_ABBR.get(team_abbr)
-        if defense:
-            return defense
-    except ImportError:
-        pass
+        return DEFENSE_BY_TEAM_ABBR.get(team_abbr)
     logger.warning("No defensive profile found for team abbr: %s", team_abbr)
     return None
 
 
 # ---------------------------------------------------------------------------
-# Odds  (SOURCE: The Odds API only)
+# Odds (BALLDONTLIE player props)
 # ---------------------------------------------------------------------------
 
 def load_odds(game_date: date) -> list[OddsLine]:
@@ -118,12 +114,17 @@ def load_odds_for_player(
 
 
 # ---------------------------------------------------------------------------
-# Injuries / lineup  (SOURCE: SportsDataIO primary)
+# Injuries / lineup (BALLDONTLIE availability observations)
 # ---------------------------------------------------------------------------
 
 def load_injuries(game_date: Optional[date] = None) -> list[dict]:
     """Load current injury report."""
     return _get_registry().get_injuries(game_date)
+
+
+def load_final_player_totals(game_id: str) -> dict[str, dict[str, float]]:
+    """Load canonical final P/R/A totals for idempotent settlement."""
+    return _get_registry().get_final_player_totals(game_id)
 
 
 def load_lineups(game_date: Optional[date] = None) -> list[dict]:
@@ -148,3 +149,8 @@ def reset_registry() -> None:
     """Force the registry to be rebuilt (useful in tests)."""
     global _registry
     _registry = None
+
+
+def provider_status() -> dict[str, str]:
+    """Return explicit mode/provider failure state for presentation surfaces."""
+    return _get_registry().status()

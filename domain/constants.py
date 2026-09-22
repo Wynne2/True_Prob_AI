@@ -11,8 +11,6 @@ from domain.enums import Position, PropType
 # Season context
 # ---------------------------------------------------------------------------
 
-NBA_SEASON: str = "2025-26"             # nba_api season string (YYYY-YY format)
-SDIO_SEASON: str = "2026"               # SportsDataIO season string (end-year format)
 LEAGUE_AVG_PACE: float = 100.3          # possessions per 48 min, 2025-26 estimate
 
 # Prop types where a season average of exactly 0.0 can still be valid real data

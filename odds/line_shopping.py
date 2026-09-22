@@ -56,8 +56,9 @@ def bookmaker_key(odds_line: OddsLine) -> str:
 
 
 def _observed_at(odds_line: OddsLine) -> float:
-    """Use the oldest possible timestamp for quotes with no update time."""
-    return odds_line.timestamp.timestamp() if odds_line.timestamp else float("-inf")
+    """Use retrieval time for freshness; source time is preserved separately."""
+    observed = odds_line.fetched_at or odds_line.timestamp
+    return observed.timestamp() if observed else float("-inf")
 
 
 def _latest_quotes_by_book(group: list[OddsLine]) -> dict[str, OddsLine]:

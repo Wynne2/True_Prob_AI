@@ -58,7 +58,11 @@ class BaseProvider(ABC):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def get_players_for_game(self, game_id: str) -> list[Player]:
+    def get_players_for_game(
+        self,
+        game_id: str,
+        candidate_player_ids: Optional[set[str]] = None,
+    ) -> list[Player]:
         """Return all players rostered for both teams in *game_id*."""
         raise NotImplementedError
 
@@ -182,6 +186,10 @@ class BaseProvider(ABC):
             touches, time_of_possession, rebound_chances,
             potential_assists, speed, distance
         """
+        raise NotImplementedError
+
+    def get_final_player_totals(self, game_id: str) -> dict[str, dict[str, float]]:
+        """Return final P/R/A totals keyed by canonical player ID."""
         raise NotImplementedError
 
     # ------------------------------------------------------------------

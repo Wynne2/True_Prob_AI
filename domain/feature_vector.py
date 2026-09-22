@@ -1,12 +1,9 @@
 """
-FeatureVector  –  unified per-player-prop feature object.
+FeatureVector – optional immutable snapshot of a player-prop evaluation.
 
-The feature vector is assembled by data/builders/player_feature_builder.py
-from all service layer outputs (nba_api + SportsDataIO) and consumed by
-engine/prop_evaluator.py.
-
-Every field is documented with its source of truth so the algorithm
-ownership is explicit throughout the codebase.
+The initial BALLDONTLIE live pipeline supplies Player history directly. This
+type remains the ledger/replay contract for pre-built snapshots and must never
+be populated from a different provider silently.
 """
 
 from __future__ import annotations
@@ -38,10 +35,8 @@ class FeatureVector:
 
     Fields are grouped by category matching the architecture spec.
     Source annotations are in the comments:
-      [nba_api]      -> pulled via data/loaders/nba_api_loader.py
-      [SportsDataIO] -> pulled via data/loaders/sportsdataio_loader.py
-      [Odds API]     -> provided externally when prop is evaluated
-      [derived]      -> computed inside a service or builder
+      [BALLDONTLIE] -> normalized provider observation
+      [derived]     -> local calculation from completed observations
     """
 
     # ------------------------------------------------------------------
@@ -61,7 +56,7 @@ class FeatureVector:
     market_line: float = 0.0     # [Odds API]
 
     # ------------------------------------------------------------------
-    # BASE PRODUCTION  [SportsDataIO primary, nba_api supplement]
+    # BASE PRODUCTION  [BALLDONTLIE completed-game observations]
     # ------------------------------------------------------------------
     season_avg: float = 0.0          # season average for the prop stat
     season_per_minute: float = 0.0   # season stat per minute played
@@ -73,25 +68,25 @@ class FeatureVector:
     recent_observations: tuple[GameObservation, ...] = ()
 
     # ------------------------------------------------------------------
-    # USAGE / TRACKING  [nba_api PRIMARY]
+    # Optional advanced/tracking inputs (not enabled in initial live scope)
     # ------------------------------------------------------------------
-    usage_rate: float = 0.0           # [nba_api] LeagueDashPlayerStats advanced
-    touches_per_game: float = 0.0     # [nba_api] LeagueDashPtStats Possessions
-    time_of_possession: float = 0.0   # [nba_api] seconds per game
-    possessions_per_game: float = 0.0 # [nba_api] LeagueDashPlayerStats advanced
-    pace_context: float = 0.0         # [nba_api] team pace (possessions per 48)
-    potential_assists: float = 0.0    # [nba_api] LeagueDashPtStats Passing
-    rebound_chances: float = 0.0      # [nba_api] LeagueDashPtStats Rebounding
+    usage_rate: float = 0.0           # optional observed fraction
+    touches_per_game: float = 0.0     # optional observed tracking metric
+    time_of_possession: float = 0.0   # optional observed seconds/game
+    possessions_per_game: float = 0.0 # optional observed possessions/game
+    pace_context: float = 0.0         # optional observed possessions/48
+    potential_assists: float = 0.0    # optional observed tracking metric
+    rebound_chances: float = 0.0      # optional observed tracking metric
 
     # ------------------------------------------------------------------
-    # SPLITS  [nba_api PRIMARY]
+    # SPLITS [derived locally from completed observations]
     # ------------------------------------------------------------------
-    home_away_split_factor: float = 1.0   # [nba_api] home/road split ratio
-    opponent_split_factor: float = 1.0    # [nba_api] vs this opponent historically
-    last_n_split_factor: float = 1.0      # [nba_api] last-N adjustment vs season avg
+    home_away_split_factor: float = 1.0   # [derived] home/road split ratio
+    opponent_split_factor: float = 1.0    # [derived] opponent-history ratio
+    last_n_split_factor: float = 1.0      # [derived] recent-history ratio
 
     # ------------------------------------------------------------------
-    # INJURY / ROLE  [SportsDataIO PRIMARY]
+    # INJURY / ROLE  [BALLDONTLIE availability observation]
     # ------------------------------------------------------------------
     player_injury_status: str = "active"    # [SportsDataIO]
     teammates_out_count: int = 0            # [SportsDataIO] key teammates ruled out
@@ -100,16 +95,16 @@ class FeatureVector:
     starter_flag: bool = True               # [SportsDataIO] depth chart position
 
     # ------------------------------------------------------------------
-    # MATCHUP CONTEXT  [SportsDataIO + nba_api blended]
+    # MATCHUP CONTEXT [disabled/neutral unless validated BDL evidence exists]
     # ------------------------------------------------------------------
     opponent_defense_factor: float = 1.0         # [SportsDataIO] team def rating
     opponent_recent_defense_factor: float = 1.0  # [SportsDataIO] last-10 def trend
-    opp_pace: float = 0.0                        # [nba_api] opponent pace
-    opp_def_rating: float = 0.0                  # [nba_api/SportsDataIO]
+    opp_pace: float = 0.0                        # optional validated context
+    opp_def_rating: float = 0.0                  # optional validated context
     opp_pts_allowed: float = 0.0                 # [SportsDataIO] season pts allowed
 
     # ------------------------------------------------------------------
-    # DvP (DEFENSE vs POSITION)  [derived from nba_api + SportsDataIO]
+    # DvP (disabled/neutral in the initial BALLDONTLIE rollout)
     # ------------------------------------------------------------------
     dvp_points_factor: float = 1.0    # normalised; >1.0 = weak def vs pts
     dvp_rebounds_factor: float = 1.0

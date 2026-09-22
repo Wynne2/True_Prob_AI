@@ -342,6 +342,14 @@ def main() -> None:
     print_provider_status()
 
     prop_types = [PropType(pt) for pt in args.prop_types] if args.prop_types else None
+    from config import get_settings
+    if get_settings().app_mode == "live":
+        supported = {PropType.POINTS, PropType.REBOUNDS, PropType.ASSISTS}
+        if prop_types and any(prop_type not in supported for prop_type in prop_types):
+            console.print(
+                "[red]Live mode currently supports only points, rebounds, and assists.[/red]"
+            )
+            sys.exit(2)
 
     # Scan slate
     console.print(f"\n[cyan]Scanning NBA slate for {game_date}...[/cyan]")
@@ -392,7 +400,13 @@ def main() -> None:
 
     print_props_table(qualifying, top_n=20)
 
-    # Build parlays
+    if get_settings().app_mode == "live":
+        console.print(
+            "\n[yellow]Parlays are disabled during the initial live P/R/A rollout.[/yellow]"
+        )
+        return
+
+    # Build theoretical demo/replay parlays
     console.print(f"\n[cyan]Building parlays (max {args.max_legs} legs, min edge >= {format_edge(args.min_edge)})...[/cyan]")
     constraints = ParlayConstraints(
         min_edge=args.min_edge,

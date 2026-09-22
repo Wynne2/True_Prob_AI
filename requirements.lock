@@ -19,7 +19,6 @@ markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
 narwhals==2.26.0
-nba_api==1.11.4
 numpy==2.5.3
 packaging==26.3
 pandas==3.0.5

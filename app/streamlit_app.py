@@ -134,7 +134,13 @@ def render_sidebar() -> dict:
                 key="max_leg_odds_band_v3",
             )
 
-        all_prop_types = [pt.value for pt in PropType]
+        from config import get_settings
+        live_scope = {PropType.POINTS, PropType.REBOUNDS, PropType.ASSISTS}
+        all_prop_types = [
+            prop_type.value
+            for prop_type in PropType
+            if get_settings().app_mode != "live" or prop_type in live_scope
+        ]
         selected_props = st.multiselect(
             "Prop Types (blank = all)", options=all_prop_types, default=[]
         )
@@ -200,12 +206,16 @@ def render_provider_status() -> None:
     missing = creds.missing_providers
 
     with st.expander("Provider Status", expanded=False):
+        from data.loaders import provider_status
+        status = provider_status()
         if settings.app_mode == "demo":
             st.warning(
                 "Demo mode uses deterministic sample data. Do not treat output as live odds or a wagering recommendation."
             )
         elif settings.app_mode == "replay":
             st.info("Replay mode disables live providers and reads only saved evaluation records.")
+        elif status["state"] != "ready":
+            st.error(f"Live provider unavailable: `{status['reason']}`. No demo fallback is used.")
         col_a, col_b = st.columns(2)
         with col_a:
             st.markdown("**Active Providers**")
@@ -289,6 +299,7 @@ def render_props_table(props: list) -> None:
             "Fair Odds": format_american(p.fair_odds),
             "Best Book": book_display_name(p.best_book, getattr(p, "best_book_key", "") or ""),
             "Confidence": p.confidence.value,
+            "Data quality": "; ".join(getattr(p, "data_quality_flags", []) or []),
             "Warnings": "; ".join(getattr(p, "calibration_warnings", []) or []),
         })
 
@@ -662,6 +673,22 @@ def render_overview(games: list, props: list, parlays: list, params: dict) -> No
     )
 
 
+def render_updates(updates: list, exclusions: list[dict]) -> None:
+    """Show provider-observed quote changes and transparent scan exclusions."""
+    with st.expander("Updates and data quality", expanded=False):
+        if updates:
+            st.markdown("**Quote updates**")
+            for update in updates[:20]:
+                st.caption(f"{update.occurred_at.isoformat()} · {update.message}")
+        else:
+            st.caption("No comparable quote changes have been observed in this session.")
+        if exclusions:
+            st.markdown("**Excluded inputs**")
+            st.dataframe(pd.DataFrame(exclusions), width="stretch", hide_index=True)
+        elif not updates:
+            st.caption("No exclusions were recorded for the latest scan.")
+
+
 # ---------------------------------------------------------------------------
 # API debug tab
 # ---------------------------------------------------------------------------
@@ -842,6 +869,10 @@ def main() -> None:
         st.session_state.debug_responses = None
     if "debug_date" not in st.session_state:
         st.session_state.debug_date = None
+    if "updates" not in st.session_state:
+        st.session_state.updates = []
+    if "exclusions" not in st.session_state:
+        st.session_state.exclusions = []
 
     if params["run"]:
         with st.status("Scanning slate", expanded=True) as scan_status:
@@ -858,6 +889,8 @@ def main() -> None:
                 is_playoff=params.get("is_playoff", False),
             )
             st.session_state.all_props = all_props
+            st.session_state.updates = scanner.last_updates
+            st.session_state.exclusions = scanner.last_exclusions
             st.write("Building same-book theoretical parlays…")
             scan_status.update(label="Slate scan complete", state="complete")
 
@@ -892,13 +925,16 @@ def main() -> None:
             max_results=1000,
         )
 
-        with st.spinner("Building parlays..."):
-            parlays = build_parlays(all_props, constraints)
-            ranked = rank_parlays(parlays, sort_by=params["sort_by"], top_n=500)
-            apply_stake_to_all(ranked, params["stake"])
-            st.session_state.parlays = ranked
-
-        st.success(f"Generated {len(parlays)} positive-EV theoretical parlays.")
+        if settings.app_mode == "live":
+            st.session_state.parlays = []
+            st.info("Parlays are disabled during the initial live P/R/A rollout.")
+        else:
+            with st.spinner("Building parlays..."):
+                parlays = build_parlays(all_props, constraints)
+                ranked = rank_parlays(parlays, sort_by=params["sort_by"], top_n=500)
+                apply_stake_to_all(ranked, params["stake"])
+                st.session_state.parlays = ranked
+            st.success(f"Generated {len(parlays)} positive-EV theoretical parlays.")
 
     # Games slate (shown whenever games are available)
     if st.session_state.games:
@@ -915,6 +951,7 @@ def main() -> None:
 
     with tab_overview:
         render_overview(st.session_state.games, all_props, parlays, params)
+        render_updates(st.session_state.updates, st.session_state.exclusions)
 
     with tab_straight:
         if all_props:
@@ -923,13 +960,13 @@ def main() -> None:
             st.divider()
             render_favorite_band_straight_audit(all_props, params)
         else:
-            st.info("Click 'Scan & Build' in the sidebar to get started.")
+            st.info("Choose filters in the sidebar, then select 'Scan slate' to get started.")
 
     with tab_parlays:
         if parlays:
             render_parlay_cards(parlays, params["stake"], params["top_parlays"])
         else:
-            st.info("Click 'Scan & Build' in the sidebar to get started.")
+            st.info("Choose filters in the sidebar, then select 'Scan slate' to get started.")
 
     with tab_props:
         if all_props:

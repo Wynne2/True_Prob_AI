@@ -79,6 +79,7 @@ class MinutesModel:
             not has_game_specific_projection
             and player.injury_status == InjuryStatus.ACTIVE
             and player.role == PlayerRole.STARTER
+            and player.is_starter is True
             and player.minutes_per_game >= STAR_MPG_SEASON_THRESHOLD
         ):
             base = max(base, player.minutes_per_game * STAR_MINUTES_VS_SEASON_FLOOR)
@@ -98,6 +99,7 @@ class MinutesModel:
             not has_game_specific_projection
             and player.injury_status == InjuryStatus.ACTIVE
             and player.role == PlayerRole.STARTER
+            and player.is_starter is True
             and 0 < base < 28.0
         ):
             base = 28.0
@@ -148,6 +150,7 @@ class MinutesModel:
             not has_game_specific_projection
             and player.injury_status == InjuryStatus.ACTIVE
             and player.role == PlayerRole.STARTER
+            and player.is_starter is True
             and player.minutes_per_game > 0
         ):
             floor = min(

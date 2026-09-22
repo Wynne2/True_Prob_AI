@@ -42,6 +42,7 @@ class PlayerRole(str, Enum):
     INACTIVE = "inactive"
     GAME_TIME_DECISION = "game_time_decision"
     OUT = "out"
+    UNKNOWN = "unknown"
 
 
 class InjuryStatus(str, Enum):
@@ -53,6 +54,8 @@ class InjuryStatus(str, Enum):
     DAY_TO_DAY = "day_to_day"
     SUSPENDED = "suspended"
     NOT_WITH_TEAM = "not_with_team"
+    UNKNOWN = "unknown"
+    UNREPORTED = "unreported"
 
 
 class BookName(str, Enum):
@@ -120,16 +123,5 @@ class ParlayRiskProfile(str, Enum):
 
 class DataSource(str, Enum):
     """Tracks which provider supplied a given data record."""
-    NBA_API = "nba_api"          # nba_api Python library (no key required)
-    SPORTSDATAIO = "sportsdataio"
-    SPORTRADAR = "sportradar"
-    ODDS_API = "odds_api"
-    CSV_IMPORT = "csv_import"
-    SAMPLE = "sample"
-    # Retired sources — kept for enum compatibility with existing data records
     BALLDONTLIE = "balldontlie"
-    FANTASYPROS = "fantasypros"
-    NBA_OFFICIAL = "nba_official"
-    STATMUSE = "statmuse"
-    ROTOGRINDERS = "rotogrinders"
-    ROTOWIRE = "rotowire"
+    SAMPLE = "sample"

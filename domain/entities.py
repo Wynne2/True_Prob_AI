@@ -37,8 +37,8 @@ class Player:
     team_id: str
     team_abbr: str
     position: Position
-    role: PlayerRole = PlayerRole.STARTER
-    injury_status: InjuryStatus = InjuryStatus.ACTIVE
+    role: PlayerRole = PlayerRole.UNKNOWN
+    injury_status: InjuryStatus = InjuryStatus.UNKNOWN
 
     # Per-game season averages
     minutes_per_game: float = 0.0
@@ -64,7 +64,9 @@ class Player:
     # Contextual splits
     home_ppg: float = 0.0
     away_ppg: float = 0.0
-    is_starter: bool = True
+    is_starter: Optional[bool] = None
+    availability_observed_at: Optional[datetime] = None
+    availability_quality: str = "unknown"
 
     # Recent form (last N games) — per-game values or single-element window averages.
     # Minutes lists are paired with each stat list so models can compute per-36 rates.
@@ -225,6 +227,11 @@ class OddsLine:
     event_home_team_abbr: str = ""
     event_away_team_abbr: str = ""
     timestamp: Optional[datetime] = None
+    source_updated_at: Optional[datetime] = None
+    fetched_at: Optional[datetime] = None
+    provider_quote_id: str = ""
+    market_key: str = ""
+    period: str = "full_game"
     is_alternate_line: bool = False
     data_source: DataSource = DataSource.SAMPLE
     book_key: str = ""             # Canonical provider bookmaker key; never use BookName as identity.
@@ -320,6 +327,7 @@ class PropProbability:
     adjusted_projection: float = 0.0
     expected_minutes: float = 0.0
     calibration_warnings: list[str] = field(default_factory=list)
+    data_quality_flags: list[str] = field(default_factory=list)
 
     # Populated in PropEvaluator when best American odds lie in the favorite audit band
     # (see domain.constants FAVORITE_STRAIGHT_BET_AUDIT_BAND_*).

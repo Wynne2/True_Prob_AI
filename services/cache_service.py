@@ -9,7 +9,7 @@ Provides two layers of caching:
 Usage
 -----
     from services.cache_service import CacheService
-    cache = CacheService(namespace="nba_api")
+    cache = CacheService(namespace="balldontlie")
     cache.set("usage_2025-04-16", data, ttl_seconds=86400)
     data = cache.get("usage_2025-04-16")   # None on miss / expiry
 """
@@ -37,7 +37,7 @@ class CacheService:
     Parameters
     ----------
     namespace : str
-        Sub-directory under data/cache/ (e.g. "nba_api", "sportsdataio").
+        Sub-directory under data/cache/ (e.g. "balldontlie", "derived").
     default_ttl : int
         Default TTL in seconds (0 = never expire).
     """

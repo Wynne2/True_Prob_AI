@@ -6,6 +6,7 @@ import json
 import math
 import sqlite3
 import uuid
+import hashlib
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime, timezone
@@ -46,6 +47,24 @@ CREATE TABLE IF NOT EXISTS settlements (
     status TEXT NOT NULL CHECK(status IN ('win', 'loss', 'push', 'void')),
     source TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS settlement_revisions (
+    revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    forecast_id TEXT NOT NULL REFERENCES forecasts(forecast_id),
+    settled_at TEXT NOT NULL,
+    actual_value REAL,
+    status TEXT NOT NULL CHECK(status IN ('win', 'loss', 'push', 'void', 'pending_manual_review')),
+    source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS settlement_revisions_forecast ON settlement_revisions(forecast_id, revision_id);
+CREATE TABLE IF NOT EXISTS exclusions (
+    exclusion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_id TEXT NOT NULL,
+    observed_at TEXT NOT NULL,
+    game_id TEXT,
+    player_id TEXT,
+    reason TEXT NOT NULL,
+    context_json TEXT NOT NULL
+);
 """
 
 
@@ -81,6 +100,15 @@ class EvaluationStore:
         self._path = path
         with self._connection() as conn:
             conn.executescript(_CREATE_FORECASTS)
+            columns = {
+                row["name"] for row in conn.execute("PRAGMA table_info(forecasts)").fetchall()
+            }
+            if "decision_key" not in columns:
+                conn.execute("ALTER TABLE forecasts ADD COLUMN decision_key TEXT")
+                conn.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS forecasts_decision_key "
+                    "ON forecasts(decision_key)"
+                )
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self._path)
@@ -119,6 +147,21 @@ class EvaluationStore:
             if quote is None:
                 continue
             feature = feature_store.get((forecast.player_id, forecast.prop_type.value))
+            decision_material = {
+                "game_id": forecast.game_id,
+                "player_id": forecast.player_id,
+                "prop_type": forecast.prop_type.value,
+                "line": forecast.line,
+                "side": forecast.side.value,
+                "book": forecast.best_book_key or forecast.best_book.value,
+                "price": forecast.sportsbook_odds,
+                "quote_id": quote.provider_quote_id,
+                "source_updated_at": quote.source_updated_at,
+                "model_version": model_version,
+            }
+            decision_key = hashlib.sha256(
+                json.dumps(decision_material, default=_json_default, sort_keys=True).encode()
+            ).hexdigest()
             rows.append((
                 str(uuid.uuid4()),
                 snapshot_id,
@@ -137,6 +180,7 @@ class EvaluationStore:
                 forecast.distribution_type.value,
                 json.dumps(feature, default=_json_default, sort_keys=True),
                 json.dumps(quote, default=_json_default, sort_keys=True),
+                decision_key,
             ))
 
         if not rows:
@@ -145,17 +189,49 @@ class EvaluationStore:
         with self._connection() as conn:
             conn.executemany(
                 """
-                INSERT INTO forecasts (
+                INSERT OR IGNORE INTO forecasts (
                     forecast_id, snapshot_id, observed_at, game_id, player_id,
                     player_name, prop_type, line, side, bookmaker_key,
                     american_odds, true_probability, implied_probability,
                     model_version, distribution_type, feature_snapshot_json,
-                    quote_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    quote_json, decision_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
             )
         return snapshot_id
+
+    def record_exclusions(
+        self,
+        exclusions: Iterable[Mapping[str, Any]],
+        *,
+        snapshot_id: str,
+        observed_at: Optional[str] = None,
+    ) -> None:
+        """Persist exclusion reasons alongside forecasts; they are never discarded."""
+        now = observed_at or _utc_now()
+        rows = [
+            (
+                snapshot_id,
+                now,
+                item.get("game_id"),
+                item.get("player_id"),
+                str(item.get("reason") or "unspecified"),
+                json.dumps(dict(item), default=_json_default, sort_keys=True),
+            )
+            for item in exclusions
+        ]
+        if not rows:
+            return
+        with self._connection() as conn:
+            conn.executemany(
+                """
+                INSERT INTO exclusions (
+                    snapshot_id, observed_at, game_id, player_id, reason, context_json
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
 
     def settle_game(
         self,
@@ -175,9 +251,19 @@ class EvaluationStore:
         with self._connection() as conn:
             rows = conn.execute(
                 """
-                SELECT f.* FROM forecasts f
-                LEFT JOIN settlements s ON s.forecast_id = f.forecast_id
-                WHERE f.game_id = ? AND s.forecast_id IS NULL
+                SELECT f.*,
+                    (
+                        SELECT status FROM settlement_revisions r
+                        WHERE r.forecast_id = f.forecast_id
+                        ORDER BY r.revision_id DESC LIMIT 1
+                    ) AS latest_status,
+                    (
+                        SELECT actual_value FROM settlement_revisions r
+                        WHERE r.forecast_id = f.forecast_id
+                        ORDER BY r.revision_id DESC LIMIT 1
+                    ) AS latest_actual_value
+                FROM forecasts f
+                WHERE f.game_id = ?
                 """,
                 (game_id,),
             ).fetchall()
@@ -193,12 +279,12 @@ class EvaluationStore:
                     status = "win" if actual_value > row["line"] else "loss"
                 else:
                     status = "win" if actual_value < row["line"] else "loss"
-                settlements.append(
-                    (row["forecast_id"], settled_at, actual_value, status, source)
-                )
+                if row["latest_status"] == status and row["latest_actual_value"] == actual_value:
+                    continue
+                settlements.append((row["forecast_id"], settled_at, actual_value, status, source))
             conn.executemany(
                 """
-                INSERT INTO settlements (forecast_id, settled_at, actual_value, status, source)
+                INSERT INTO settlement_revisions (forecast_id, settled_at, actual_value, status, source)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 settlements,
@@ -227,7 +313,11 @@ class EvaluationStore:
             rows = conn.execute(
                 f"""
                 SELECT f.true_probability, f.american_odds, s.status
-                FROM forecasts f JOIN settlements s ON s.forecast_id = f.forecast_id
+                FROM forecasts f JOIN settlement_revisions s ON s.revision_id = (
+                    SELECT r.revision_id FROM settlement_revisions r
+                    WHERE r.forecast_id = f.forecast_id
+                    ORDER BY r.revision_id DESC LIMIT 1
+                )
                 WHERE {where}
                 ORDER BY f.observed_at
                 """,

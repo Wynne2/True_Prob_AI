@@ -58,9 +58,8 @@ def validate_feature_vector(fv, prop_type: str) -> ValidationResult:
 
     # --- Critical fields ---
     # Only season_avg and projected_minutes are hard-blocking.
-    # usage_rate comes from nba_api (a separate source from SDIO season stats);
-    # if that call fails or is rate-limited we should still evaluate the player,
-    # just with reduced completeness confidence.
+    # Usage is optional in the initial BALLDONTLIE scope. Its absence lowers
+    # confidence but never supplies a fabricated value.
     season_avg = getattr(fv, "season_avg", 0.0) or 0.0
     projected_minutes = getattr(fv, "projected_minutes", 0.0) or 0.0
     # Real per-game averages can be 0.0 for threes/blocks/steals/turnovers (and rarely assists);
@@ -135,7 +134,7 @@ def validate_feature_vector(fv, prop_type: str) -> ValidationResult:
     if "projected_minutes" in missing_critical:
         penalty += 0.15
     if "usage_rate" in missing_optional:
-        penalty += 0.15   # nba_api source unavailable — moderate confidence hit
+        penalty += 0.15
     if "recent_5_avg" in missing_optional:
         penalty += 0.05
     if "recent_10_avg" in missing_optional:

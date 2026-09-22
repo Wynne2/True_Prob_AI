@@ -75,3 +75,27 @@ def test_ledger_persists_inputs_settles_and_scores(tmp_path):
     assert report.log_loss is not None
     assert report.quoted_return_per_unit == pytest.approx((100 / 110 - 1) / 2)
     assert sum(row["count"] for row in report.reliability) == 2
+
+
+def test_settlement_correction_appends_a_revision_without_replacing_forecast(tmp_path):
+    store = EvaluationStore(tmp_path / "ledger.sqlite3")
+    forecast = _forecast(player_id="player-1", side=PropSide.OVER, probability=0.60)
+    store.record_forecasts([forecast], {})
+
+    assert store.settle_game("game-1", {"player-1": {"points": 25.0}}, source="initial") == 1
+    assert store.settle_game("game-1", {"player-1": {"points": 25.0}}, source="repeat") == 0
+    assert store.settle_game("game-1", {"player-1": {"points": 24.0}}, source="correction") == 1
+
+    with store._connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM forecasts").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM settlement_revisions").fetchone()[0] == 2
+
+
+def test_identical_quote_decision_is_recorded_once(tmp_path):
+    store = EvaluationStore(tmp_path / "ledger.sqlite3")
+    forecast = _forecast(player_id="player-1", side=PropSide.OVER, probability=0.60)
+    store.record_forecasts([forecast], {})
+    store.record_forecasts([forecast], {})
+
+    with store._connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM forecasts").fetchone()[0] == 1

@@ -1,18 +1,13 @@
 """
 Tests for providers.
 
-Covers:
-- SampleProvider returns data for all required methods
-- ProviderRegistry builds without errors
-- CSVImportProvider gracefully handles missing files
-- Normalisation pipeline (raw dict → entity)
+Covers deterministic demo mode and normalisation contracts.
 """
 
 import pytest
 from datetime import date
 
 from providers.sample_provider import SampleProvider
-from providers.csv_import_provider import CSVImportProvider
 from providers.provider_registry import ProviderRegistry
 from data.normalizers import (
     raw_dict_to_game,
@@ -69,22 +64,6 @@ class TestSampleProvider:
     def test_get_lineups(self):
         lineups = self.provider.get_lineups()
         assert len(lineups) > 0
-
-
-class TestCSVImportProvider:
-    def setup_method(self):
-        self.provider = CSVImportProvider()
-
-    def test_is_not_available_without_files(self):
-        # CSV files don't exist in a fresh install → should return False
-        # (unless files happen to exist in the test environment)
-        result = self.provider.is_available()
-        assert isinstance(result, bool)
-
-    def test_get_player_props_missing_file(self):
-        # Missing file should return empty list, not raise
-        props = self.provider.get_player_props(date.today())
-        assert isinstance(props, list)
 
 
 class TestProviderRegistry:

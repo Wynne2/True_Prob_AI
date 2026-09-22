@@ -22,7 +22,6 @@ import pytest
 
 from domain.entities import Game, Player, TeamDefense
 from domain.enums import InjuryStatus, PlayerRole, Position, PropType
-from domain.provider_models import InjuryContext
 
 
 # ---------------------------------------------------------------------------
@@ -216,10 +215,10 @@ class TestDvPDirectionality:
 
 class TestUsageRateScale:
     def test_usg_pct_divided_by_100(self):
-        """usg_pct from nba_api is 0-100; we must store as 0-1."""
-        raw_usg_pct = 28.5  # as returned by nba_api
+        """A percentage-shaped usage value must be normalized to a fraction."""
+        raw_usg_pct = 28.5
 
-        # Simulate the fix in usage_tracking_service and nba_api_provider
+        # Preserve the domain contract for optional usage values.
         stored = raw_usg_pct / 100.0
         assert stored < 1.0, f"usage_rate should be < 1.0 after /100; got {stored}"
         assert stored == pytest.approx(0.285)
