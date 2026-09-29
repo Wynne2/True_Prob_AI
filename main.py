@@ -13,7 +13,6 @@ All arguments have sensible defaults so you can run with no flags at all.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from datetime import date
 
@@ -45,65 +44,10 @@ from utils.formatting import (
     format_edge,
     format_prob,
 )
-from utils.api_debug import redact_url
+from providers.balldontlie_client import BallDontLieRequestError
 from utils.logging_utils import setup_logging
 
 console = Console(legacy_windows=False)
-
-
-# ---------------------------------------------------------------------------
-# API debug interceptor
-# ---------------------------------------------------------------------------
-
-def install_api_debug_logger() -> None:
-    """
-    Monkey-patch requests.get so every outbound HTTP call prints:
-      - the redacted URL (API keys hidden)
-      - HTTP status code
-      - a readable JSON preview of the response body
-    """
-    import requests as _requests
-
-    _original_get = _requests.get
-
-    def _debug_get(url, **kwargs):
-        response = _original_get(url, **kwargs)
-        safe_url = redact_url(url)
-
-        status_color = "green" if response.ok else "red"
-        console.rule(f"[bold yellow]API Response[/bold yellow]  [{status_color}]{response.status_code}[/{status_color}]  [dim]{safe_url}[/dim]")
-
-        try:
-            data = response.json()
-            if isinstance(data, list):
-                console.print(f"[dim]  ↳ list of {len(data)} items[/dim]")
-                if data:
-                    preview = data[:3]  # first 3 items
-                    console.print_json(json.dumps(preview, default=str))
-                    if len(data) > 3:
-                        console.print(f"[dim]  ... {len(data) - 3} more items not shown[/dim]")
-            elif isinstance(data, dict):
-                # For large dicts, show all top-level keys and truncate long values
-                preview: dict = {}
-                for k, v in data.items():
-                    if isinstance(v, list) and len(v) > 3:
-                        preview[k] = v[:3] + [f"... ({len(v) - 3} more)"]
-                    elif isinstance(v, str) and len(v) > 200:
-                        preview[k] = v[:200] + "..."
-                    else:
-                        preview[k] = v
-                console.print_json(json.dumps(preview, default=str))
-            else:
-                console.print(f"[dim]  ↳ {repr(data)[:300]}[/dim]")
-        except Exception:
-            body_preview = response.text[:500]
-            console.print(f"[red]  ↳ Non-JSON response:[/red] {body_preview}")
-
-        console.print()
-        return response
-
-    _requests.get = _debug_get
-    console.print("[bold yellow]⚡ API debug mode ON[/bold yellow] — raw responses will be printed for every HTTP call.\n")
 
 
 # ---------------------------------------------------------------------------
@@ -150,10 +94,6 @@ Examples:
                         help="Minimum confidence tier per leg")
     parser.add_argument("--verbose", action="store_true", help="Verbose logging")
     parser.add_argument(
-        "--debug-api", action="store_true",
-        help="Print raw JSON response from every API call (for verifying data sources)",
-    )
-    parser.add_argument(
         "--playoff",
         action="store_true",
         help="Treat slate as NBA playoffs (slightly higher minute projections for rotation)",
@@ -174,20 +114,29 @@ def print_header(game_date: date) -> None:
 
 
 def print_provider_status() -> None:
-    creds = get_credentials()
-    available = creds.available_providers
-    missing = creds.missing_providers
+    from config import get_settings
+    settings = get_settings()
 
     table = Table(title="Provider Status", box=box.SIMPLE, show_header=True)
     table.add_column("Provider", style="cyan")
     table.add_column("Status")
-
-    for p in available:
-        table.add_row(p, "[green]OK active[/green]")
-    for p in missing:
-        table.add_row(p, "[dim]-- no key (no data)[/dim]")
+    if settings.app_mode == "demo":
+        table.add_row("sample", "[yellow]offline examples[/yellow]")
+    elif settings.app_mode == "replay":
+        table.add_row("none", "[cyan]offline ledger only[/cyan]")
+    elif get_credentials().balldontlie_key:
+        table.add_row("balldontlie", "[green]configured[/green]")
+    else:
+        table.add_row("balldontlie", "[red]missing key[/red]")
 
     console.print(table)
+    if settings.app_mode == "demo":
+        console.print(
+            "[bold yellow]Demo mode:[/bold yellow] deterministic sample data; "
+            "not live odds or a wagering recommendation."
+        )
+    elif settings.app_mode == "replay":
+        console.print("[cyan]Replay mode:[/cyan] live providers are disabled.")
 
 
 def _book_label(book, api_key: str = "") -> str:
@@ -244,10 +193,13 @@ def print_props_table(props: list, top_n: int = 20) -> None:
 def print_parlays(parlays: list, top_n: int = 10) -> None:
     """Print ranked parlays with leg details."""
     if not parlays:
-        console.print("[yellow]No qualifying parlays found with current constraints.[/yellow]")
+        console.print("[yellow]No positive-EV same-book theoretical parlays found with current constraints.[/yellow]")
         return
 
     console.print(f"\n[bold cyan]Top {min(top_n, len(parlays))} Ranked Parlays[/bold cyan]\n")
+    console.print(
+        "[dim]Combined prices are theoretical same-book products, not provider-quoted parlay prices.[/dim]\n"
+    )
 
     for parlay in parlays[:top_n]:
         tags = " | ".join(parlay.risk_profile_tags) if parlay.risk_profile_tags else ""
@@ -260,6 +212,13 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
             f"{tag_str}"
         )
         console.print(Panel(title, expand=False, border_style="blue"))
+        ticket_book = _book_label(
+            parlay.ticket_book,
+            getattr(parlay, "ticket_book_key", "") or "",
+        )
+        console.print(
+            f"  [dim]Theoretical same-book ticket at {ticket_book}; verify the offered price before placing a wager.[/dim]"
+        )
 
         for leg_i, leg in enumerate(parlay.legs, 1):
             side_color = "cyan" if leg.side.value.upper() == "OVER" else "magenta"
@@ -285,6 +244,7 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
                 f"Return: [bold green]{format_currency(parlay.total_return)}[/bold green]  "
                 f"Profit: [bold green]{format_currency(parlay.net_profit)}[/bold green]  "
                 f"True Prob: {format_prob(parlay.combined_true_probability)}  "
+                f"Expected Return: {parlay.expected_return * 100:.1f}%  "
                 f"Corr Risk: {parlay.correlation_risk_score:.2f}\n"
             )
 
@@ -296,9 +256,6 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
 def main() -> None:
     args = parse_args()
     setup_logging(level="DEBUG" if args.verbose else "WARNING")
-
-    if args.debug_api:
-        install_api_debug_logger()
 
     if args.date:
         try:
@@ -322,11 +279,23 @@ def main() -> None:
     print_provider_status()
 
     prop_types = [PropType(pt) for pt in args.prop_types] if args.prop_types else None
+    from config import get_settings
+    if get_settings().app_mode == "live":
+        supported = {PropType.POINTS, PropType.REBOUNDS, PropType.ASSISTS}
+        if prop_types and any(prop_type not in supported for prop_type in prop_types):
+            console.print(
+                "[red]Live mode currently supports only points, rebounds, and assists.[/red]"
+            )
+            sys.exit(2)
 
     # Scan slate
     console.print(f"\n[cyan]Scanning NBA slate for {game_date}...[/cyan]")
     scanner = SlateScanner()
-    all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    try:
+        all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    except BallDontLieRequestError as exc:
+        console.print(f"[red]BALLDONTLIE request failed ({exc.code}): {exc}[/red]")
+        sys.exit(1)
     n = len(all_props)
     console.print(
         f"[green]Evaluated {n} prop line{'s' if n != 1 else ''}.[/green]"
@@ -372,7 +341,13 @@ def main() -> None:
 
     print_props_table(qualifying, top_n=20)
 
-    # Build parlays
+    if get_settings().app_mode == "live":
+        console.print(
+            "\n[yellow]Parlays are disabled during the initial live P/R/A rollout.[/yellow]"
+        )
+        return
+
+    # Build theoretical demo/replay parlays
     console.print(f"\n[cyan]Building parlays (max {args.max_legs} legs, min edge >= {format_edge(args.min_edge)})...[/cyan]")
     constraints = ParlayConstraints(
         min_edge=args.min_edge,

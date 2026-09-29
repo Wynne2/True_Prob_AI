@@ -1,9 +1,4 @@
-"""
-Sample data provider  –  always-available fallback.
-
-Returns realistic sample data so the platform works immediately without
-any API keys.  This is the last provider in the registry chain.
-"""
+"""Deterministic, explicitly selected offline sample provider."""
 
 from __future__ import annotations
 
@@ -34,7 +29,11 @@ class SampleProvider(BaseProvider):
             g.game_date = game_date
         return games
 
-    def get_players_for_game(self, game_id: str) -> list[Player]:
+    def get_players_for_game(
+        self,
+        game_id: str,
+        candidate_player_ids: Optional[set[str]] = None,
+    ) -> list[Player]:
         from data.sample_games import get_sample_games
         from data.sample_players import PLAYERS_BY_TEAM
 
@@ -46,7 +45,11 @@ class SampleProvider(BaseProvider):
 
         home_players = PLAYERS_BY_TEAM.get(game.home_team_abbr, [])
         away_players = PLAYERS_BY_TEAM.get(game.away_team_abbr, [])
-        return home_players + away_players
+        players = home_players + away_players
+        return [
+            player for player in players
+            if candidate_player_ids is None or player.player_id in candidate_player_ids
+        ]
 
     def get_player_context(self, player_id: str) -> Optional[Player]:
         from data.sample_players import PLAYER_BY_ID

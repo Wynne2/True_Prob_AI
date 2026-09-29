@@ -70,7 +70,7 @@ def test_naive_tip_is_eastern_local_not_utc():
     assert not game_is_pregame(g, now=after)
 
 
-def test_parse_iso_z_is_utc_odds_api():
+def test_parse_iso_z_is_utc_provider_timestamp():
     dt = parse_iso_datetime("2026-04-19T21:30:00Z")
     assert dt is not None
     assert dt.tzinfo is not None

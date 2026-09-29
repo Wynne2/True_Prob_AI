@@ -11,8 +11,6 @@ from domain.enums import Position, PropType
 # Season context
 # ---------------------------------------------------------------------------
 
-NBA_SEASON: str = "2025-26"             # nba_api season string (YYYY-YY format)
-SDIO_SEASON: str = "2026"               # SportsDataIO season string (end-year format)
 LEAGUE_AVG_PACE: float = 100.3          # possessions per 48 min, 2025-26 estimate
 
 # Prop types where a season average of exactly 0.0 can still be valid real data
@@ -25,23 +23,6 @@ LEAGUE_AVG_DEF_EFF: float = 113.1       # pts per 100 possessions allowed, 2025-
 
 # FPA standard deviation used to normalize FPA z-scores (league-empirical estimate)
 FPA_LEAGUE_STD: float = 4.5
-
-# ---------------------------------------------------------------------------
-# Injury redistribution — position similarity weights.
-# When teammate X is OUT, active player Y inherits a fraction of X's vacancy
-# weighted by positional overlap.  Values in [0, 1].
-# ---------------------------------------------------------------------------
-POSITION_SIMILARITY: dict[str, dict[str, float]] = {
-    "PG": {"PG": 1.0, "SG": 0.6, "SF": 0.2, "PF": 0.1, "C": 0.0, "G": 0.8, "F": 0.2, "GF": 0.3, "FC": 0.1},
-    "SG": {"PG": 0.6, "SG": 1.0, "SF": 0.4, "PF": 0.1, "C": 0.0, "G": 0.8, "F": 0.3, "GF": 0.4, "FC": 0.1},
-    "SF": {"PG": 0.2, "SG": 0.4, "SF": 1.0, "PF": 0.5, "C": 0.1, "G": 0.3, "F": 0.8, "GF": 0.6, "FC": 0.3},
-    "PF": {"PG": 0.1, "SG": 0.1, "SF": 0.5, "PF": 1.0, "C": 0.5, "G": 0.1, "F": 0.7, "GF": 0.3, "FC": 0.7},
-    "C":  {"PG": 0.0, "SG": 0.0, "SF": 0.1, "PF": 0.5, "C": 1.0, "G": 0.0, "F": 0.3, "GF": 0.1, "FC": 0.8},
-    "G":  {"PG": 0.8, "SG": 0.8, "SF": 0.3, "PF": 0.1, "C": 0.0, "G": 1.0, "F": 0.2, "GF": 0.4, "FC": 0.1},
-    "F":  {"PG": 0.2, "SG": 0.3, "SF": 0.8, "PF": 0.7, "C": 0.3, "G": 0.2, "F": 1.0, "GF": 0.7, "FC": 0.5},
-    "GF": {"PG": 0.3, "SG": 0.4, "SF": 0.6, "PF": 0.3, "C": 0.1, "G": 0.4, "F": 0.7, "GF": 1.0, "FC": 0.3},
-    "FC": {"PG": 0.1, "SG": 0.1, "SF": 0.3, "PF": 0.7, "C": 0.8, "G": 0.1, "F": 0.5, "GF": 0.3, "FC": 1.0},
-}
 
 # ---------------------------------------------------------------------------
 # Model blend weights
@@ -411,50 +392,3 @@ PARLAY_RANK_WEIGHT_CORR_RISK: float = 0.20
 # ---------------------------------------------------------------------------
 
 SHIN_Z_DEFAULT: float = 0.02   # market overround fraction; calibrate per book
-
-# ---------------------------------------------------------------------------
-# NBA position aliases (handles alternate position strings from providers)
-# ---------------------------------------------------------------------------
-
-POSITION_ALIAS_MAP: dict[str, str] = {
-    "point guard": "PG",
-    "shooting guard": "SG",
-    "small forward": "SF",
-    "power forward": "PF",
-    "center": "C",
-    "guard": "G",
-    "forward": "F",
-    "forward-center": "FC",
-    "guard-forward": "GF",
-    "sf/pf": "SF",
-    "pg/sg": "PG",
-}
-
-# Prop type alias map (normalise provider market names to PropType values)
-PROP_ALIAS_MAP: dict[str, PropType] = {
-    "player_points": PropType.POINTS,
-    "pts": PropType.POINTS,
-    "points": PropType.POINTS,
-    "player_rebounds": PropType.REBOUNDS,
-    "reb": PropType.REBOUNDS,
-    "rebounds": PropType.REBOUNDS,
-    "player_assists": PropType.ASSISTS,
-    "ast": PropType.ASSISTS,
-    "assists": PropType.ASSISTS,
-    "player_threes": PropType.THREES,
-    "three_pointers_made": PropType.THREES,
-    "threes": PropType.THREES,
-    "3pm": PropType.THREES,
-    "player_pra": PropType.PRA,
-    "pts_reb_ast": PropType.PRA,
-    "pra": PropType.PRA,
-    "player_blocks": PropType.BLOCKS,
-    "blk": PropType.BLOCKS,
-    "blocks": PropType.BLOCKS,
-    "player_steals": PropType.STEALS,
-    "stl": PropType.STEALS,
-    "steals": PropType.STEALS,
-    "player_turnovers": PropType.TURNOVERS,
-    "tov": PropType.TURNOVERS,
-    "turnovers": PropType.TURNOVERS,
-}

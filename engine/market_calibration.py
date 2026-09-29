@@ -23,19 +23,17 @@ def calibrate_true_probability(
     """
     warnings: list[str] = []
     gap = true_prob - implied
-    haircut = 1.0
     if gap > MARKET_DISAGREE_HARD:
-        haircut = CALIBRATION_HAIRCUT_HARD
         warnings.append("model_vs_market_gap_hard")
     elif gap > MARKET_DISAGREE_SOFT:
-        haircut = CALIBRATION_HAIRCUT_SOFT
         warnings.append("model_vs_market_gap_soft")
 
-    # Long-shot prices: be extra conservative when claiming edge.
+    # This smooth monotonic transform avoids hard-threshold probability
+    # reversals: d(gap / (1 + alpha * abs(gap))) / d(gap) remains positive.
+    alpha = 3.0
     if american_odds >= 220 and gap > 0.10:
-        haircut *= 0.96
+        alpha = 4.0
         warnings.append("long_odds_conservative")
 
-    blended = true_prob * haircut + implied * (1.0 - haircut) * 0.35
-    out = clamp(blended, 0.001, 0.999)
+    out = clamp(implied + gap / (1.0 + alpha * abs(gap)), 0.001, 0.999)
     return out, warnings

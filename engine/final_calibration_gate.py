@@ -131,9 +131,9 @@ def apply_final_calibration_gate(
     american_odds: int,
 ) -> tuple[float, ConfidenceTier, list[str]]:
     """
-    If any self-check fails, shrink probability toward 50% and implied,
-    downgrade confidence, and return warning codes. High-edge props never
-    keep HIGH confidence when flagged.
+    Flags downgrade recommendation confidence without manually changing a
+    calibrated probability. This preserves ordering and leaves calibration to
+    held-out historical evaluation.
     """
     flags = _collect_flags(
         player,
@@ -152,14 +152,8 @@ def apply_final_calibration_gate(
     if not flags:
         return true_prob, confidence, []
 
-    t = true_prob
-    b = FINAL_GATE_IMPLIED_BLEND
-    t = 0.5 + (t - 0.5) * FINAL_GATE_TRUE_SHRINK
-    t = t * (1.0 - b) + implied * b
-    t = clamp(t, 0.001, 0.999)
-
     conf = _downgrade_confidence(confidence)
     if edge >= FINAL_GATE_HIGH_EDGE_EDGE and conf == ConfidenceTier.HIGH:
         conf = ConfidenceTier.MEDIUM
 
-    return t, conf, flags
+    return true_prob, conf, flags

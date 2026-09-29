@@ -197,7 +197,7 @@ class TestStatModels:
         assert len(results) > 0
         assert all(r.projected_value > 3 for r in results)
 
-    def test_threes_model(self):
+    def test_threes_model_excludes_whole_number_lines_pending_push_rules(self):
         from data.sample_players import PLAYER_BY_ID
         player = PLAYER_BY_ID.get("p_murray")
         game = get_sample_games()[0]
@@ -205,7 +205,7 @@ class TestStatModels:
         odds = get_sample_odds()
         evaluator = PropEvaluator()
         results = evaluator.evaluate(player, game, defense, odds, PropType.THREES, is_home=True)
-        assert len(results) > 0
+        assert results == []
 
     def test_pra_model(self):
         results = self._eval("p_jokic", PropType.PRA)

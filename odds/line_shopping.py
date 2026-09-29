@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 from domain.entities import OddsLine
@@ -29,15 +30,46 @@ class BestLine:
     side: str                   # 'over' or 'under'
     best_odds: int              # American odds
     best_book: BookName
-    all_books: dict[BookName, int]   # book → American odds for this side
+    best_book_key: str          # Raw provider bookmaker key for the selected quote.
+    selected_quote: OddsLine    # Exact immutable quote selected for this result.
+    all_books: dict[str, int]   # Canonical bookmaker key → American odds for this side.
+    book_count: int
+    meets_minimum_coverage: bool
     game_id: str = ""
     team_abbr: str = ""
     opponent_abbr: str = ""
 
 
 def _group_key(odds_line: OddsLine) -> tuple:
-    """Grouping key: same player + prop type + line."""
-    return (odds_line.player_id, odds_line.prop_type, odds_line.line)
+    """Grouping key: same event + player + prop type + line."""
+    return (
+        odds_line.game_id,
+        odds_line.player_id,
+        odds_line.prop_type,
+        odds_line.line,
+    )
+
+
+def bookmaker_key(odds_line: OddsLine) -> str:
+    """Return the provider's unique bookmaker identity for a quote."""
+    return odds_line.book_key or odds_line.book.value
+
+
+def _observed_at(odds_line: OddsLine) -> float:
+    """Use retrieval time for freshness; source time is preserved separately."""
+    observed = odds_line.fetched_at or odds_line.timestamp
+    return observed.timestamp() if observed else float("-inf")
+
+
+def _latest_quotes_by_book(group: list[OddsLine]) -> dict[str, OddsLine]:
+    """Keep only the freshest quote from each distinct provider bookmaker."""
+    latest: dict[str, OddsLine] = {}
+    for quote in group:
+        key = bookmaker_key(quote)
+        current = latest.get(key)
+        if current is None or _observed_at(quote) >= _observed_at(current):
+            latest[key] = quote
+    return latest
 
 
 def shop_lines(
@@ -45,16 +77,14 @@ def shop_lines(
     player_id: Optional[str] = None,
     prop_type: Optional[PropType] = None,
     min_books: int = 2,
+    max_quote_age_seconds: Optional[int] = None,
 ) -> list[BestLine]:
     """
     Aggregate odds across all books and return the best over/under price
     for each unique player/prop/line combination.
 
-    Only returns lines that at least *min_books* sportsbooks agree on.
-    This prevents alternate lines posted by a single book (e.g. Bovada's
-    21.5–30.5 ladder for a player whose consensus line is 25.5 everywhere
-    else) from generating fake edges.  If no line has min_books coverage,
-    falls back to the line with the most book coverage.
+    Only returns lines that at least *min_books* distinct sportsbooks agree
+    on. Sparse lines are excluded rather than presented as consensus.
 
     Args:
         all_lines: All available OddsLine objects (across all books).
@@ -71,83 +101,95 @@ def shop_lines(
         lines = [l for l in lines if l.player_id == player_id]
     if prop_type:
         lines = [l for l in lines if l.prop_type == prop_type]
+    if max_quote_age_seconds is not None:
+        now = datetime.now().timestamp()
+        lines = [
+            line for line in lines
+            if line.timestamp is None
+            or now - _observed_at(line) <= max_quote_age_seconds
+        ]
 
-    # Group by (player_id, prop_type, line)
+    # Group by (event, player_id, prop_type, line)
     groups: dict[tuple, list[OddsLine]] = defaultdict(list)
     for line in lines:
         groups[_group_key(line)].append(line)
 
     # --- Consensus filter ---
-    # For each player+prop, only keep lines that have >= min_books coverage.
-    # If nothing meets the threshold, keep the line(s) with the most books.
-    # Group the groups by (player_id, prop_type) to do per-player filtering.
+    # For each player+prop, retain only lines with explicit consensus coverage.
     by_player_prop: dict[tuple, list[tuple]] = defaultdict(list)
     for key in groups:
-        pid, ptype, _ = key
-        by_player_prop[(pid, ptype)].append(key)
+        event_id, pid, ptype, _ = key
+        by_player_prop[(event_id, pid, ptype)].append(key)
 
     allowed_keys: set[tuple] = set()
-    for (pid, ptype), keys in by_player_prop.items():
-        book_counts = {k: len({ol.book for ol in groups[k]}) for k in keys}
-        max_count = max(book_counts.values())
-        threshold = min(min_books, max_count)  # fall back if no line has min_books
+    for (_event_id, _pid, _ptype), keys in by_player_prop.items():
+        book_counts = {
+            k: len(_latest_quotes_by_book(groups[k]))
+            for k in keys
+        }
         for k, cnt in book_counts.items():
-            if cnt >= threshold:
+            if cnt >= min_books:
                 allowed_keys.add(k)
 
     results: list[BestLine] = []
 
-    for (pid, ptype, numeric_line), group in groups.items():
-        if (pid, ptype, numeric_line) not in allowed_keys:
+    for (event_id, pid, ptype, numeric_line), group in groups.items():
+        if (event_id, pid, ptype, numeric_line) not in allowed_keys:
             continue
         if not group:
             continue
 
-        # Reference record for metadata
-        ref = group[0]
-
-        over_books: dict[BookName, int] = {}
-        under_books: dict[BookName, int] = {}
-
-        for ol in group:
-            # For American odds: higher is always better for the bettor
-            if ol.book not in over_books or ol.over_odds > over_books[ol.book]:
-                over_books[ol.book] = ol.over_odds
-            if ol.book not in under_books or ol.under_odds > under_books[ol.book]:
-                under_books[ol.book] = ol.under_odds
-
-        num_books = len(over_books)
+        latest_by_book = _latest_quotes_by_book(group)
+        ref = next(iter(latest_by_book.values()))
+        over_books = {
+            book_key: quote.over_odds
+            for book_key, quote in latest_by_book.items()
+        }
+        under_books = {
+            book_key: quote.under_odds
+            for book_key, quote in latest_by_book.items()
+        }
 
         # Best over
         if over_books:
-            best_over_book = max(over_books, key=lambda b: over_books[b])
+            best_over_key = max(over_books, key=over_books.get)
+            best_over_quote = latest_by_book[best_over_key]
             results.append(BestLine(
                 player_id=pid,
                 player_name=ref.player_name,
                 prop_type=ptype,
                 line=numeric_line,
                 side="over",
-                best_odds=over_books[best_over_book],
-                best_book=best_over_book,
+                best_odds=best_over_quote.over_odds,
+                best_book=best_over_quote.book,
+                best_book_key=best_over_key,
+                selected_quote=best_over_quote,
                 all_books=over_books,
-                game_id=ref.game_id,
+                book_count=len(latest_by_book),
+                meets_minimum_coverage=True,
+                game_id=event_id,
                 team_abbr=ref.team_abbr,
                 opponent_abbr=ref.opponent_abbr,
             ))
 
         # Best under
         if under_books:
-            best_under_book = max(under_books, key=lambda b: under_books[b])
+            best_under_key = max(under_books, key=under_books.get)
+            best_under_quote = latest_by_book[best_under_key]
             results.append(BestLine(
                 player_id=pid,
                 player_name=ref.player_name,
                 prop_type=ptype,
                 line=numeric_line,
                 side="under",
-                best_odds=under_books[best_under_book],
-                best_book=best_under_book,
+                best_odds=best_under_quote.under_odds,
+                best_book=best_under_quote.book,
+                best_book_key=best_under_key,
+                selected_quote=best_under_quote,
                 all_books=under_books,
-                game_id=ref.game_id,
+                book_count=len(latest_by_book),
+                meets_minimum_coverage=True,
+                game_id=event_id,
                 team_abbr=ref.team_abbr,
                 opponent_abbr=ref.opponent_abbr,
             ))

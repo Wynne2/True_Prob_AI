@@ -37,8 +37,8 @@ class Player:
     team_id: str
     team_abbr: str
     position: Position
-    role: PlayerRole = PlayerRole.STARTER
-    injury_status: InjuryStatus = InjuryStatus.ACTIVE
+    role: PlayerRole = PlayerRole.UNKNOWN
+    injury_status: InjuryStatus = InjuryStatus.UNKNOWN
 
     # Per-game season averages
     minutes_per_game: float = 0.0
@@ -64,7 +64,9 @@ class Player:
     # Contextual splits
     home_ppg: float = 0.0
     away_ppg: float = 0.0
-    is_starter: bool = True
+    is_starter: Optional[bool] = None
+    availability_observed_at: Optional[datetime] = None
+    availability_quality: str = "unknown"
 
     # Recent form (last N games) — per-game values or single-element window averages.
     # Minutes lists are paired with each stat list so models can compute per-36 rates.
@@ -88,6 +90,9 @@ class Player:
 
     # Injury redistribution context (set by PlayerContextService)
     minutes_vacuum: float = 0.0    # extra minutes available due to teammate absences
+    # A game-specific estimate sourced from a lineup/injury projection. It is
+    # distinct from season MPG and is consumed by MinutesModel when present.
+    expected_minutes_override: float = 0.0
 
     data_source: DataSource = DataSource.SAMPLE
 
@@ -206,7 +211,7 @@ class Game:
 # Odds
 # ---------------------------------------------------------------------------
 
-@dataclass
+@dataclass(frozen=True)
 class OddsLine:
     """A single sportsbook's price for one player prop."""
     book: BookName
@@ -219,10 +224,17 @@ class OddsLine:
     game_id: str = ""
     team_abbr: str = ""
     opponent_abbr: str = ""
+    event_home_team_abbr: str = ""
+    event_away_team_abbr: str = ""
     timestamp: Optional[datetime] = None
+    source_updated_at: Optional[datetime] = None
+    fetched_at: Optional[datetime] = None
+    provider_quote_id: str = ""
+    market_key: str = ""
+    period: str = "full_game"
     is_alternate_line: bool = False
     data_source: DataSource = DataSource.SAMPLE
-    book_key: str = ""             # raw Odds API bookmaker key (for display when book == OTHER)
+    book_key: str = ""             # Canonical provider bookmaker key; never use BookName as identity.
 
 
 # ---------------------------------------------------------------------------
@@ -297,7 +309,8 @@ class PropProbability:
 
     sportsbook_odds: int       # American odds from best book
     best_book: BookName = BookName.SAMPLE
-    best_book_key: str = ""    # Odds API bookmaker key for the priced line (display)
+    best_book_key: str = ""    # Canonical provider bookmaker key for the priced line.
+    selected_quote: Optional[OddsLine] = None
 
     confidence: ConfidenceTier = ConfidenceTier.MEDIUM
     distribution_type: DistributionType = DistributionType.NORMAL
@@ -314,6 +327,7 @@ class PropProbability:
     adjusted_projection: float = 0.0
     expected_minutes: float = 0.0
     calibration_warnings: list[str] = field(default_factory=list)
+    data_quality_flags: list[str] = field(default_factory=list)
 
     # Populated in PropEvaluator when best American odds lie in the favorite audit band
     # (see domain.constants FAVORITE_STRAIGHT_BET_AUDIT_BAND_*).
@@ -360,6 +374,10 @@ class Parlay:
     combined_implied_probability: float = 0.0
     combined_true_probability: float = 0.0
     combined_edge: float = 0.0
+    expected_return: float = 0.0  # Expected profit per $1 stake after all adjustments.
+    ticket_book: BookName = BookName.SAMPLE
+    ticket_book_key: str = ""
+    is_theoretical_price: bool = True
 
     confidence_tier: ConfidenceTier = ConfidenceTier.MEDIUM
     correlation_risk_score: float = 0.0   # 0 = no risk, 1 = fully correlated
