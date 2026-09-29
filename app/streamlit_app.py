@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
@@ -40,7 +39,6 @@ from engine.straight_bet_audit import (
     pipeline_drop_averages_for_positive_edge_favorites,
     top_uncapped_minus_fair_gap,
 )
-from utils.api_debug import capture_api_responses
 from utils.date_utils import today_eastern
 from utils.formatting import (
     book_display_name,
@@ -78,6 +76,7 @@ def _initialize_state() -> None:
         "last_scan_at": None,
         "last_scan_seconds": None,
         "scan_error": None,
+        "scanner": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -90,8 +89,12 @@ def _provider_context() -> tuple[dict[str, str], str]:
 
     settings = get_settings()
     status = provider_status()
-    providers = get_credentials().available_providers
-    provider_name = providers[0] if providers else "No provider"
+    if settings.app_mode == "demo":
+        provider_name = "Sample data"
+    elif settings.app_mode == "replay":
+        provider_name = "Offline ledger"
+    else:
+        provider_name = "BALLDONTLIE" if get_credentials().balldontlie_key else "No provider"
     return status, provider_name
 
 
@@ -737,40 +740,33 @@ def render_model_audit(all_props: list, params: dict) -> None:
 
 
 def render_api_diagnostics(game_date: date) -> None:
-    from config import get_credentials
+    from config import get_credentials, get_settings
 
+    if get_settings().app_mode != "live":
+        st.info("Provider diagnostics are available only in live mode; demo and replay make no external requests.")
+        return
     credentials = get_credentials()
     if not credentials.available_providers:
         st.warning("Add BALLDONTLIE_API_KEY to .env before running live diagnostics.")
         return
-    st.caption(
-        "Makes fresh read-only calls to the configured provider and captures sanitized local responses. API keys are never displayed."
-    )
+    st.caption("Checks an uncached schedule and the first game's prop feed. The API key is never displayed.")
     if st.button(
         "Run provider diagnostics",
         type="secondary",
         key="run_debug",
         icon=":material/network_check:",
     ):
-        from data.loaders import load_games, load_odds, reset_registry
+        from services.provider_diagnostics import diagnose_provider
 
-        reset_registry()
-        previous_cache = os.environ.get("DISK_CACHE_ENABLED", "true")
-        os.environ["DISK_CACHE_ENABLED"] = "false"
         try:
             with st.status("Checking provider contract", expanded=True) as status:
-                with capture_api_responses(max_list=5) as responses:
-                    st.write("Requesting schedule…")
-                    load_games(game_date)
-                    st.write("Requesting player props…")
-                    load_odds(game_date)
+                st.write("Requesting schedule and available player props…")
+                responses = diagnose_provider(game_date, credentials.balldontlie_key)
                 status.update(label="Provider diagnostics complete", state="complete")
         except Exception as exc:
             logger.exception("Provider diagnostics failed")
             st.error(f"Diagnostics failed: {exc}")
             responses = []
-        finally:
-            os.environ["DISK_CACHE_ENABLED"] = previous_cache
         st.session_state.debug_responses = responses
         st.session_state.debug_date = game_date
 
@@ -778,29 +774,16 @@ def render_api_diagnostics(game_date: date) -> None:
     if responses is None:
         return
     if not responses:
-        st.warning("No HTTP responses were captured. Review the provider state and entitlements.")
+        st.warning("No diagnostic results were returned. Review the provider state and entitlements.")
         return
-    st.success(f"Captured {len(responses)} provider call(s) for {st.session_state.debug_date}.")
+    st.success(f"Checked {len(responses)} endpoint(s) for {st.session_state.debug_date}.")
     for index, record in enumerate(responses, 1):
-        status_code = record.get("status")
-        provider = record.get("provider", "Unknown")
-        outcome = f"HTTP {status_code}" if status_code is not None else "Transport error"
-        with st.expander(f"{index}. {provider} · {outcome}", expanded=index == 1):
-            st.code(record.get("url", ""), language=None)
-            if record.get("error"):
-                st.error(record["error"])
-            preview = record.get("preview")
-            raw = record.get("raw")
-            preview_col, raw_col = st.columns(2)
-            with preview_col:
-                st.markdown("**Response preview**")
-                st.json(preview if preview is not None else raw)
-            with raw_col:
-                st.markdown("**Captured payload**")
-                if isinstance(raw, (dict, list)):
-                    st.json(raw)
-                else:
-                    st.code(str(raw or "")[:5000], language="text")
+        with st.expander(
+            f"{index}. {record['endpoint']} · {record['records']} records",
+            expanded=index == 1,
+        ):
+            st.caption(f"Retrieved {record['fetched_at'].isoformat()}")
+            st.json(record["preview"])
 
 
 def render_system(params: dict) -> None:
@@ -872,15 +855,12 @@ def _build_parlays(all_props: list, params: dict) -> list:
 
 
 def run_scan(params: dict) -> None:
-    from data.loaders import reset_registry
-
     started = monotonic()
     st.session_state.scan_error = None
     try:
         with st.status("Scanning the slate", expanded=True) as scan_status:
             st.write("Connecting to the schedule and market feed…")
-            reset_registry()
-            scanner = SlateScanner()
+            scanner = st.session_state.scanner or SlateScanner()
             st.write("Resolving eligible participants and availability…")
             all_props = scanner.scan(
                 params["date"],
@@ -896,12 +876,15 @@ def run_scan(params: dict) -> None:
             st.session_state.exclusions = scanner.last_exclusions
             st.session_state.last_scan_at = datetime.now().astimezone().strftime("%b %d · %I:%M %p")
             st.session_state.last_scan_seconds = monotonic() - started
+            st.session_state.scanner = scanner
             scan_status.update(label="Decision board refreshed", state="complete", expanded=False)
     except Exception as exc:
         logger.exception("Slate scan failed")
         st.session_state.games = []
         st.session_state.all_props = []
         st.session_state.parlays = []
+        st.session_state.updates = []
+        st.session_state.exclusions = []
         st.session_state.scan_error = f"Scan failed: {exc}"
         st.error(st.session_state.scan_error)
         return

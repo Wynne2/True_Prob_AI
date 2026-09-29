@@ -68,6 +68,4 @@ def test_system_workspace_keeps_diagnostics_out_of_primary_navigation():
         "Provider diagnostics",
         "Model audit",
     }.issubset(labels)
-    assert any(
-        "BALLDONTLIE_API_KEY" in warning.value for warning in app.warning
-    )
+    assert any("only in live mode" in notice.value for notice in app.info)

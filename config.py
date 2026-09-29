@@ -65,30 +65,7 @@ class BallDontLieConfig:
 
 @dataclass(frozen=True)
 class AppSettings:
-    # Whether to fall back gracefully when providers fail
-    graceful_fallback: bool = True
-
-    # HTTP retry config
-    http_retries: int = 3
-    http_backoff_factor: float = 0.5
-
-    # Logging
-    log_level: str = field(default_factory=lambda: os.environ.get("LOG_LEVEL", "INFO"))
-    log_to_file: bool = field(default_factory=lambda: os.environ.get("LOG_TO_FILE", "false").lower() == "true")
-    log_file_path: str = field(default_factory=lambda: os.environ.get("LOG_FILE", "nba_prop_ai.log"))
-
-    # CSV import
-    csv_players_path: str = field(default_factory=lambda: os.environ.get("CSV_PLAYERS_PATH", "data/import/players.csv"))
-    csv_odds_path: str = field(default_factory=lambda: os.environ.get("CSV_ODDS_PATH", "data/import/odds.csv"))
-    csv_defense_path: str = field(default_factory=lambda: os.environ.get("CSV_DEFENSE_PATH", "data/import/defense.csv"))
-
-    # In-memory cache TTL in seconds (0 = no cache)
-    cache_ttl_seconds: int = field(default_factory=lambda: int(os.environ.get("CACHE_TTL", "300")))
-
-    # Disk cache enabled (disable in testing if needed)
     disk_cache_enabled: bool = field(default_factory=lambda: os.environ.get("DISK_CACHE_ENABLED", "true").lower() == "true")
-    # "demo" uses clearly labelled static data. "live" never substitutes sample
-    # opportunities when a configured provider is unavailable.
     app_mode: str = field(default_factory=lambda: os.environ.get("APP_MODE", "demo").strip().lower())
     evaluation_db_path: str = field(default_factory=lambda: os.environ.get(
         "EVALUATION_DB_PATH", "data/evaluation/forecast_ledger.sqlite3"

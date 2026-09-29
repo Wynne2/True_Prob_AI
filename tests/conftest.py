@@ -15,5 +15,7 @@ def deterministic_runtime(monkeypatch):
     # developer credential from the ignored local .env during reload_config().
     monkeypatch.setenv("BALLDONTLIE_API_KEY", "")
     from config import reload_config
+    from data.loaders import reset_registry
 
     reload_config()
+    reset_registry()

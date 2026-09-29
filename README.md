@@ -31,6 +31,11 @@ availability policy before it ranks an offer. Unsupported markets, uncertain
 availability, stale quotes, and unresolved player IDs are excluded and
 recorded in the prediction ledger.
 
+The runtime path is intentionally small: Streamlit/CLI → slate scanner →
+mode-aware loader and single BALLDONTLIE client → stat models → SQLite ledger.
+Provider, model, and ledger errors stop a scan explicitly instead of being
+presented as a valid empty slate. Demo and replay remain offline.
+
 ## Setup
 
 ```powershell
@@ -72,8 +77,9 @@ scan path stays fast and understandable.
 .\.venv\Scripts\python.exe main.py --prop-types points rebounds assists --min-edge 0.05
 ```
 
-Use `--debug-api` only for local diagnostics. Captured URLs redact recognized
-credential query parameters; BALLDONTLIE authentication uses an HTTP header.
+Use the read-only **System → Provider diagnostics** workspace for an uncached
+schedule and player-prop contract check. BALLDONTLIE authentication uses an
+HTTP header; diagnostics never show the credential.
 
 ## Forecast ledger and settlement
 

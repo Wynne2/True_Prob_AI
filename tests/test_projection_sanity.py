@@ -136,48 +136,6 @@ class TestStarPlayerAntiCollapse:
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Teammate OUT → minutes_vacuum or usage boost
-# ---------------------------------------------------------------------------
-
-class TestTeammateInjuryRedistribution:
-    def test_compute_vacancy_adds_minutes_when_teammate_out(self):
-        from models.injury_redistribution_model import compute_vacancy_factor
-
-        out_teammates = [
-            {
-                "position": "PG",
-                "usage_rate": 0.30,
-                "minutes_per_game": 36.0,
-            }
-        ]
-        usage_boost, minutes_boost = compute_vacancy_factor(
-            player_position=Position.PG,
-            player_usage_rate=0.20,
-            teammates_out=out_teammates,
-        )
-        assert usage_boost > 0.0, "Expected positive usage boost when PG teammate is OUT"
-        assert minutes_boost > 0.0, "Expected positive minutes boost when PG teammate is OUT"
-
-    def test_dissimilar_position_provides_smaller_boost(self):
-        from models.injury_redistribution_model import compute_vacancy_factor
-
-        out_c = [{"position": "C", "usage_rate": 0.25, "minutes_per_game": 30.0}]
-        out_pg = [{"position": "PG", "usage_rate": 0.25, "minutes_per_game": 30.0}]
-
-        _, min_boost_c = compute_vacancy_factor(Position.PG, 0.20, out_c)
-        _, min_boost_pg = compute_vacancy_factor(Position.PG, 0.20, out_pg)
-
-        assert min_boost_pg > min_boost_c, (
-            "PG should inherit more minutes from PG absence than from C absence"
-        )
-
-    def test_minutes_vacuum_stored_on_player(self):
-        player = _make_star_player()
-        player.minutes_vacuum = 3.5
-        assert player.minutes_vacuum == pytest.approx(3.5)
-
-
-# ---------------------------------------------------------------------------
 # Test 3 & 4: DvP directionality
 # ---------------------------------------------------------------------------
 

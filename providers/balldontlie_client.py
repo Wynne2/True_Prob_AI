@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import random
 import time
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
+from threading import Lock
+from typing import Any, ClassVar, Optional
 
 import requests
 
@@ -40,15 +42,19 @@ class BallDontLieClient:
     """One TLS-verified session, bounded retries, cursors, and provider cache."""
 
     _TRANSIENT_STATUS = {408, 429, 500, 502, 503, 504}
+    _budget_lock: ClassVar[Lock] = Lock()
+    _request_windows: ClassVar[dict[str, tuple[float, int]]] = {}
 
     def __init__(self, api_key: str, config: BallDontLieConfig) -> None:
         self._config = config
         self._base_url = config.base_url.rstrip("/")
         self._session = requests.Session()
         self._session.headers.update({"Authorization": api_key, "Accept": "application/json"})
-        self._cache = get_cache("balldontlie", default_ttl=config.stable_cache_seconds)
-        self._window_started = time.monotonic()
-        self._request_count = 0
+        self._budget_key = hashlib.sha256(api_key.encode()).hexdigest()
+        cache_scope = hashlib.sha256(f"{self._base_url}\0{api_key}".encode()).hexdigest()[:16]
+        self._cache = get_cache(
+            f"balldontlie_{cache_scope}", default_ttl=config.stable_cache_seconds,
+        )
 
     @staticmethod
     def _canonical_params(params: dict[str, Any]) -> tuple[tuple[str, str], ...]:
@@ -59,16 +65,17 @@ class BallDontLieClient:
         return tuple(pairs)
 
     def _budget_wait(self) -> None:
-        now = time.monotonic()
-        if now - self._window_started >= 60:
-            self._window_started = now
-            self._request_count = 0
-        if self._request_count >= self._config.request_budget_per_minute:
-            raise BallDontLieRequestError(
-                "request_budget_exhausted",
-                "Configured BALLDONTLIE request budget exhausted; retry after the next minute window.",
-            )
-        self._request_count += 1
+        with self._budget_lock:
+            now = time.monotonic()
+            started, count = self._request_windows.get(self._budget_key, (now, 0))
+            if now - started >= 60:
+                started, count = now, 0
+            if count >= self._config.request_budget_per_minute:
+                raise BallDontLieRequestError(
+                    "request_budget_exhausted",
+                    "Configured BALLDONTLIE request budget exhausted; retry after the next minute window.",
+                )
+            self._request_windows[self._budget_key] = (started, count + 1)
 
     def get(
         self,

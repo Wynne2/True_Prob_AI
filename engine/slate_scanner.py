@@ -27,7 +27,6 @@ class SlateScanner:
         self.last_exclusions: list[dict[str, str]] = []
         self.last_updates: list = []
         self._last_odds: list[OddsLine] = []
-        self._last_feature_store: dict = {}
 
     def scan(
         self,
@@ -54,6 +53,8 @@ class SlateScanner:
         self.last_raw_slate_game_count = 0
         self.last_pregame_slate_game_count = 0
         self.last_games = []
+        self.last_exclusions = []
+        self.last_updates = []
 
         # ----------------------------------------------------------
         # Step 1: pull one-provider schedule and player-prop quote observations.
@@ -99,29 +100,19 @@ class SlateScanner:
         logger.info("SlateScanner: %d pregame games, %d odds lines loaded", len(games), len(all_odds))
 
         # ----------------------------------------------------------
-        # Step 2: the provider client owns bounded cache and retry behavior.
-        # ----------------------------------------------------------
-        self._warm_services(game_date)
-
-        # ----------------------------------------------------------
-        # Step 3: build only quoted current-roster participants from completed
+        # Step 2: build quoted current-roster participants from completed
         # historical statistics. Target-game box scores are never consulted.
         # ----------------------------------------------------------
-        players_by_game, game_map = self._load_players(games, game_date, all_odds)
+        players_by_game = self._load_players(games, all_odds)
 
         # ----------------------------------------------------------
-        # Step 4: evaluate the initial supported P/R/A scope and persist inputs.
+        # Step 3: evaluate the initial supported P/R/A scope and persist inputs.
         # ----------------------------------------------------------
         target_prop_types = prop_types or list(PropType)
-        all_props = self._evaluate(
-            games=games,
-            players_by_game=players_by_game,
-            game_map=game_map,
-            all_odds=all_odds,
-            prop_types=target_prop_types,
-            game_date=game_date,
+        all_props = self._evaluate_provider_pregame(
+            games, players_by_game, all_odds, target_prop_types,
         )
-        self._record_forecasts(all_props, self._last_feature_store)
+        self._record_forecasts(all_props, players_by_game)
 
         logger.info(
             "SlateScanner: complete — %d prop evaluations across %d games",
@@ -132,19 +123,23 @@ class SlateScanner:
     def _record_forecasts(
         self,
         props: list[PropProbability],
-        feature_store: Optional[dict] = None,
+        players_by_game: dict[str, list[Player]],
     ) -> None:
-        """Append a reproducible record of every evaluated offer."""
-        if not props:
-            return
-        try:
-            from services.evaluation_store import EvaluationStore
+        """Persist actual model inputs and exclusions, or fail the scan visibly."""
+        from services.evaluation_store import EvaluationStore
 
-            store = EvaluationStore()
-            snapshot_id = store.record_forecasts(props, feature_store or {})
-            store.record_exclusions(self.last_exclusions, snapshot_id=snapshot_id)
-        except Exception as exc:
-            logger.warning("SlateScanner: forecast ledger write failed: %s", exc)
+        players = {
+            (game_id, player.player_id): player
+            for game_id, game_players in players_by_game.items()
+            for player in game_players
+        }
+        feature_store = {
+            (prop.player_id, prop.prop_type.value): players[(prop.game_id, prop.player_id)]
+            for prop in props
+        }
+        store = EvaluationStore()
+        snapshot_id = store.record_forecasts(props, feature_store)
+        store.record_exclusions(self.last_exclusions, snapshot_id=snapshot_id)
 
     # ------------------------------------------------------------------
     # Internal pipeline steps
@@ -196,40 +191,30 @@ class SlateScanner:
             )
         return canonical
 
-    def _warm_services(self, game_date: date) -> None:
-        """
-        Provider cache boundary marker for scan logging.
-        """
-        # BALLDONTLIE provider calls are cached at the client boundary. Keeping
-        # context assembly inside the provider prevents legacy direct-provider
-        # imports and ensures every live request has one provenance path.
-        logger.info("SlateScanner: provider-managed context cache is ready")
-
     def _load_players(
-        self, games: list[Game], game_date: date, all_odds: list[OddsLine]
-    ) -> tuple[dict[str, list[Player]], dict[str, Game]]:
+        self, games: list[Game], all_odds: list[OddsLine]
+    ) -> dict[str, list[Player]]:
         """
         Build player lists for each game.
 
         Source: BALLDONTLIE active roster and completed historical statistics.
 
-        Returns:
-            players_by_game: game_id -> list of Player objects
-            game_map: game_id -> Game object
+        Returns game_id -> list of Player objects.
         """
         players_by_game: dict[str, list[Player]] = {}
-        game_map: dict[str, Game] = {}
+        from data.loaders import load_players_for_game
 
         for game in games:
-            game_map[game.game_id] = game
-            from data.loaders import load_players_for_game
             candidate_ids = {
                 quote.player_id for quote in all_odds
                 if quote.game_id == game.game_id
             }
+            if not candidate_ids:
+                players_by_game[game.game_id] = []
+                continue
             players = load_players_for_game(
                 game.game_id,
-                candidate_ids or None,
+                candidate_ids,
             )
 
             players_by_game[game.game_id] = players
@@ -238,19 +223,7 @@ class SlateScanner:
                 game.game_id, game.away_team_abbr, game.home_team_abbr, len(players),
             )
 
-        return players_by_game, game_map
-
-    def _evaluate(
-        self,
-        games: list[Game],
-        players_by_game: dict[str, list[Player]],
-        game_map: dict[str, Game],
-        all_odds: list[OddsLine],
-        prop_types: list[PropType],
-        game_date: date,
-    ) -> list[PropProbability]:
-        """Evaluate only the supported provider-backed pregame market scope."""
-        return self._evaluate_provider_pregame(games, players_by_game, all_odds, prop_types)
+        return players_by_game
 
     def _evaluate_provider_pregame(
         self,
@@ -283,8 +256,6 @@ class SlateScanner:
                         "reason": f"availability_{player.injury_status.value}",
                     })
                     continue
-                for prop_type in requested:
-                    self._last_feature_store[(player.player_id, prop_type.value)] = player
                 results.extend(
                     self._evaluator.evaluate_all_props(
                         player,
@@ -295,7 +266,6 @@ class SlateScanner:
                         requested,
                     )
                 )
-        self._last_feature_store = {}
         return results
 
     # ------------------------------------------------------------------

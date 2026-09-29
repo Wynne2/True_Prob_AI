@@ -99,3 +99,17 @@ def test_identical_quote_decision_is_recorded_once(tmp_path):
 
     with store._connection() as conn:
         assert conn.execute("SELECT COUNT(*) FROM forecasts").fetchone()[0] == 1
+
+
+def test_changed_model_inputs_create_new_immutable_forecast(tmp_path):
+    store = EvaluationStore(tmp_path / "ledger.sqlite3")
+    forecast = _forecast(player_id="player-1", side=PropSide.OVER, probability=0.60)
+    store.record_forecasts([forecast], {("player-1", "points"): {"historical_games": 10}})
+    store.record_forecasts([forecast], {("player-1", "points"): {"historical_games": 12}})
+
+    with store._connection() as conn:
+        rows = conn.execute("SELECT feature_snapshot_json FROM forecasts").fetchall()
+    assert len(rows) == 2
+    assert {row[0] for row in rows} == {
+        '{"historical_games": 10}', '{"historical_games": 12}',
+    }

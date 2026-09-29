@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timezone
 
+import pytest
+
+from config import reload_config
 from domain.entities import Game, OddsLine, Player
 from domain.enums import BookName, DataSource, InjuryStatus, PlayerRole, Position, PropType
 from engine.slate_scanner import SlateScanner
+from services.evaluation_store import EvaluationStore
 
 
 def _player(player_id: str, status: InjuryStatus = InjuryStatus.UNREPORTED) -> Player:
@@ -84,3 +89,69 @@ def test_unknown_availability_is_excluded_before_modeling():
         [game], {"game-1": [player]}, [_quote("player-1")], [PropType.POINTS]
     ) == []
     assert scanner.last_exclusions[0]["reason"] == "availability_unknown"
+
+
+def test_scan_persists_real_player_inputs_and_exclusion_reasons(tmp_path, monkeypatch):
+    ledger_path = tmp_path / "forecast.sqlite3"
+    monkeypatch.setenv("EVALUATION_DB_PATH", str(ledger_path))
+    reload_config()
+    game = Game("game-1", "home", "BOS", "away", "MIA")
+    scanner = SlateScanner()
+    monkeypatch.setattr(scanner, "_pull_slate_and_odds", lambda *_: ([game], [_quote("player-1")]))
+    monkeypatch.setattr(
+        scanner,
+        "_load_players",
+        lambda *_: {"game-1": [_player("player-1"), _player("player-2", InjuryStatus.UNKNOWN)]},
+    )
+
+    forecasts = scanner.scan(game.game_date, [PropType.POINTS])
+
+    assert forecasts
+    with EvaluationStore(ledger_path)._connection() as conn:
+        record = conn.execute("SELECT feature_snapshot_json FROM forecasts LIMIT 1").fetchone()
+        excluded = conn.execute("SELECT reason FROM exclusions LIMIT 1").fetchone()
+    assert json.loads(record[0])["player_id"] == "player-1"
+    assert excluded[0] == "availability_unknown"
+
+
+def test_ledger_failure_is_not_silently_reported_as_success(monkeypatch):
+    scanner = SlateScanner()
+    game = Game("game-1", "home", "BOS", "away", "MIA")
+    monkeypatch.setattr(scanner, "_pull_slate_and_odds", lambda *_: ([game], [_quote("player-1")]))
+    monkeypatch.setattr(scanner, "_load_players", lambda *_: {"game-1": [_player("player-1")]})
+
+    def fail(*_args):
+        raise OSError("ledger unavailable")
+
+    monkeypatch.setattr(scanner, "_record_forecasts", fail)
+    with pytest.raises(OSError, match="ledger unavailable"):
+        scanner.scan(game.game_date, [PropType.POINTS])
+
+
+def test_games_without_quotes_do_not_fetch_full_rosters(monkeypatch):
+    scanner = SlateScanner()
+    game = Game("game-1", "home", "BOS", "away", "MIA")
+    monkeypatch.setattr(
+        "data.loaders.load_players_for_game",
+        lambda *_args: pytest.fail("No player lookup should be needed without quotes"),
+    )
+
+    assert scanner._load_players([game], []) == {"game-1": []}
+
+
+def test_model_failure_is_not_returned_as_an_empty_slate(monkeypatch):
+    from engine.prop_evaluator import _MODELS
+
+    class _BrokenModel:
+        def project(self, *_args):
+            raise ValueError("invalid inputs")
+
+    monkeypatch.setitem(_MODELS, PropType.POINTS, _BrokenModel())
+    scanner = SlateScanner()
+    game = Game("game-1", "home", "BOS", "away", "MIA")
+
+    with pytest.raises(RuntimeError, match="Projection failed"):
+        scanner._evaluate_provider_pregame(
+            [game], {"game-1": [_player("player-1")]}, [_quote("player-1")],
+            [PropType.POINTS],
+        )

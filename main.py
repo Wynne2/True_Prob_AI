@@ -13,7 +13,6 @@ All arguments have sensible defaults so you can run with no flags at all.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from datetime import date
 
@@ -45,65 +44,10 @@ from utils.formatting import (
     format_edge,
     format_prob,
 )
-from utils.api_debug import redact_url
+from providers.balldontlie_client import BallDontLieRequestError
 from utils.logging_utils import setup_logging
 
 console = Console(legacy_windows=False)
-
-
-# ---------------------------------------------------------------------------
-# API debug interceptor
-# ---------------------------------------------------------------------------
-
-def install_api_debug_logger() -> None:
-    """
-    Monkey-patch requests.get so every outbound HTTP call prints:
-      - the redacted URL (API keys hidden)
-      - HTTP status code
-      - a readable JSON preview of the response body
-    """
-    import requests as _requests
-
-    _original_get = _requests.get
-
-    def _debug_get(url, **kwargs):
-        response = _original_get(url, **kwargs)
-        safe_url = redact_url(url)
-
-        status_color = "green" if response.ok else "red"
-        console.rule(f"[bold yellow]API Response[/bold yellow]  [{status_color}]{response.status_code}[/{status_color}]  [dim]{safe_url}[/dim]")
-
-        try:
-            data = response.json()
-            if isinstance(data, list):
-                console.print(f"[dim]  ↳ list of {len(data)} items[/dim]")
-                if data:
-                    preview = data[:3]  # first 3 items
-                    console.print_json(json.dumps(preview, default=str))
-                    if len(data) > 3:
-                        console.print(f"[dim]  ... {len(data) - 3} more items not shown[/dim]")
-            elif isinstance(data, dict):
-                # For large dicts, show all top-level keys and truncate long values
-                preview: dict = {}
-                for k, v in data.items():
-                    if isinstance(v, list) and len(v) > 3:
-                        preview[k] = v[:3] + [f"... ({len(v) - 3} more)"]
-                    elif isinstance(v, str) and len(v) > 200:
-                        preview[k] = v[:200] + "..."
-                    else:
-                        preview[k] = v
-                console.print_json(json.dumps(preview, default=str))
-            else:
-                console.print(f"[dim]  ↳ {repr(data)[:300]}[/dim]")
-        except Exception:
-            body_preview = response.text[:500]
-            console.print(f"[red]  ↳ Non-JSON response:[/red] {body_preview}")
-
-        console.print()
-        return response
-
-    _requests.get = _debug_get
-    console.print("[bold yellow]⚡ API debug mode ON[/bold yellow] — raw responses will be printed for every HTTP call.\n")
 
 
 # ---------------------------------------------------------------------------
@@ -150,10 +94,6 @@ Examples:
                         help="Minimum confidence tier per leg")
     parser.add_argument("--verbose", action="store_true", help="Verbose logging")
     parser.add_argument(
-        "--debug-api", action="store_true",
-        help="Print raw JSON response from every API call (for verifying data sources)",
-    )
-    parser.add_argument(
         "--playoff",
         action="store_true",
         help="Treat slate as NBA playoffs (slightly higher minute projections for rotation)",
@@ -175,19 +115,19 @@ def print_header(game_date: date) -> None:
 
 def print_provider_status() -> None:
     from config import get_settings
-    creds = get_credentials()
     settings = get_settings()
-    available = creds.available_providers
-    missing = creds.missing_providers
 
     table = Table(title="Provider Status", box=box.SIMPLE, show_header=True)
     table.add_column("Provider", style="cyan")
     table.add_column("Status")
-
-    for p in available:
-        table.add_row(p, "[green]OK active[/green]")
-    for p in missing:
-        table.add_row(p, "[dim]-- no key (no data)[/dim]")
+    if settings.app_mode == "demo":
+        table.add_row("sample", "[yellow]offline examples[/yellow]")
+    elif settings.app_mode == "replay":
+        table.add_row("none", "[cyan]offline ledger only[/cyan]")
+    elif get_credentials().balldontlie_key:
+        table.add_row("balldontlie", "[green]configured[/green]")
+    else:
+        table.add_row("balldontlie", "[red]missing key[/red]")
 
     console.print(table)
     if settings.app_mode == "demo":
@@ -317,9 +257,6 @@ def main() -> None:
     args = parse_args()
     setup_logging(level="DEBUG" if args.verbose else "WARNING")
 
-    if args.debug_api:
-        install_api_debug_logger()
-
     if args.date:
         try:
             game_date = parse_date(args.date)
@@ -354,7 +291,11 @@ def main() -> None:
     # Scan slate
     console.print(f"\n[cyan]Scanning NBA slate for {game_date}...[/cyan]")
     scanner = SlateScanner()
-    all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    try:
+        all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    except BallDontLieRequestError as exc:
+        console.print(f"[red]BALLDONTLIE request failed ({exc.code}): {exc}[/red]")
+        sys.exit(1)
     n = len(all_props)
     console.print(
         f"[green]Evaluated {n} prop line{'s' if n != 1 else ''}.[/green]"

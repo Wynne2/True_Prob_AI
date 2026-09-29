@@ -7,7 +7,7 @@ For each (player, prop_type, line, side) combination, the evaluator:
    source Player or replacing season MPG with game-specific minutes.
 3. Runs the appropriate stat model to get a projection.
 4. Converts the projection to a true probability using the correct distribution.
-5. Retrieves the best available sportsbook odds (SOURCE: The Odds API).
+5. Selects the best provider-normalized sportsbook quote.
 6. Computes raw (vig-included) implied probability for the priced side.
 7. Calculates edge (true probability minus that raw implied).
 8. Attaches confidence tier and explanation.
@@ -84,25 +84,6 @@ from utils.distributions import (
 from utils.math_helpers import clamp
 
 logger = logging.getLogger(__name__)
-
-
-# #region agent log
-def _agent_debug_heavy_fav(payload: dict) -> None:
-    """Append one NDJSON line for debug session 9df441 (heavy-favorite audit)."""
-    import json
-    import time
-    from pathlib import Path
-
-    row = {"sessionId": "9df441", "timestamp": int(time.time() * 1000), **payload}
-    path = Path(__file__).resolve().parent.parent / "debug-9df441.log"
-    try:
-        with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(row, default=str) + "\n")
-    except Exception:
-        pass
-
-
-# #endregion
 
 
 def _sync_season_stat_from_feature_vector(player: Player, fv: FeatureVector) -> None:
@@ -370,17 +351,15 @@ class PropEvaluator:
         try:
             projection: StatProjection = model.project(player, game, defense, is_home)  # type: ignore[attr-defined]
         except Exception as exc:
-            logger.warning("Projection failed for %s %s: %s", player.name, prop_type, exc)
-            return []
+            raise RuntimeError(
+                f"Projection failed for {player.name} {prop_type.value}"
+            ) from exc
 
         if projection.projected_value <= 0 and prop_type not in (PropType.BLOCKS, PropType.STEALS):
             return []
 
-        # Find all lines for this player + prop from the odds feed.
-        # SOURCE: The Odds API (via all_odds list)
-        # Primary match: exact player_id (works when both sources share the same ID format).
-        # Fallback: normalized name match (needed when Odds API uses name-slugs like
-        # "nikola_jokic" while SportsDataIO uses integer IDs).
+        # Match the provider's player ID first; retain the legacy name match
+        # only for replay records with different provider identifiers.
         player_lines = [
             ol for ol in all_odds
             if ol.game_id == game.game_id
@@ -401,13 +380,12 @@ class PropEvaluator:
 
         # Shop for best line per (line_value, side)
         from config import get_settings
-        from config import get_settings
         settings = get_settings()
         min_books = 1 if settings.app_mode == "demo" else 2
         best_lines = shop_lines(
             player_lines,
             min_books=min_books,
-            max_quote_age_seconds=get_settings().max_quote_age_seconds,
+            max_quote_age_seconds=settings.max_quote_age_seconds,
         )
         results: list[PropProbability] = []
 
@@ -629,17 +607,6 @@ class PropEvaluator:
                 )
                 if points_sup and points_sup.flags:
                     hf["points_suppression_flags"] = list(points_sup.flags)
-                _agent_debug_heavy_fav(
-                    {
-                        "hypothesisId": "H_heavy_fav_pipeline",
-                        "location": "prop_evaluator.evaluate",
-                        "message": "heavy_favorite_leg_trace",
-                        "data": {
-                            "player": player.name,
-                            **hf,
-                        },
-                    }
-                )
 
             fair_odds_american = true_prob_to_american_odds(true_prob)
             cal_warnings = list(cal_warnings) + gate_warnings

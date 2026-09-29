@@ -8,7 +8,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Optional
 
 from config import get_bdl_config
-from domain.entities import Game, OddsLine, Player, TeamDefense
+from domain.entities import Game, OddsLine, Player
 from domain.enums import BookName, DataSource, InjuryStatus, PlayerRole, Position, PropType
 from providers.balldontlie_client import BallDontLieClient, BallDontLieRequestError
 from providers.base_provider import BaseProvider
@@ -92,22 +92,12 @@ class BallDontLieProvider(BaseProvider):
         self._games: dict[str, Game] = {}
         self._injuries: dict[str, dict[str, Any]] = {}
         self._injury_feed_available = False
-        self.last_error: Optional[BallDontLieRequestError] = None
 
     def is_available(self) -> bool:
         return True
 
-    def _call(self, function, *args, **kwargs):
-        try:
-            self.last_error = None
-            return function(*args, **kwargs)
-        except BallDontLieRequestError as exc:
-            self.last_error = exc
-            raise
-
     def get_games_for_date(self, game_date: date) -> list[Game]:
-        rows, _ = self._call(
-            self._client.get_all,
+        rows, _ = self._client.get_all(
             "/nba/v1/games",
             params={"dates[]": [game_date.isoformat()], "per_page": 100},
             cache_ttl=60,
@@ -135,8 +125,7 @@ class BallDontLieProvider(BaseProvider):
         return games
 
     def _active_players(self) -> dict[str, dict[str, Any]]:
-        rows, _ = self._call(
-            self._client.get_all,
+        rows, _ = self._client.get_all(
             "/nba/v1/players/active",
             params={"per_page": 100},
             cache_ttl=get_bdl_config().stable_cache_seconds,
@@ -144,8 +133,7 @@ class BallDontLieProvider(BaseProvider):
         return {str(row["id"]): row for row in rows if row.get("id") is not None}
 
     def _load_injuries(self) -> None:
-        rows, fetched_at = self._call(
-            self._client.get_all,
+        rows, fetched_at = self._client.get_all(
             "/nba/v1/player_injuries",
             params={"per_page": 100},
             cache_ttl=60,
@@ -172,12 +160,7 @@ class BallDontLieProvider(BaseProvider):
                 "Game must be loaded from the BDL schedule before participants are resolved.",
             )
         active = self._active_players()
-        try:
-            self._load_injuries()
-        except BallDontLieRequestError as exc:
-            self.last_error = exc
-            self._injuries = {}
-            self._injury_feed_available = False
+        self._load_injuries()
         team_ids = {game.home_team_id, game.away_team_id}
         selected = [
             row for player_id, row in active.items()
@@ -264,7 +247,7 @@ class BallDontLieProvider(BaseProvider):
         params: dict[str, Any] = {"player_ids[]": [player_id], "per_page": min(100, n * 3)}
         if before:
             params["end_date"] = (before.date() - timedelta(days=1)).isoformat()
-        rows, _ = self._call(self._client.get_all, "/nba/v1/stats", params=params, cache_ttl=300)
+        rows, _ = self._client.get_all("/nba/v1/stats", params=params, cache_ttl=300)
         return sorted(
             rows,
             key=lambda row: _stat_datetime(row) or datetime.min.replace(tzinfo=timezone.utc),
@@ -290,8 +273,7 @@ class BallDontLieProvider(BaseProvider):
             self.get_games_for_date(game_date)
         quotes: list[OddsLine] = []
         for game in self._games.values():
-            rows, fetched_at = self._call(
-                self._client.get_all,
+            rows, fetched_at = self._client.get_all(
                 "/nba/v2/odds/player_props",
                 params={"game_id": game.game_id},
                 cache_ttl=get_bdl_config().odds_refresh_seconds,
@@ -363,14 +345,9 @@ class BallDontLieProvider(BaseProvider):
             ))
         return result
 
-    def get_team_defense(self, team_id: str) -> Optional[TeamDefense]:
-        """No validated positional defense feed: callers must treat this as omitted."""
-        return None
-
     def get_final_player_totals(self, game_id: str) -> dict[str, dict[str, float]]:
         """Normalize final P/R/A box-score records for append-only settlement."""
-        rows, _ = self._call(
-            self._client.get_all,
+        rows, _ = self._client.get_all(
             "/nba/v1/box_scores",
             params={"game_ids[]": [game_id], "per_page": 100},
             cache_ttl=300,

@@ -101,7 +101,7 @@ def test_unsupported_and_incomplete_markets_are_rejected():
     ) == []
 
 
-def test_injury_feed_failure_preserves_unknown_availability(monkeypatch):
+def test_injury_feed_failure_blocks_participant_resolution(monkeypatch):
     provider = _provider()
     provider._active_players = lambda: {
         "22": {
@@ -121,10 +121,8 @@ def test_injury_feed_failure_preserves_unknown_availability(monkeypatch):
         raise BallDontLieRequestError("authentication_or_entitlement", "no injury access")
     provider._load_injuries = fail
 
-    player = provider.get_players_for_game("100", {"22"})[0]
-    assert player.injury_status == InjuryStatus.UNKNOWN
-    assert player.is_starter is None
-    assert player.availability_quality == "injury_feed_unavailable"
+    with pytest.raises(BallDontLieRequestError, match="no injury access"):
+        provider.get_players_for_game("100", {"22"})
 
 
 def test_live_mode_with_no_key_never_falls_back_to_sample(monkeypatch):
@@ -135,5 +133,25 @@ def test_live_mode_with_no_key_never_falls_back_to_sample(monkeypatch):
 
     registry = ProviderRegistry.build()
     assert registry.active_providers == []
-    assert registry.get_games_for_date(date(2026, 4, 10)) == []
+    with pytest.raises(BallDontLieRequestError) as failure:
+        registry.get_games_for_date(date(2026, 4, 10))
+    assert failure.value.code == "missing_credential"
     assert registry.status()["reason"] == "missing_credential"
+
+
+def test_live_provider_failure_is_not_reported_as_an_empty_slate(monkeypatch):
+    monkeypatch.setenv("APP_MODE", "live")
+    monkeypatch.setenv("BALLDONTLIE_API_KEY", "fixture-key")
+    from config import reload_config
+    reload_config()
+    registry = ProviderRegistry.build()
+
+    def fail(_date):
+        raise BallDontLieRequestError("rate_limited", "provider throttled")
+
+    monkeypatch.setattr(registry._provider, "get_games_for_date", fail)
+    with pytest.raises(BallDontLieRequestError, match="provider throttled"):
+        registry.get_games_for_date(date(2026, 4, 10))
+    assert registry.status() == {
+        "mode": "live", "state": "error", "reason": "rate_limited",
+    }

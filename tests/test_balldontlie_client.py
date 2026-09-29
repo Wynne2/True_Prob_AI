@@ -64,3 +64,33 @@ def test_client_preserves_retrieval_timestamp(monkeypatch):
     monkeypatch.setattr(client._session, "get", lambda *_args, **_kwargs: _Response(200, {"data": []}))
     payload = client.get("/nba/v1/games")
     assert payload.fetched_at.tzinfo == timezone.utc
+
+
+def test_request_budget_is_shared_across_client_instances(monkeypatch):
+    config = BallDontLieConfig(
+        base_url="https://api.balldontlie.io", max_retries=0, request_budget_per_minute=1,
+    )
+    first = BallDontLieClient("shared-budget-fixture", config)
+    second = BallDontLieClient("shared-budget-fixture", config)
+    monkeypatch.setattr(first._session, "get", lambda *_args, **_kwargs: _Response(200, {"data": []}))
+    monkeypatch.setattr(second._session, "get", lambda *_args, **_kwargs: _Response(200, {"data": []}))
+
+    first.get("/nba/v1/games")
+    with pytest.raises(BallDontLieRequestError) as failure:
+        second.get("/nba/v1/games")
+    assert failure.value.code == "request_budget_exhausted"
+
+
+def test_cached_payloads_are_isolated_by_provider_account_and_host():
+    config = BallDontLieConfig(base_url="https://api.balldontlie.io")
+    first = BallDontLieClient("account-one", config)
+    same = BallDontLieClient("account-one", config)
+    other = BallDontLieClient("account-two", config)
+    host = BallDontLieClient(
+        "account-one",
+        BallDontLieConfig(base_url="https://other.example.test"),
+    )
+
+    assert first._cache is same._cache
+    assert first._cache is not other._cache
+    assert first._cache is not host._cache

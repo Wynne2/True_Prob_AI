@@ -1,9 +1,4 @@
-"""
-Sample data provider  –  always-available fallback.
-
-Returns realistic sample data so the platform works immediately without
-any API keys.  This is the last provider in the registry chain.
-"""
+"""Deterministic, explicitly selected offline sample provider."""
 
 from __future__ import annotations
 

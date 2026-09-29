@@ -1,19 +1,14 @@
-"""Explicit provider selection for demo, replay, and BALLDONTLIE live modes."""
+"""One mode-aware provider boundary; live failures are never empty successes."""
 
 from __future__ import annotations
 
-import logging
 from datetime import date
 from typing import Optional
 
 from config import get_credentials, get_settings
-from domain.entities import Game, OddsLine, Player, TeamDefense
-from domain.enums import PropType
+from domain.entities import Game, OddsLine, Player
 from providers.balldontlie_client import BallDontLieRequestError
 from providers.base_provider import BaseProvider
-
-logger = logging.getLogger(__name__)
-
 
 class ProviderRegistry:
     """Routes every live data request to exactly one external provider."""
@@ -47,44 +42,32 @@ class ProviderRegistry:
                     "missing_credential",
                     "BALLDONTLIE_API_KEY is required in APP_MODE=live.",
                 )
-            return [] if method.startswith("get_") else None
+                raise self.last_failure
+            return []
         try:
             self.last_failure = None
             return getattr(self._provider, method)(*args, **kwargs)
         except BallDontLieRequestError as exc:
             self.last_failure = exc
-            logger.warning("Provider request failed [%s]: %s", exc.code, exc)
-            return [] if method.startswith("get_") else None
-        except NotImplementedError:
-            return [] if method.startswith("get_") else None
+            raise
 
     def get_games_for_date(self, game_date: date) -> list[Game]:
-        return self._call("get_games_for_date", game_date) or []
+        return self._call("get_games_for_date", game_date)
 
     def get_players_for_game(
         self,
         game_id: str,
         candidate_player_ids: Optional[set[str]] = None,
     ) -> list[Player]:
-        return self._call("get_players_for_game", game_id, candidate_player_ids) or []
-
-    def get_player_context(self, player_id: str) -> Optional[Player]:
-        return self._call("get_player_context", player_id)
-
-    def get_player_recent_form(self, player_id: str, n: int = 10) -> list[dict]:
-        return self._call("get_player_recent_form", player_id, n) or []
-
-    def get_team_defense(self, team_id: str) -> Optional[TeamDefense]:
-        return self._call("get_team_defense", team_id)
+        return self._call("get_players_for_game", game_id, candidate_player_ids)
 
     def get_player_props(self, game_date: date) -> list[OddsLine]:
-        return self._call("get_player_props", game_date) or []
-
-    def get_injuries(self, game_date: Optional[date] = None) -> list[dict]:
-        return self._call("get_injuries", game_date) or []
+        return self._call("get_player_props", game_date)
 
     def get_final_player_totals(self, game_id: str) -> dict[str, dict[str, float]]:
-        return self._call("get_final_player_totals", game_id) or {}
+        if self.mode != "live":
+            return {}
+        return self._call("get_final_player_totals", game_id)
 
     @property
     def active_providers(self) -> list[str]:

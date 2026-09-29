@@ -147,6 +147,8 @@ class EvaluationStore:
             if quote is None:
                 continue
             feature = feature_store.get((forecast.player_id, forecast.prop_type.value))
+            feature_json = json.dumps(feature, default=_json_default, sort_keys=True)
+            quote_json = json.dumps(quote, default=_json_default, sort_keys=True)
             decision_material = {
                 "game_id": forecast.game_id,
                 "player_id": forecast.player_id,
@@ -155,8 +157,10 @@ class EvaluationStore:
                 "side": forecast.side.value,
                 "book": forecast.best_book_key or forecast.best_book.value,
                 "price": forecast.sportsbook_odds,
-                "quote_id": quote.provider_quote_id,
-                "source_updated_at": quote.source_updated_at,
+                "quote": quote_json,
+                "feature": feature_json,
+                "true_probability": forecast.true_probability,
+                "implied_probability": forecast.implied_probability,
                 "model_version": model_version,
             }
             decision_key = hashlib.sha256(
@@ -178,8 +182,8 @@ class EvaluationStore:
                 forecast.implied_probability,
                 model_version,
                 forecast.distribution_type.value,
-                json.dumps(feature, default=_json_default, sort_keys=True),
-                json.dumps(quote, default=_json_default, sort_keys=True),
+                feature_json,
+                quote_json,
                 decision_key,
             ))
 

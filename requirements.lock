@@ -1,5 +1,4 @@
 altair==6.2.2
-annotated-types==0.8.0
 anyio==4.15.1
 attrs==26.1.0
 certifi==2026.7.22
@@ -26,8 +25,6 @@ pillow==12.3.0
 pluggy==1.6.0
 protobuf==7.36.1
 pyarrow==25.0.1
-pydantic==2.13.5
-pydantic_core==2.46.5
 pydeck==0.9.3
 Pygments==2.21.0
 pytest==9.1.1
@@ -44,7 +41,6 @@ six==1.17.0
 starlette==1.6.0
 streamlit==1.63.0
 toml==0.10.2
-typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.4
 urllib3==2.7.0
