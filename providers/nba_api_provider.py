@@ -57,13 +57,12 @@ class NBAApiProvider(BaseProvider):
         self._tracking_index: dict[str, dict] = {}
 
     def is_available(self) -> bool:
-        """nba_api is always available (no API key required)."""
-        try:
-            import nba_api  # noqa: F401
+        """Stats now come from BALLDONTLIE. Available when an API key is configured."""
+        from config import get_credentials
+        if get_credentials().balldontlie_key:
             return True
-        except ImportError:
-            logger.warning("nba_api package not installed; run: pip install nba_api")
-            return False
+        logger.warning("BALLDONTLIE_API_KEY or BDL_API_KEY is not set; advanced stats will be empty")
+        return False
 
     # ------------------------------------------------------------------
     # Required abstract methods (not primary use case for this provider;

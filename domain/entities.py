@@ -88,6 +88,7 @@ class Player:
 
     # Injury redistribution context (set by PlayerContextService)
     minutes_vacuum: float = 0.0    # extra minutes available due to teammate absences
+    usage_vacuum: float = 1.0      # multiplier on season usage when teammates are out
 
     data_source: DataSource = DataSource.SAMPLE
 
@@ -151,6 +152,9 @@ class TeamDefense:
     fpa_c: float = 0.0
 
     data_source: DataSource = DataSource.SAMPLE
+    # True when pace was not found for this team and the league average was substituted.
+    pace_is_fallback: bool = False
+    pace_source: str = ""
 
 
 @dataclass
@@ -318,6 +322,10 @@ class PropProbability:
     # Populated in PropEvaluator when best American odds lie in the favorite audit band
     # (see domain.constants FAVORITE_STRAIGHT_BET_AUDIT_BAND_*).
     favorite_band_audit: Optional[dict] = None
+    # Distribution probability before the market haircut and final gate.
+    raw_model_probability: float = 0.0
+    # Probability after market calibration and the final gate. This is the number used for edge.
+    calibrated_probability: float = 0.0
 
 
 # ---------------------------------------------------------------------------

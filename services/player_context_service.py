@@ -22,19 +22,14 @@ import logging
 from datetime import date
 from typing import Optional
 
-from data.loaders.sportsdataio_loader import (
-    fetch_player_season_stats,
-    fetch_depth_charts,
-    index_by_player_id,
-)
+from data.loaders.nba_api_loader import fetch_split_context_batch, index_by_player_id
 from domain.entities import Player
 from domain.enums import DataSource, InjuryStatus, PlayerRole, Position
 from services import injury_context_service, usage_tracking_service, splits_service
 
 logger = logging.getLogger(__name__)
 
-from domain.constants import NBA_SEASON, SDIO_SEASON
-_CURRENT_SEASON_SDIO = SDIO_SEASON
+from domain.constants import NBA_SEASON
 _CURRENT_SEASON_NBA = NBA_SEASON
 
 # Module-level indexes
@@ -74,13 +69,12 @@ def refresh(game_date: Optional[date] = None, force: bool = False) -> None:
     if not force and _loaded_date == today and _season_stats_index:
         return
 
-    # SOURCE: SportsDataIO (season averages, box-score)
-    season_raw = fetch_player_season_stats(season=_CURRENT_SEASON_SDIO)
+    season_raw = fetch_split_context_batch(season=_CURRENT_SEASON_NBA)
     _season_stats_index = index_by_player_id(season_raw)
-
-    # SOURCE: SportsDataIO (depth chart / position / role)
-    depth_raw = fetch_depth_charts()
-    _depth_index = index_by_player_id(depth_raw)
+    _depth_index = {
+        pid: {"player_id": pid, "position": rec.get("position") or "", "team_id": rec.get("team_id")}
+        for pid, rec in _season_stats_index.items()
+    }
 
     # Warm up sub-services (they have their own caching)
     injury_context_service.refresh(today)
@@ -115,8 +109,9 @@ def get_player(
         return None
 
     # --- Identity ---
-    raw_pos = depth.get("position") or sdio.get("position") or "G"
-    position = _POSITION_MAP.get(raw_pos.upper().strip(), Position.G)
+    raw_pos = str(depth.get("position") or sdio.get("position") or "G").upper().strip()
+    raw_pos = raw_pos.replace("-", "").replace("/", "")
+    position = _POSITION_MAP.get(raw_pos, Position.G)
 
     # --- Injury / role context (SOURCE: SportsDataIO primary) ---
     inj_ctx = injury_context_service.get_injury_context(
@@ -124,12 +119,20 @@ def get_player(
     )
     injury_status = _STATUS_MAP.get(inj_ctx.status, InjuryStatus.ACTIVE)
 
-    role = PlayerRole.STARTER if inj_ctx.is_starter else PlayerRole.BENCH
+    mpg = float(sdio.get("min", 0) or 0)
+    # BALLDONTLIE does not publish projected lineups. A player at 28+ minutes
+    # per game is treated as a starter so the minutes cap is not the bench cap.
+    # That label is inferred, not a confirmed starting assignment.
+    is_starter = bool(inj_ctx.is_starter)
+    if not injury_context_service._lineup_index and mpg >= 28:
+        is_starter = True
+    role = PlayerRole.STARTER if is_starter else PlayerRole.BENCH
+    if not is_starter and 0 < mpg < 12:
+        role = PlayerRole.RESERVE
     if injury_status in (InjuryStatus.OUT, InjuryStatus.SUSPENDED):
         role = PlayerRole.OUT
 
-    # --- Season averages (SOURCE: SportsDataIO primary) ---
-    mpg = float(sdio.get("min", 0) or 0)
+    # Season averages from BALLDONTLIE general/base.
     ppg = float(sdio.get("pts", 0) or 0)
     rpg = float(sdio.get("reb", 0) or 0)
     apg = float(sdio.get("ast", 0) or 0)
@@ -236,8 +239,9 @@ def get_player(
         # Contextual splits (SOURCE: nba_api primary)
         home_ppg=home_ppg,
         away_ppg=away_ppg,
-        is_starter=inj_ctx.is_starter,
+        is_starter=is_starter,
         minutes_vacuum=inj_ctx.minutes_vacuum,
+        usage_vacuum=float(inj_ctx.teammate_usage_vacuum or 1.0),
 
         # Recent form (SOURCE: nba_api splits — single-element window averages;
         # enriched to per-game arrays by player_feature_builder via game logs)
@@ -258,7 +262,7 @@ def get_player(
         last10_steals=last10_stl,
         last10_turnovers=last10_tov,
 
-        data_source=DataSource.SPORTSDATAIO,
+        data_source=DataSource.BALLDONTLIE,
     )
 
     return player
@@ -273,53 +277,22 @@ def get_players_for_game(
     """
     Return Player objects for all players on both rosters for *game_id*.
 
-    Source priority:
-      1. Starting lineups by date  (/projections/json/StartingLineupsByDate)
-         — free-tier available, returns confirmed/projected starters.
-      2. Game projection stats     (/projections/json/PlayerGameProjectionStatsByDate)
-         — requires Legacy Projections tier; includes bench players.
-      3. Depth-chart roster        (scores/json/Players filtered by team ID)
-         — always available; full roster without per-game context.
+    Players are the BALLDONTLIE season-average rows for the two team ids.
     """
-    from data.loaders.sportsdataio_loader import (
-        fetch_starting_lineups,
-        fetch_projected_lineups,
-    )
-
     if not _season_stats_index:
         refresh(game_date)
 
-    today = game_date or date.today()
-    game_id_str = str(game_id)
-    team_ids = {home_team_id, away_team_id}
-
-    # --- Source 1: confirmed/projected starters ---
-    lineup_records = fetch_starting_lineups(today)
+    team_ids = {str(home_team_id), str(away_team_id)}
     game_players = [
-        r for r in lineup_records
-        if str(r.get("game_id", "")) == game_id_str
-        or str(r.get("team_id", "")) in team_ids
+        r for r in _season_stats_index.values()
+        if str(r.get("team_id", "")) in team_ids
+        or str(r.get("team_abbr", "")) in team_ids
     ]
-
-    # --- Source 2: full projection roster (includes bench) ---
     if not game_players:
-        proj_records = fetch_projected_lineups(today)
-        game_players = [
-            r for r in proj_records
-            if str(r.get("game_id", "")) == game_id_str
-            or str(r.get("team_id", "")) in team_ids
-        ]
-
-    # --- Source 3: depth-chart roster (always available) ---
-    if not game_players and _depth_index:
-        logger.debug(
-            "PlayerContextService: no lineup data for game %s, using full depth-chart roster",
-            game_id,
+        logger.info(
+            "PlayerContextService: no BALLDONTLIE season rows for teams %s (game %s)",
+            team_ids, game_id,
         )
-        game_players = [
-            r for r in _depth_index.values()
-            if str(r.get("team_id", "")) in team_ids
-        ]
 
     players: list[Player] = []
     seen: set[str] = set()

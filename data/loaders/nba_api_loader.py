@@ -1,302 +1,291 @@
 """
-nba_api Loader  –  PRIMARY source for usage, touches, possessions, splits.
+Stats loader — BALLDONTLIE GOAT, same records the service layer already expects.
 
-All functions here return raw normalised dicts (not domain entities) so they
-can be composed by the service layer.  Every function:
-  - Pulls at the broadest granularity available (team/league dashboards, not
-    per-player endpoints) to minimise request volume.
-  - Caches results to disk under data/cache/nba_api/ with date-stamped keys.
-  - Never calls nba_api inside a per-prop loop.
-  - Sleeps briefly between sequential requests to respect NBA.com rate limits
-    (~60 req/min; 0.6 s sleep keeps us comfortably under that ceiling).
+This module used to call NBA.com through the ``nba_api`` package. Those calls
+are gone. Function names are unchanged so usage, splits, pace, and game-log
+services keep working.
 
-Source of truth (per architecture spec):
-  - Usage rate      -> nba_api (LeagueDashPlayerStats advanced)
-  - Touches         -> nba_api (LeagueDashPtStats tracking)
-  - Possessions/pace-> nba_api (LeagueDashTeamStats / LeagueDashPlayerStats)
-  - Splits          -> nba_api (LeagueDashPlayerStats w/ split filters)
-  - Recent logs     -> nba_api (PlayerGameLog, per player, cached)
+Missing statistics stay ``None``. A stored ``0`` is only written when the API
+returned zero. Each record includes ``missing_fields``.
 """
 
 from __future__ import annotations
 
 import logging
-import time
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Optional
 
+from data.loaders.balldontlie_client import BallDontLieAuthError, BallDontLieClient, BallDontLieError
+from domain.constants import NBA_SEASON, balldontlie_season_start_year
 from services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 
-_CACHE = get_cache("nba_api", default_ttl=86_400)   # 24-hour default TTL
-_RATE_LIMIT_SLEEP = 0.6   # seconds between sequential nba_api calls
+_CACHE = get_cache("balldontlie", default_ttl=86_400)
+_CURRENT_SEASON = NBA_SEASON
 
-# Current season string – matches the nba_api convention (year the season ends)
-_CURRENT_SEASON = "2025-26"
+_USAGE_KEYS = (
+    "usg_pct", "usage_percentage", "usage_pct", "usage",
+)
+_TS_KEYS = ("ts_pct", "true_shooting_percentage", "ts")
+_AST_PCT_KEYS = ("ast_pct", "assist_percentage")
+_AST_RATIO_KEYS = ("ast_ratio", "assist_ratio")
+_REB_PCT_KEYS = ("reb_pct", "rebound_percentage")
+_OREB_PCT_KEYS = ("oreb_pct", "offensive_rebound_percentage")
+_DREB_PCT_KEYS = ("dreb_pct", "defensive_rebound_percentage")
+_PACE_KEYS = ("pace",)
+_POSS_KEYS = ("poss", "possessions", "player_possessions")
+_POTENTIAL_AST_KEYS = (
+    "potential_ast", "potential_assists", "potential_assist",
+)
+_PASSES_KEYS = ("passes", "pass")
+_SECONDARY_AST_KEYS = ("secondary_ast", "secondary_assists")
+_TOUCHES_KEYS = ("touches", "touches_per_game")
+_TIME_POSS_KEYS = ("time_of_poss", "time_of_possession")
+_REB_CHANCE_KEYS = ("reb_chances", "rebound_chances", "total_rebound_chances")
+_OREB_CHANCE_KEYS = ("oreb_chances", "offensive_rebound_chances")
+_DREB_CHANCE_KEYS = ("dreb_chances", "defensive_rebound_chances")
+_DEF_RATING_KEYS = ("def_rating", "defensive_rating")
+_OFF_RATING_KEYS = ("off_rating", "offensive_rating")
 
 
-def _sleep() -> None:
-    """Rate-limit guard between sequential nba_api calls."""
-    time.sleep(_RATE_LIMIT_SLEEP)
+_CLIENT: BallDontLieClient | None = None
 
 
-# ---------------------------------------------------------------------------
-# Usage Rate Dashboard (PRIMARY: nba_api -> LeagueDashPlayerStats advanced)
-# ---------------------------------------------------------------------------
+def _client() -> BallDontLieClient:
+    """One client per process so the rate limit applies across calls."""
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = BallDontLieClient()
+    return _CLIENT
+
+
+def _stats_blob(row: dict) -> dict:
+    stats = row.get("stats")
+    if isinstance(stats, dict):
+        return stats
+    return row
+
+
+def _pick(stats: dict, keys: tuple[str, ...]) -> Any:
+    """Return the first present value. Missing stays None. Zero stays zero."""
+    for key in keys:
+        if key in stats and stats[key] is not None:
+            return stats[key]
+    return None
+
+
+def _as_float(value: Any) -> Optional[float]:
+    if value is None or value == "":
+        return None
+    if isinstance(value, str) and ":" in value:
+        parts = value.split(":")
+        try:
+            return float(parts[0]) + float(parts[1]) / 60.0
+        except (ValueError, IndexError):
+            return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _usage_fraction(value: Any) -> Optional[float]:
+    number = _as_float(value)
+    if number is None:
+        return None
+    if number > 1.5:
+        return number / 100.0
+    return number
+
+
+def _player_bits(row: dict) -> dict[str, Any]:
+    player = row.get("player") if isinstance(row.get("player"), dict) else {}
+    team = row.get("team") if isinstance(row.get("team"), dict) else {}
+    if not team and isinstance(player.get("team"), dict):
+        team = player["team"]
+    first = player.get("first_name") or ""
+    last = player.get("last_name") or ""
+    name = f"{first} {last}".strip() or str(row.get("player_name") or "")
+    pid = player.get("id", row.get("player_id"))
+    return {
+        "player_id": "" if pid is None else str(pid),
+        "player_name": name,
+        "team_id": "" if team.get("id") is None else str(team.get("id")),
+        "team_abbr": str(team.get("abbreviation") or ""),
+        "position": str(player.get("position") or ""),
+    }
+
+
+def _teams_for_player_ids(player_ids: list[str]) -> dict[str, dict]:
+    """Current team for specific players. Season-average rows omit the team."""
+    directory: dict[str, dict] = {}
+    client = _client()
+    unique = [pid for pid in dict.fromkeys(player_ids) if pid]
+    for start in range(0, len(unique), 50):
+        chunk = unique[start:start + 50]
+        try:
+            rows = client.paginate("nba/v1/players", {"player_ids": chunk})
+        except (BallDontLieAuthError, BallDontLieError) as exc:
+            logger.error("BALLDONTLIE player team lookup failed: %s", exc)
+            continue
+        for row in rows:
+            pid = row.get("id")
+            if pid is None:
+                continue
+            team = row.get("team") if isinstance(row.get("team"), dict) else {}
+            directory[str(pid)] = {
+                "team_id": "" if team.get("id") is None else str(team.get("id")),
+                "team_abbr": str(team.get("abbreviation") or ""),
+                "position": str(row.get("position") or ""),
+            }
+    return directory
+
+
+def _fill_team_from_directory(records: list[dict]) -> None:
+    missing = [rec for rec in records if rec.get("player_id") and not rec.get("team_id")]
+    if not missing:
+        return
+    directory = _teams_for_player_ids([str(rec["player_id"]) for rec in missing])
+    for rec in missing:
+        extra = directory.get(str(rec.get("player_id") or "")) or {}
+        if extra.get("team_id"):
+            rec["team_id"] = extra["team_id"]
+            rec["team_abbr"] = extra.get("team_abbr") or rec.get("team_abbr") or ""
+        if not rec.get("position") and extra.get("position"):
+            rec["position"] = extra["position"]
+
+
+def _note_missing(record: dict, field: str, value: Any) -> None:
+    record[field] = value
+    if value is None:
+        record.setdefault("missing_fields", []).append(field)
+
+
+def _fetch_category(category: str, stat_type: str, season: str) -> list[dict]:
+    year = balldontlie_season_start_year(season)
+    path = f"nba/v1/season_averages/{category}"
+    try:
+        return _client().paginate(
+            path,
+            {"season": year, "season_type": "regular", "type": stat_type},
+        )
+    except BallDontLieAuthError as exc:
+        logger.error("BALLDONTLIE auth failed for %s/%s: %s", category, stat_type, exc)
+        return []
+    except BallDontLieError as exc:
+        logger.error("BALLDONTLIE %s/%s failed: %s", category, stat_type, exc)
+        return []
+
 
 def fetch_usage_dashboard_batch(
     season: str = _CURRENT_SEASON,
     date_str: Optional[str] = None,
 ) -> list[dict]:
-    """
-    Fetch advanced per-player stats including usage rate for the full league.
-
-    Returns a list of player dicts with keys including:
-        player_id, player_name, team_id, team_abbr,
-        usg_pct, min, pts, reb, ast, stl, blk, tov,
-        fga, fg3a, fta, ts_pct, ast_ratio, reb_pct
-
-    Caches by season+date so re-runs within the same day skip the network.
-
-    SOURCE: nba_api.stats.endpoints.LeagueDashPlayerStats (MeasureType=Advanced)
-    """
+    """League advanced + usage season averages, keyed like the old dashboard."""
     cache_key = f"usage_advanced_{season}_{date_str or date.today().isoformat()}"
     cached = _CACHE.get(cache_key)
     if cached is not None:
-        logger.debug("Cache hit: %s", cache_key)
         return cached
 
-    try:
-        from nba_api.stats.endpoints import LeagueDashPlayerStats
+    advanced = _fetch_category("general", "advanced", season)
+    usage = _fetch_category("general", "usage", season)
+    usage_by_id = {_player_bits(row)["player_id"]: _stats_blob(row) for row in usage}
 
-        logger.info("nba_api: fetching usage dashboard (advanced) for season %s", season)
-        endpoint = LeagueDashPlayerStats(
-            season=season,
-            measure_type_detailed_defense="Advanced",
-            per_mode_detailed="PerGame",
-            timeout=30,
-        )
-        _sleep()
-        df = endpoint.get_data_frames()[0]
+    records = []
+    for row in advanced:
+        ident = _player_bits(row)
+        stats = dict(_stats_blob(row))
+        extra = usage_by_id.get(ident["player_id"]) or {}
+        stats.update({k: v for k, v in extra.items() if v is not None})
+        rec: dict[str, Any] = {
+            **ident,
+            "raw": stats,
+            "missing_fields": [],
+            "source": "balldontlie",
+        }
+        _note_missing(rec, "gp", _as_float(_pick(stats, ("gp", "games_played"))))
+        _note_missing(rec, "min", _as_float(_pick(stats, ("min", "minutes"))))
+        _note_missing(rec, "usg_pct", _usage_fraction(_pick(stats, _USAGE_KEYS)))
+        _note_missing(rec, "ts_pct", _as_float(_pick(stats, _TS_KEYS)))
+        _note_missing(rec, "ast_ratio", _as_float(_pick(stats, _AST_RATIO_KEYS)))
+        _note_missing(rec, "ast_pct", _as_float(_pick(stats, _AST_PCT_KEYS)))
+        _note_missing(rec, "reb_pct", _as_float(_pick(stats, _REB_PCT_KEYS)))
+        _note_missing(rec, "oreb_pct", _as_float(_pick(stats, _OREB_PCT_KEYS)))
+        _note_missing(rec, "dreb_pct", _as_float(_pick(stats, _DREB_PCT_KEYS)))
+        _note_missing(rec, "pace", _as_float(_pick(stats, _PACE_KEYS)))
+        _note_missing(rec, "poss", _as_float(_pick(stats, _POSS_KEYS)))
+        _note_missing(rec, "off_rating", _as_float(_pick(stats, _OFF_RATING_KEYS)))
+        if rec["player_id"]:
+            records.append(rec)
 
-        records = []
-        for _, row in df.iterrows():
-            records.append({
-                "player_id": str(row.get("PLAYER_ID", "")),
-                "player_name": str(row.get("PLAYER_NAME", "")),
-                "team_id": str(row.get("TEAM_ID", "")),
-                "team_abbr": str(row.get("TEAM_ABBREVIATION", "")),
-                "age": float(row.get("AGE", 0) or 0),
-                "gp": int(row.get("GP", 0) or 0),
-                "min": float(row.get("MIN", 0) or 0),
-                # Usage and advanced context (SOURCE: nba_api primary)
-                "usg_pct": float(row.get("USG_PCT", 0) or 0),
-                "ts_pct": float(row.get("TS_PCT", 0) or 0),
-                "ast_ratio": float(row.get("AST_RATIO", 0) or 0),
-                "ast_pct": float(row.get("AST_PCT", 0) or 0),
-                "reb_pct": float(row.get("REB_PCT", 0) or 0),
-                "oreb_pct": float(row.get("OREB_PCT", 0) or 0),
-                "dreb_pct": float(row.get("DREB_PCT", 0) or 0),
-                "pace": float(row.get("PACE", 0) or 0),
-                "pace_per40": float(row.get("PACE_PER40", 0) or 0),
-                "pie": float(row.get("PIE", 0) or 0),
-                # Possessions context
-                "poss": float(row.get("POSS", 0) or 0),
-            })
+    _CACHE.set(cache_key, records)
+    logger.info("BALLDONTLIE usage dashboard: %d players", len(records))
+    return records
 
-        _CACHE.set(cache_key, records)
-        logger.info("nba_api usage dashboard: fetched %d player records", len(records))
-        return records
-
-    except Exception as exc:
-        logger.error("nba_api usage dashboard failed: %s", exc)
-        return []
-
-
-# ---------------------------------------------------------------------------
-# Tracking Dashboard (PRIMARY: nba_api -> LeagueDashPtStats)
-# ---------------------------------------------------------------------------
 
 def fetch_today_player_tracking_batch(
     season: str = _CURRENT_SEASON,
     pt_measure_type: str = "Possessions",
     date_str: Optional[str] = None,
 ) -> list[dict]:
-    """
-    Fetch player tracking metrics for the full league.
-
-    pt_measure_type options: 'Possessions', 'Passing', 'Rebounding',
-    'Defense', 'Efficiency', 'SpeedDistance', 'CatchShoot', 'PullUpShot'
-
-    Returns dicts with keys including:
-        player_id, player_name, team_id, touches, time_of_poss,
-        front_ct_touches, elbow_touches, post_touches, paint_touches,
-        ast_pts_created, pass_ast, secondary_ast, potential_ast, pts
-
-    SOURCE: nba_api.stats.endpoints.LeagueDashPtStats (PRIMARY: touches/possessions)
-    """
+    """Tracking season averages. Measure names match the old nba_api switches."""
     cache_key = f"tracking_{pt_measure_type}_{season}_{date_str or date.today().isoformat()}"
     cached = _CACHE.get(cache_key)
     if cached is not None:
-        logger.debug("Cache hit: %s", cache_key)
         return cached
 
-    try:
-        from nba_api.stats.endpoints import LeagueDashPtStats
-
-        logger.info(
-            "nba_api: fetching player tracking (%s) for season %s",
-            pt_measure_type, season,
-        )
-        endpoint = LeagueDashPtStats(
-            season=season,
-            pt_measure_type=pt_measure_type,
-            per_mode_simple="PerGame",
-            player_or_team="Player",
-            timeout=30,
-        )
-        _sleep()
-        df = endpoint.get_data_frames()[0]
-
-        records = []
-        for _, row in df.iterrows():
-            rec: dict[str, Any] = {
-                "player_id": str(row.get("PLAYER_ID", "")),
-                "player_name": str(row.get("PLAYER_NAME", "")),
-                "team_id": str(row.get("TEAM_ID", "")),
-                "team_abbr": str(row.get("TEAM_ABBREVIATION", "")),
-                "gp": int(row.get("GP", 0) or 0),
-                "min": float(row.get("MIN", 0) or 0),
-            }
-            # Possessions measure fields (SOURCE: nba_api PRIMARY for touches)
-            if pt_measure_type == "Possessions":
-                rec.update({
-                    "touches": float(row.get("TOUCHES", 0) or 0),
-                    "front_ct_touches": float(row.get("FRONT_CT_TOUCHES", 0) or 0),
-                    "time_of_poss": float(row.get("TIME_OF_POSS", 0) or 0),
-                    "elbow_touches": float(row.get("ELBOW_TOUCHES", 0) or 0),
-                    "post_touches": float(row.get("POST_TOUCHES", 0) or 0),
-                    "paint_touches": float(row.get("PAINT_TOUCHES", 0) or 0),
-                    "pts_per_touch": float(row.get("PTS_PER_TOUCH", 0) or 0),
-                })
-            elif pt_measure_type == "Passing":
-                rec.update({
-                    "ast": float(row.get("AST", 0) or 0),
-                    "potential_ast": float(row.get("POTENTIAL_AST", 0) or 0),
-                    "ast_pts_created": float(row.get("AST_PTS_CREATED", 0) or 0),
-                    "pass_adj_ast": float(row.get("PASS_ADJ_AST", 0) or 0),
-                    "secondary_ast": float(row.get("SECONDARY_AST", 0) or 0),
-                })
-            elif pt_measure_type == "Rebounding":
-                rec.update({
-                    "oreb_chances": float(row.get("OREB_CHANCES", 0) or 0),
-                    "dreb_chances": float(row.get("DREB_CHANCES", 0) or 0),
-                    "reb_chances": float(row.get("REB_CHANCES", 0) or 0),
-                    "oreb": float(row.get("OREB", 0) or 0),
-                    "dreb": float(row.get("DREB", 0) or 0),
-                })
-            else:
-                # Generic passthrough of all numeric columns
-                for col in df.columns:
-                    if col not in ("PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION"):
-                        try:
-                            rec[col.lower()] = float(row.get(col, 0) or 0)
-                        except (ValueError, TypeError):
-                            rec[col.lower()] = str(row.get(col, ""))
-
+    type_map = {
+        "Possessions": "possessions",
+        "Passing": "passing",
+        "Rebounding": "rebounding",
+    }
+    stat_type = type_map.get(pt_measure_type, pt_measure_type.lower())
+    rows = _fetch_category("tracking", stat_type, season)
+    records = []
+    for row in rows:
+        ident = _player_bits(row)
+        stats = _stats_blob(row)
+        rec: dict[str, Any] = {
+            **ident,
+            "raw": stats,
+            "missing_fields": [],
+            "source": "balldontlie",
+            "gp": _as_float(_pick(stats, ("gp", "games_played"))),
+            "min": _as_float(_pick(stats, ("min", "minutes"))),
+        }
+        if pt_measure_type == "Possessions":
+            _note_missing(rec, "touches", _as_float(_pick(stats, _TOUCHES_KEYS)))
+            _note_missing(rec, "time_of_poss", _as_float(_pick(stats, _TIME_POSS_KEYS)))
+            _note_missing(rec, "front_ct_touches", _as_float(_pick(stats, ("front_ct_touches", "front_court_touches"))))
+            _note_missing(rec, "elbow_touches", _as_float(_pick(stats, ("elbow_touches",))))
+            _note_missing(rec, "post_touches", _as_float(_pick(stats, ("post_touches",))))
+            _note_missing(rec, "paint_touches", _as_float(_pick(stats, ("paint_touches",))))
+        elif pt_measure_type == "Passing":
+            _note_missing(rec, "ast", _as_float(_pick(stats, ("ast", "assists"))))
+            _note_missing(rec, "potential_ast", _as_float(_pick(stats, _POTENTIAL_AST_KEYS)))
+            _note_missing(rec, "passes", _as_float(_pick(stats, _PASSES_KEYS)))
+            _note_missing(rec, "secondary_ast", _as_float(_pick(stats, _SECONDARY_AST_KEYS)))
+            _note_missing(rec, "ast_pts_created", _as_float(_pick(stats, ("ast_pts_created", "assist_points_created"))))
+        elif pt_measure_type == "Rebounding":
+            _note_missing(rec, "reb_chances", _as_float(_pick(stats, _REB_CHANCE_KEYS)))
+            _note_missing(rec, "oreb_chances", _as_float(_pick(stats, _OREB_CHANCE_KEYS)))
+            _note_missing(rec, "dreb_chances", _as_float(_pick(stats, _DREB_CHANCE_KEYS)))
+            _note_missing(rec, "oreb", _as_float(_pick(stats, ("oreb", "offensive_rebounds"))))
+            _note_missing(rec, "dreb", _as_float(_pick(stats, ("dreb", "defensive_rebounds"))))
+            _note_missing(rec, "contested_rebounds", _as_float(_pick(stats, ("contested_rebounds", "reb_contested"))))
+            _note_missing(rec, "uncontested_rebounds", _as_float(_pick(stats, ("uncontested_rebounds", "reb_uncontested"))))
+        else:
+            for key, value in stats.items():
+                if key not in rec:
+                    rec[key] = value
+        if rec["player_id"]:
             records.append(rec)
 
-        _CACHE.set(cache_key, records)
-        logger.info(
-            "nba_api tracking (%s): fetched %d player records", pt_measure_type, len(records)
-        )
-        return records
+    _CACHE.set(cache_key, records)
+    logger.info("BALLDONTLIE tracking %s: %d players", pt_measure_type, len(records))
+    return records
 
-    except Exception as exc:
-        logger.error("nba_api tracking (%s) failed: %s", pt_measure_type, exc)
-        return []
-
-
-# ---------------------------------------------------------------------------
-# Recent Game Logs (nba_api -> PlayerGameLog, batched per player, cached)
-# ---------------------------------------------------------------------------
-
-def fetch_recent_player_logs_batch(
-    player_ids: list[str],
-    last_n: int = 10,
-    season: str = _CURRENT_SEASON,
-) -> dict[str, list[dict]]:
-    """
-    Fetch the last *last_n* game logs for each player in *player_ids*.
-
-    Returns dict: player_id -> list of game-log dicts.
-
-    Each game-log dict contains:
-        game_id, game_date, matchup, wl, min,
-        pts, reb, ast, stl, blk, tov, fg3m, plus_minus
-
-    Caches each player individually so partial runs benefit from partial caches.
-    Sleeps between each player call to respect rate limits.
-
-    SOURCE: nba_api.stats.endpoints.PlayerGameLog
-    """
-    result: dict[str, list[dict]] = {}
-
-    for player_id in player_ids:
-        cache_key = f"gamelogs_{player_id}_{season}_{last_n}"
-        cached = _CACHE.get(cache_key)
-        if cached is not None:
-            result[player_id] = cached
-            continue
-
-        try:
-            from nba_api.stats.endpoints import PlayerGameLog
-
-            logger.debug("nba_api: fetching game logs for player %s", player_id)
-            endpoint = PlayerGameLog(
-                player_id=player_id,
-                season=season,
-                timeout=20,
-            )
-            _sleep()
-            df = endpoint.get_data_frames()[0]
-
-            logs = []
-            for _, row in df.head(last_n).iterrows():
-                logs.append({
-                    "game_id": str(row.get("Game_ID", "")),
-                    "game_date": str(row.get("GAME_DATE", "")),
-                    "matchup": str(row.get("MATCHUP", "")),
-                    "wl": str(row.get("WL", "")),
-                    "min": float(row.get("MIN", 0) or 0),
-                    "pts": float(row.get("PTS", 0) or 0),
-                    "reb": float(row.get("REB", 0) or 0),
-                    "ast": float(row.get("AST", 0) or 0),
-                    "stl": float(row.get("STL", 0) or 0),
-                    "blk": float(row.get("BLK", 0) or 0),
-                    "tov": float(row.get("TOV", 0) or 0),
-                    "fg3m": float(row.get("FG3M", 0) or 0),
-                    "fga": float(row.get("FGA", 0) or 0),
-                    "fgm": float(row.get("FGM", 0) or 0),
-                    "fta": float(row.get("FTA", 0) or 0),
-                    "ftm": float(row.get("FTM", 0) or 0),
-                    "plus_minus": float(row.get("PLUS_MINUS", 0) or 0),
-                })
-
-            _CACHE.set(cache_key, logs, ttl_seconds=43_200)  # 12-hour for logs
-            result[player_id] = logs
-
-        except Exception as exc:
-            logger.warning("nba_api game logs failed for player %s: %s", player_id, exc)
-            result[player_id] = []
-
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Split Context Dashboard (nba_api -> LeagueDashPlayerStats with split filters)
-# ---------------------------------------------------------------------------
 
 def fetch_split_context_batch(
     season: str = _CURRENT_SEASON,
@@ -305,204 +294,355 @@ def fetch_split_context_batch(
     date_str: Optional[str] = None,
 ) -> list[dict]:
     """
-    Fetch per-player stats with optional split filters.
+    Season box averages from ``general/base``.
 
-    Parameters
-    ----------
-    last_n_games : int
-        0 = full season; 5 = last 5; 10 = last 10, etc.
-    location : str | None
-        None = all; "Home" = home games only; "Road" = away only.
-
-    Returns list of player dicts with box-score averages for the split.
-
-    SOURCE: nba_api.stats.endpoints.LeagueDashPlayerStats (PRIMARY: splits)
+    Home, road, and last-N windows are not a GOAT season-average filter.
+    Those calls return an empty list instead of copying the season line and
+    pretending it is a split. Recent form still comes from game logs when
+    a caller requests them per player.
     """
-    split_tag = f"L{last_n_games}" if last_n_games else "season"
-    loc_tag = location.lower() if location else "all"
-    cache_key = f"splits_{season}_{split_tag}_{loc_tag}_{date_str or date.today().isoformat()}"
-
-    cached = _CACHE.get(cache_key)
-    if cached is not None:
-        logger.debug("Cache hit: %s", cache_key)
-        return cached
-
-    try:
-        from nba_api.stats.endpoints import LeagueDashPlayerStats
-
+    if last_n_games or location:
         logger.info(
-            "nba_api: fetching split context (last_n=%d, location=%s) for %s",
-            last_n_games, location, season,
+            "BALLDONTLIE has no season-average filter for last_n=%s location=%s; leaving that split empty",
+            last_n_games, location,
         )
-        kwargs: dict[str, Any] = {
-            "season": season,
-            "measure_type_detailed_defense": "Base",
-            "per_mode_detailed": "PerGame",
-            "timeout": 30,
-        }
-        if last_n_games:
-            kwargs["last_n_games"] = last_n_games
-        if location:
-            kwargs["location_nullable"] = location
-
-        endpoint = LeagueDashPlayerStats(**kwargs)
-        _sleep()
-        df = endpoint.get_data_frames()[0]
-
-        records = []
-        for _, row in df.iterrows():
-            records.append({
-                "player_id": str(row.get("PLAYER_ID", "")),
-                "player_name": str(row.get("PLAYER_NAME", "")),
-                "team_id": str(row.get("TEAM_ID", "")),
-                "team_abbr": str(row.get("TEAM_ABBREVIATION", "")),
-                "gp": int(row.get("GP", 0) or 0),
-                "min": float(row.get("MIN", 0) or 0),
-                "pts": float(row.get("PTS", 0) or 0),
-                "reb": float(row.get("REB", 0) or 0),
-                "ast": float(row.get("AST", 0) or 0),
-                "stl": float(row.get("STL", 0) or 0),
-                "blk": float(row.get("BLK", 0) or 0),
-                "tov": float(row.get("TOV", 0) or 0),
-                "fg3m": float(row.get("FG3M", 0) or 0),
-                "fga": float(row.get("FGA", 0) or 0),
-                "fgm": float(row.get("FGM", 0) or 0),
-                "fta": float(row.get("FTA", 0) or 0),
-                "split_tag": split_tag,
-                "location": loc_tag,
-            })
-
-        _CACHE.set(cache_key, records)
-        logger.info("nba_api splits (%s/%s): fetched %d records", split_tag, loc_tag, len(records))
-        return records
-
-    except Exception as exc:
-        logger.error("nba_api splits fetch failed: %s", exc)
         return []
 
+    cache_key = f"splits_{season}_season_all_v2_{date_str or date.today().isoformat()}"
+    cached = _CACHE.get(cache_key)
+    if cached is not None:
+        return cached
 
-# ---------------------------------------------------------------------------
-# Team-Level Pace / Possessions Dashboard
-# ---------------------------------------------------------------------------
+    rows = _fetch_category("general", "base", season)
+    records = []
+    for row in rows:
+        ident = _player_bits(row)
+        stats = _stats_blob(row)
+        rec = {
+            **ident,
+            "raw": stats,
+            "missing_fields": [],
+            "source": "balldontlie",
+            "split_tag": "season",
+            "location": "all",
+        }
+        for field, keys in (
+            ("gp", ("gp", "games_played")),
+            ("min", ("min", "minutes")),
+            ("pts", ("pts", "points")),
+            ("reb", ("reb", "rebounds")),
+            ("ast", ("ast", "assists")),
+            ("stl", ("stl", "steals")),
+            ("blk", ("blk", "blocks")),
+            ("tov", ("tov", "turnovers", "turnover")),
+            ("fg3m", ("fg3m", "fg3_made", "three_pointers_made")),
+            ("fg3a", ("fg3a", "fg3_attempted")),
+            ("fga", ("fga", "field_goals_attempted")),
+            ("fgm", ("fgm", "field_goals_made")),
+            ("fta", ("fta", "free_throws_attempted")),
+            ("ftm", ("ftm", "free_throws_made")),
+        ):
+            _note_missing(rec, field, _as_float(_pick(stats, keys)))
+        if rec["player_id"]:
+            records.append(rec)
+    _fill_team_from_directory(records)
+    _CACHE.set(cache_key, records)
+    logger.info("BALLDONTLIE season base averages: %d players", len(records))
+    return records
+
 
 def fetch_team_pace_batch(
     season: str = _CURRENT_SEASON,
     date_str: Optional[str] = None,
 ) -> list[dict]:
-    """
-    Fetch team-level pace and possessions context.
-
-    Returns list of team dicts with:
-        team_id, team_name, gp, poss, pace, off_rating, def_rating, net_rating
-
-    SOURCE: nba_api.stats.endpoints.LeagueDashTeamStats (PRIMARY: pace/possessions)
-    """
     cache_key = f"team_pace_{season}_{date_str or date.today().isoformat()}"
     cached = _CACHE.get(cache_key)
     if cached is not None:
         return cached
 
+    year = balldontlie_season_start_year(season)
     try:
-        from nba_api.stats.endpoints import LeagueDashTeamStats
-
-        logger.info("nba_api: fetching team pace dashboard for season %s", season)
-        endpoint = LeagueDashTeamStats(
-            season=season,
-            measure_type_detailed_defense="Advanced",
-            per_mode_detailed="PerGame",
-            timeout=30,
+        rows = _client().paginate(
+            "nba/v1/team_season_averages/general",
+            {"season": year, "season_type": "regular", "type": "advanced"},
         )
-        _sleep()
-        df = endpoint.get_data_frames()[0]
-
-        records = []
-        for _, row in df.iterrows():
-            records.append({
-                "team_id": str(row.get("TEAM_ID", "")),
-                "team_name": str(row.get("TEAM_NAME", "")),
-                "team_abbr": str(row.get("TEAM_ABBREVIATION", "")),
-                "gp": int(row.get("GP", 0) or 0),
-                "poss": float(row.get("POSS", 0) or 0),
-                "pace": float(row.get("PACE", 0) or 0),
-                "pace_per40": float(row.get("PACE_PER40", 0) or 0),
-                "off_rating": float(row.get("OFF_RATING", 0) or 0),
-                "def_rating": float(row.get("DEF_RATING", 0) or 0),
-                "net_rating": float(row.get("NET_RATING", 0) or 0),
-                "ast_pct": float(row.get("AST_PCT", 0) or 0),
-                "ast_to": float(row.get("AST_TO", 0) or 0),
-                "ts_pct": float(row.get("TS_PCT", 0) or 0),
-            })
-
-        _CACHE.set(cache_key, records)
-        logger.info("nba_api team pace: fetched %d team records", len(records))
-        return records
-
-    except Exception as exc:
-        logger.error("nba_api team pace fetch failed: %s", exc)
+    except (BallDontLieAuthError, BallDontLieError) as exc:
+        logger.error("BALLDONTLIE team pace failed: %s", exc)
         return []
 
+    records = []
+    for row in rows:
+        team = row.get("team") if isinstance(row.get("team"), dict) else {}
+        stats = _stats_blob(row)
+        tid = team.get("id", row.get("team_id"))
+        rec = {
+            "team_id": "" if tid is None else str(tid),
+            "team_name": str(team.get("full_name") or team.get("name") or ""),
+            "team_abbr": str(team.get("abbreviation") or ""),
+            "raw": stats,
+            "missing_fields": [],
+            "source": "balldontlie",
+        }
+        _note_missing(rec, "gp", _as_float(_pick(stats, ("gp", "games_played"))))
+        _note_missing(rec, "poss", _as_float(_pick(stats, _POSS_KEYS)))
+        _note_missing(rec, "pace", _as_float(_pick(stats, _PACE_KEYS)))
+        _note_missing(rec, "off_rating", _as_float(_pick(stats, _OFF_RATING_KEYS)))
+        _note_missing(rec, "def_rating", _as_float(_pick(stats, _DEF_RATING_KEYS)))
+        _note_missing(rec, "net_rating", _as_float(_pick(stats, ("net_rating",))))
+        if rec["team_id"]:
+            records.append(rec)
+    _CACHE.set(cache_key, records)
+    logger.info("BALLDONTLIE team pace: %d teams", len(records))
+    return records
 
-# ---------------------------------------------------------------------------
-# Player Info (position, age, etc.)
-# ---------------------------------------------------------------------------
 
-def fetch_player_info_batch(
+def fetch_recent_player_logs_batch(
     player_ids: list[str],
-) -> dict[str, dict]:
-    """
-    Fetch basic player bio for a list of player IDs.
+    last_n: int = 10,
+    season: str = _CURRENT_SEASON,
+) -> dict[str, list[dict]]:
+    """Box scores from ``GET /v1/stats``. Missing box fields stay None."""
+    year = balldontlie_season_start_year(season)
+    result: dict[str, list[dict]] = {}
+    client = _client()
+    for player_id in player_ids:
+        cache_key = f"gamelogs_{player_id}_{season}_{last_n}"
+        cached = _CACHE.get(cache_key)
+        if cached is not None:
+            result[player_id] = cached
+            continue
+        try:
+            rows = client.paginate(
+                "v1/stats",
+                {"player_ids": [player_id], "seasons": [year], "per_page": 100},
+            )
+        except (BallDontLieAuthError, BallDontLieError) as exc:
+            logger.warning("BALLDONTLIE game logs failed for %s: %s", player_id, exc)
+            result[player_id] = []
+            continue
+        logs = []
+        for row in rows:
+            stats = _stats_blob(row)
+            game = row.get("game") if isinstance(row.get("game"), dict) else {}
+            box = row if "pts" in row or "reb" in row else stats
+            def _box(name: str, *aliases: str) -> Optional[float]:
+                for key in (name, *aliases):
+                    if key in box and box[key] is not None:
+                        return _as_float(box[key])
+                return None
+            logs.append({
+                "game_id": "" if game.get("id") is None else str(game.get("id")),
+                "game_date": str(game.get("date") or "")[:10],
+                "min": _box("min"),
+                "pts": _box("pts"),
+                "reb": _box("reb"),
+                "ast": _box("ast"),
+                "stl": _box("stl"),
+                "blk": _box("blk"),
+                "tov": _box("turnover", "tov"),
+                "fg3m": _box("fg3m"),
+                "raw": row,
+                "source": "balldontlie",
+            })
+        logs.sort(key=lambda item: item.get("game_date") or "", reverse=True)
+        trimmed = logs[:last_n]
+        _CACHE.set(cache_key, trimmed)
+        result[player_id] = trimmed
+    return result
 
-    Returns dict: player_id -> {position, height, weight, team_id, ...}
 
-    Caches indefinitely (bio data rarely changes mid-season).
-
-    SOURCE: nba_api.stats.endpoints.CommonPlayerInfo
-    """
+def fetch_player_info_batch(player_ids: list[str]) -> dict[str, dict]:
+    """Player bio from ``GET /v1/players``. BDL positions are often G/F/C, not PG–C."""
     result: dict[str, dict] = {}
-
+    client = _client()
     for player_id in player_ids:
         cache_key = f"player_info_{player_id}"
         cached = _CACHE.get(cache_key)
         if cached is not None:
             result[player_id] = cached
             continue
-
         try:
-            from nba_api.stats.endpoints import CommonPlayerInfo
-
-            endpoint = CommonPlayerInfo(player_id=player_id, timeout=15)
-            _sleep()
-            df = endpoint.get_data_frames()[0]
-            if df.empty:
-                result[player_id] = {}
-                continue
-            row = df.iloc[0]
-            info = {
-                "player_id": str(row.get("PERSON_ID", player_id)),
-                "full_name": str(row.get("DISPLAY_FIRST_LAST", "")),
-                "team_id": str(row.get("TEAM_ID", "")),
-                "team_abbr": str(row.get("TEAM_ABBREVIATION", "")),
-                "position": str(row.get("POSITION", "")),
-                "height": str(row.get("HEIGHT", "")),
-                "weight": str(row.get("WEIGHT", "")),
-                "country": str(row.get("COUNTRY", "")),
-                "from_year": str(row.get("FROM_YEAR", "")),
-                "to_year": str(row.get("TO_YEAR", "")),
-            }
-            _CACHE.set(cache_key, info, ttl_seconds=604_800)  # 7-day cache for bio
-            result[player_id] = info
-
-        except Exception as exc:
-            logger.warning("nba_api player info failed for %s: %s", player_id, exc)
+            body = client.get("v1/players", {"player_ids": [player_id]})
+        except (BallDontLieAuthError, BallDontLieError) as exc:
+            logger.warning("BALLDONTLIE player info failed for %s: %s", player_id, exc)
             result[player_id] = {}
-
+            continue
+        data = body.get("data") or []
+        row = data[0] if data else {}
+        team = row.get("team") if isinstance(row.get("team"), dict) else {}
+        info = {
+            "player_id": str(row.get("id") or player_id),
+            "full_name": f"{row.get('first_name', '')} {row.get('last_name', '')}".strip(),
+            "team_id": "" if team.get("id") is None else str(team.get("id")),
+            "team_abbr": str(team.get("abbreviation") or ""),
+            "position": str(row.get("position") or ""),
+            "position_granularity": "broad" if str(row.get("position") or "") in {"G", "F", "C"} else "specific",
+            "source": "balldontlie",
+        }
+        _CACHE.set(cache_key, info, ttl_seconds=604_800)
+        result[player_id] = info
     return result
 
 
-# ---------------------------------------------------------------------------
-# Convenience: build a player_id → record lookup from a list of records
-# ---------------------------------------------------------------------------
-
 def index_by_player_id(records: list[dict]) -> dict[str, dict]:
-    """Return a dict keyed by player_id for fast lookup."""
     return {r["player_id"]: r for r in records if r.get("player_id")}
+
+
+def map_box_score_to_dvp_log(row: dict) -> dict:
+    """Turn one BALLDONTLIE box-score row into a DvP game log."""
+    player = row.get("player") if isinstance(row.get("player"), dict) else {}
+    team = row.get("team") if isinstance(row.get("team"), dict) else {}
+    if not team and isinstance(player.get("team"), dict):
+        team = player["team"]
+    game = row.get("game") if isinstance(row.get("game"), dict) else {}
+    team_id = str(team.get("id") or "")
+    home = game.get("home_team") if isinstance(game.get("home_team"), dict) else {}
+    away = game.get("visitor_team") if isinstance(game.get("visitor_team"), dict) else {}
+    home_id = str(home.get("id") or game.get("home_team_id") or "")
+    away_id = str(away.get("id") or game.get("visitor_team_id") or "")
+    if team_id and team_id == home_id:
+        opponent_id = away_id
+    elif team_id and team_id == away_id:
+        opponent_id = home_id
+    else:
+        opponent_id = ""
+    pid = player.get("id", row.get("player_id"))
+    return {
+        "player_id": "" if pid is None else str(pid),
+        "player_name": f"{player.get('first_name', '')} {player.get('last_name', '')}".strip(),
+        "team_id": team_id,
+        "opponent_team_id": opponent_id,
+        "position": str(player.get("position") or ""),
+        "game_date": str(game.get("date") or "")[:10],
+        "pts": row.get("pts"),
+        "reb": row.get("reb"),
+        "ast": row.get("ast"),
+        "fg3m": row.get("fg3m"),
+        "stl": row.get("stl"),
+        "blk": row.get("blk"),
+        "tov": row.get("turnover") if row.get("turnover") is not None else row.get("tov"),
+    }
+
+
+def fetch_recent_league_box_scores(
+    game_date: date,
+    days: int = 21,
+) -> list[dict]:
+    """
+    League box scores over a recent window from ``GET /v1/stats``.
+
+    One paginated pull, cached for the day. Used to build positional
+    fantasy-points-allowed. Missing opponent ids are dropped by the DvP builder.
+    """
+    cache_key = f"league_box_{game_date.isoformat()}_{days}"
+    cached = _CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    start = game_date - timedelta(days=days)
+    try:
+        rows = _client().paginate(
+            "v1/stats",
+            {
+                "start_date": start.isoformat(),
+                "end_date": game_date.isoformat(),
+            },
+        )
+    except (BallDontLieAuthError, BallDontLieError) as exc:
+        logger.error("BALLDONTLIE recent box scores failed: %s", exc)
+        return []
+
+    logs = [map_box_score_to_dvp_log(row) for row in rows]
+    logs.sort(key=lambda r: r.get("game_date") or "", reverse=True)
+    _CACHE.set(cache_key, logs)
+    logger.info("BALLDONTLIE recent box scores: %d rows over %d days", len(logs), days)
+    return logs
+
+
+def _parse_minutes(value) -> float | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if ":" in text:
+        minutes, seconds = text.split(":", 1)
+        try:
+            return int(minutes) + int(seconds) / 60.0
+        except ValueError:
+            return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def map_box_score_to_backtest_log(row: dict) -> dict:
+    """Box score fields needed to rebuild a pregame state. No future games are added here."""
+    base = map_box_score_to_dvp_log(row)
+    base["min"] = _parse_minutes(row.get("min"))
+    base["fga"] = row.get("fga")
+    base["fg3a"] = row.get("fg3a")
+    base["fta"] = row.get("fta")
+    return base
+
+
+def fetch_box_scores_between(start: date, end_inclusive: date) -> list[dict]:
+    """
+    League box scores from ``start`` through ``end_inclusive``.
+
+    Callers that need a pregame state must pass an end date before tip-off.
+    """
+    cache_key = f"backtest_box_{start.isoformat()}_{end_inclusive.isoformat()}"
+    cached = _CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        rows = _client().paginate(
+            "v1/stats",
+            {"start_date": start.isoformat(), "end_date": end_inclusive.isoformat()},
+        )
+    except (BallDontLieAuthError, BallDontLieError) as exc:
+        logger.error("BALLDONTLIE backtest box scores failed: %s", exc)
+        return []
+    logs = [map_box_score_to_backtest_log(row) for row in rows]
+    logs.sort(key=lambda r: r.get("game_date") or "", reverse=True)
+    _CACHE.set(cache_key, logs)
+    logger.info(
+        "BALLDONTLIE backtest box scores: %d rows from %s to %s",
+        len(logs), start.isoformat(), end_inclusive.isoformat(),
+    )
+    return logs
+
+
+def fetch_balldontlie_injuries() -> list[dict]:
+    """Current injuries from ``GET /v1/player_injuries``. Missing fields stay blank."""
+    cache_key = f"injuries_{date.today().isoformat()}"
+    cached = _CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        rows = _client().paginate("v1/player_injuries", {})
+    except (BallDontLieAuthError, BallDontLieError) as exc:
+        logger.error("BALLDONTLIE injuries failed: %s", exc)
+        return []
+
+    records = []
+    for row in rows:
+        player = row.get("player") if isinstance(row.get("player"), dict) else {}
+        team = player.get("team") if isinstance(player.get("team"), dict) else {}
+        pid = player.get("id", row.get("player_id"))
+        if pid is None:
+            continue
+        team_id = player.get("team_id", team.get("id"))
+        records.append({
+            "player_id": str(pid),
+            "player_name": f"{player.get('first_name', '')} {player.get('last_name', '')}".strip(),
+            "team_id": "" if team_id is None else str(team_id),
+            "position": str(player.get("position") or ""),
+            "status": str(row.get("status") or ""),
+            "injury": str(row.get("description") or row.get("comment") or ""),
+        })
+    _CACHE.set(cache_key, records, ttl_seconds=900)
+    logger.info("BALLDONTLIE injuries: %d rows", len(records))
+    return records

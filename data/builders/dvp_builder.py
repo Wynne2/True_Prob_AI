@@ -178,6 +178,7 @@ def build_dvp_tables(
             blk_forced=_avg("blk"),
             tov_forced=_avg("tov"),
             fantasy_allowed=fp_season,
+            threes_allowed=_avg("fg3m"),
             last_10_pts=_avg("pts", 10),
             last_10_reb=_avg("reb", 10),
             last_10_ast=_avg("ast", 10),

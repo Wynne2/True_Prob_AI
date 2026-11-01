@@ -5,14 +5,14 @@ All API keys and tunable runtime settings are loaded from environment
 variables (or a .env file).
 
 Active provider credentials (as of re-architecture):
+  - BALLDONTLIE_API_KEY or BDL_API_KEY → player stats, tracking, pace, splits
   - SPORTSDATAIO_API_KEY  →  injuries, rosters, season stats, depth charts
   - SPORTRADAR_API_KEY    →  game slate (primary)
   - THE_ODDS_API_KEY      →  sportsbook odds, prop lines, implied probability
 
-nba_api does NOT require an API key.  It uses public NBA.com endpoints.
+NBA.com / nba_api is no longer the stats source.
 
 Retired provider credentials (no longer used in the engine):
-  - BALLDONTLIE_API_KEY
   - FANTASYPROS_API_KEY
   - NBA_OFFICIAL_API_KEY
   - STATMUSE_API_KEY
@@ -48,7 +48,9 @@ class ProviderCredentials:
     sportsdataio_key: str | None = field(
         default_factory=lambda: _key("SPORTSDATAIO_API_KEY")
     )
-    # nba_api: no key required — uses public NBA.com endpoints
+    balldontlie_key: str | None = field(
+        default_factory=lambda: _key("BALLDONTLIE_API_KEY") or _key("BDL_API_KEY")
+    )
 
     # SLATE SUPPORT
     sportradar_key: str | None = field(
@@ -57,16 +59,14 @@ class ProviderCredentials:
 
     # ODDS / SPORTSBOOK PRICING
     odds_api_key: str | None = field(
-        default_factory=lambda: _key("THE_ODDS_API_KEY")
+        default_factory=lambda: _key("THE_ODDS_API_KEY") or _key("ODDS_API_KEY")
     )
 
     @property
     def available_providers(self) -> list[str]:
-        providers = ["nba_api"]   # always available (no key)
-        if self.sportsdataio_key:
-            providers.append("sportsdataio")
-        if self.sportradar_key:
-            providers.append("sportradar")
+        providers = []
+        if self.balldontlie_key:
+            providers.append("balldontlie")
         if self.odds_api_key:
             providers.append("odds_api")
         return providers
@@ -74,10 +74,8 @@ class ProviderCredentials:
     @property
     def missing_providers(self) -> list[str]:
         missing = []
-        if not self.sportsdataio_key:
-            missing.append("sportsdataio")
-        if not self.sportradar_key:
-            missing.append("sportradar")
+        if not self.balldontlie_key:
+            missing.append("balldontlie")
         if not self.odds_api_key:
             missing.append("odds_api")
         return missing
@@ -134,22 +132,30 @@ class OddsAPIConfig:
 
 
 # ---------------------------------------------------------------------------
-# nba_api config (no key required)
+# BALLDONTLIE GOAT (replaces nba_api / NBA.com)
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
+class BallDontLieConfig:
+    """BALLDONTLIE NBA GOAT client settings. Trial tier is 5 req/min; paid GOAT is 600."""
+    base_url: str = "https://api.balldontlie.io"
+    timeout: int = int(os.environ.get("BDL_TIMEOUT", "30"))
+    requests_per_minute: int = int(os.environ.get("BDL_REQUESTS_PER_MINUTE", "5"))
+    max_retries: int = int(os.environ.get("BDL_MAX_RETRIES", "4"))
+    per_page: int = 100
+
+
+@dataclass(frozen=True)
 class NBAApiConfig:
-    """Configuration for nba_api request behaviour."""
+    """Legacy name kept so older imports still resolve. Stats now come from BALLDONTLIE."""
     season: str = os.environ.get("NBA_SEASON", "2025-26")
-    rate_limit_sleep: float = float(os.environ.get("NBA_API_SLEEP", "0.6"))
-    # Disk cache directories (relative to project root)
-    cache_dir: str = "data/cache/nba_api"
+    rate_limit_sleep: float = float(os.environ.get("BDL_MIN_INTERVAL", "0"))
+    cache_dir: str = "data/cache/balldontlie"
     derived_cache_dir: str = "data/cache/derived"
-    # TTL in seconds for each data type
-    ttl_advanced: int = int(os.environ.get("NBA_API_TTL_ADVANCED", "86400"))   # 24h
-    ttl_tracking: int = int(os.environ.get("NBA_API_TTL_TRACKING", "86400"))   # 24h
-    ttl_gamelogs: int = int(os.environ.get("NBA_API_TTL_GAMELOGS", "43200"))   # 12h
-    ttl_splits: int = int(os.environ.get("NBA_API_TTL_SPLITS", "86400"))       # 24h
+    ttl_advanced: int = int(os.environ.get("BDL_TTL_ADVANCED", "86400"))
+    ttl_tracking: int = int(os.environ.get("BDL_TTL_TRACKING", "86400"))
+    ttl_gamelogs: int = int(os.environ.get("BDL_TTL_GAMELOGS", "43200"))
+    ttl_splits: int = int(os.environ.get("BDL_TTL_SPLITS", "86400"))
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +198,7 @@ _sdio_config: SportsDataIOConfig | None = None
 _sr_config: SportradarConfig | None = None
 _odds_config: OddsAPIConfig | None = None
 _nba_config: NBAApiConfig | None = None
+_bdl_config: BallDontLieConfig | None = None
 
 
 def get_credentials() -> ProviderCredentials:
@@ -236,9 +243,16 @@ def get_nba_api_config() -> NBAApiConfig:
     return _nba_config
 
 
+def get_bdl_config() -> BallDontLieConfig:
+    global _bdl_config
+    if _bdl_config is None:
+        _bdl_config = BallDontLieConfig()
+    return _bdl_config
+
+
 def reload_config() -> None:
     """Force re-read of env vars (useful in tests)."""
-    global _credentials, _app_settings, _sdio_config, _sr_config, _odds_config, _nba_config
+    global _credentials, _app_settings, _sdio_config, _sr_config, _odds_config, _nba_config, _bdl_config
     load_dotenv(dotenv_path=_ENV_PATH, override=True)
     _credentials = None
     _app_settings = None
@@ -246,3 +260,4 @@ def reload_config() -> None:
     _sr_config = None
     _odds_config = None
     _nba_config = None
+    _bdl_config = None

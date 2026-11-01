@@ -332,39 +332,18 @@ class SlateScanner:
             return
 
         try:
-            from data.loaders.sportsdataio_loader import (
-                fetch_player_season_stats,
-                fetch_depth_charts,
-                index_by_player_id,
-            )
+            from data.loaders.nba_api_loader import fetch_recent_league_box_scores
 
-            # Build a position map from SportsDataIO depth charts (primary)
-            depth = fetch_depth_charts()
+            game_logs = fetch_recent_league_box_scores(game_date)
             position_map = {
-                r["player_id"]: r.get("position", "G")
-                for r in depth if r.get("player_id")
+                str(row.get("player_id")): str(row.get("position") or "G")
+                for row in game_logs
+                if row.get("player_id")
             }
-
-            # Fetch real game logs from SportsDataIO for DvP computation.
-            # Use the feature store (already built by _build_feature_store) when
-            # available; otherwise fall back to fetching the last 15 games for
-            # each active player in the position map.
-            game_logs: list[dict] = []
-            try:
-                from data.loaders.sportsdataio_loader import fetch_player_game_logs
-                from domain.constants import SDIO_SEASON
-                for player_id in list(position_map.keys())[:150]:  # cap API calls
-                    logs = fetch_player_game_logs(
-                        player_id, season=SDIO_SEASON, num_games=15
-                    )
-                    game_logs.extend(logs)
-                logger.info(
-                    "DvP: loaded %d game log records from %d players",
-                    len(game_logs), min(len(position_map), 150),
-                )
-            except Exception as log_exc:
-                logger.warning("DvP: could not fetch game logs (%s); using empty set", log_exc)
-
+            logger.info(
+                "DvP: %d BALLDONTLIE box-score rows, %d players",
+                len(game_logs), len(position_map),
+            )
             refresh_dvp_tables(
                 player_game_logs=game_logs,
                 position_map=position_map,

@@ -23,12 +23,21 @@ from models.minutes_model import MinutesModel
 from models.projection_guards import apply_projection_guards
 from models.rebounds_support import (
     blended_rebound_rates,
-    rebound_environment_multiplier,
     rebound_negbinom_inflation,
     rebound_pace_multiplier,
+    rebound_positional_matchup_only,
     role_stability_factor,
     teammate_competition_factor,
     minutes_volatility_ratio,
+)
+from models.opportunity import (
+    REBOUND_SECURE_PRIOR,
+    blend_opportunity,
+    pace_label,
+    partial_factor,
+    regressed_rate,
+    resolve_pace,
+    widen_std_for_pace_fallback,
 )
 from models.variance_model import VarianceModel
 from utils.math_helpers import clamp
@@ -62,19 +71,38 @@ class ReboundsModel(BaseStatModel):
         minutes_factor = exp_minutes / mpg if mpg > 0 else 1.0
 
         blend_rpm, season_rpm, recent_rpm, _bd = blended_rebound_rates(player, exp_minutes)
-        raw_mean = blend_rpm * exp_minutes
 
-        pace = defense.pace if defense else 100.0
+        pace, pace_fallback = resolve_pace(defense)
         pace_factor = self._pace_factor(pace)
+        pace_comp = rebound_pace_multiplier(pace)
 
         if defense:
-            env = rebound_environment_multiplier(self._matchup, defense, player, pace)
-            pos_only = self._matchup.positional_defense_factor(defense, player, PropType.REBOUNDS)
+            pos_only = rebound_positional_matchup_only(self._matchup, defense, player)
         else:
-            env = 1.0
             pos_only = 1.0
+        # Positional boards move the secure rate. Pace moves the chance count.
+        # FPA is not applied.
+        secure_matchup = partial_factor(pos_only, 0.55)
+        env = pace_comp * secure_matchup
+        missing: list[str] = []
+        if player.rebound_chances > 0 and mpg > 0:
+            season_reb = player.rebounds_per_game if player.rebounds_per_game > 0 else player.rebound_chances * REBOUND_SECURE_PRIOR
+            observed = clamp(season_reb / player.rebound_chances, 0.15, 0.95)
+            secure = regressed_rate(observed, REBOUND_SECURE_PRIOR)
+            chances_per_min = player.rebound_chances / mpg
+            expected_chances = chances_per_min * exp_minutes * pace_comp
+            matchup_secure = secure * secure_matchup
+            opportunity_mean = expected_chances * matchup_secure
+            rate_prior = blend_rpm * exp_minutes * env
+            raw_mean = blend_opportunity(opportunity_mean, rate_prior)
+        else:
+            missing.append("rebound_chances")
+            chances_per_min = 0.0
+            expected_chances = 0.0
+            secure = 0.0
+            matchup_secure = 0.0
+            raw_mean = blend_rpm * exp_minutes * env
 
-        # No FPA for rebounds — single defensive signal is positional rebound allowance + mild pace in *env*.
         fpa_factor = 1.0
 
         injury_factor = self._injury_factor(player)
@@ -82,7 +110,7 @@ class ReboundsModel(BaseStatModel):
         role_s = role_stability_factor(player, exp_minutes, mpg)
         team_c = teammate_competition_factor(player)
 
-        projected = raw_mean * env * injury_factor * role_s * team_c
+        projected = raw_mean * injury_factor * role_s * team_c
         projected = apply_projection_guards(projected, player, PropType.REBOUNDS, exp_minutes)
 
         base = player.rebounds_per_game if player.rebounds_per_game > 0 else (
@@ -100,24 +128,59 @@ class ReboundsModel(BaseStatModel):
             edge=0.0, has_defense_data=defense is not None
         )
 
-        pace_comp = rebound_pace_multiplier(pace) if defense else 1.0
+        if player.rebound_chances > 0:
+            chance_line = (
+                f"Rebound chances per minute {chances_per_min:.3f}. "
+                f"Expected chances tonight {expected_chances:.2f} (pace ×{pace_comp:.3f})."
+            )
+            secure_line = (
+                f"Secure rate {secure:.3f} "
+                f"(75% of season rebounds/chances, 25% prior {REBOUND_SECURE_PRIOR:.2f}). "
+                f"Matchup-adjusted secure rate {matchup_secure:.3f}."
+            )
+        else:
+            chance_line = "Rebound chances missing. Mean is the minute-scaled rebound rate."
+            secure_line = "Secure rate not used."
         model_context = {
+            "mechanism": "rebound_chances_x_secure_rate" if not missing else "rate_prior_rebound_chances_missing",
             "projected_minutes": round(exp_minutes, 2),
             "season_rebounds_per_minute": round(season_rpm, 4),
             "recent_rebounds_per_minute": round(recent_rpm, 4),
             "blended_rebounds_per_minute": round(blend_rpm, 4),
+            "rebound_chances_per_minute": round(chances_per_min, 4),
+            "expected_rebound_chances": round(expected_chances, 3),
+            "secure_rate": round(secure, 4),
+            "matchup_adjusted_secure_rate": round(matchup_secure, 4),
             "rebound_environment_factor": round(env, 4),
             "role_stability_factor": round(role_s, 4),
             "teammate_competition_factor": round(team_c, 4),
             "positional_rebound_matchup_factor": round(pos_only, 4),
             "pace_component_rebounds": round(pace_comp, 4),
+            "pace": round(pace, 2),
+            "pace_is_fallback": pace_fallback,
             "minutes_volatility_cv": round(minute_cv, 4),
             "negbinom_variance_inflation": round(negbinom_vi, 3),
             "fpa_factor_applied": 0.0,
-            "notes": "Rebounds use positional reb allowed + mild pace in env; FPA omitted to avoid DvP double count.",
+            "fpa_applied": False,
+            "missing_fields": missing,
+            "projected_rebounds": round(projected, 3),
+            "notes": "Rebounds are chances times secure rate. Pace scales chances. Positional boards scale the secure rate. FPA is omitted.",
+            "explanation_lines": [
+                f"Minutes projected {exp_minutes:.1f} (season {mpg:.1f}).",
+                chance_line,
+                secure_line,
+                (
+                    f"Opponent rebounds allowed by position factor {pos_only:.3f} "
+                    f"(55% of that gap applied to the secure rate)."
+                ),
+                pace_label(pace, pace_fallback),
+                f"Role stability ×{role_s:.2f}. Teammate competition ×{team_c:.2f}.",
+                "Fantasy points allowed is not applied.",
+                ("Missing: " + ", ".join(missing) + ".") if missing else "Rebound chances and secure rate were both used.",
+            ],
         }
 
-        return self._build_projection(
+        stat = self._build_projection(
             player, game, is_home, projected,
             minutes_factor, 1.0, pace_factor,
             pos_only, pos_only,
@@ -132,3 +195,5 @@ class ReboundsModel(BaseStatModel):
             negbinom_variance_inflation=negbinom_vi,
             model_context=model_context,
         )
+        widen_std_for_pace_fallback(stat, pace_fallback)
+        return stat

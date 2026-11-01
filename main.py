@@ -122,7 +122,13 @@ Examples:
   python main.py --min-odds -150 --max-parlay-odds +500 --top 20
         """,
     )
-    parser.add_argument("--date", help="Game date YYYY-MM-DD (default: today)")
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["scan", "backtest"],
+        help="Daily scan, or `backtest` for a one-game historical sample.",
+    )
+    parser.add_argument("--date", help="Game date YYYY-MM-DD, or 'today'")
     parser.add_argument("--min-edge", type=float, default=0.05, help="Min edge per leg (default 0.05 = 5%%)")
     parser.add_argument("--max-legs", type=int, default=3, help="Max legs per parlay (default 3)")
     parser.add_argument("--min-legs", type=int, default=2, help="Min legs per parlay (default 2)")
@@ -157,6 +163,23 @@ Examples:
         "--playoff",
         action="store_true",
         help="Treat slate as NBA playoffs (slightly higher minute projections for rotation)",
+    )
+    parser.add_argument(
+        "--max-credits",
+        type=int,
+        default=50,
+        help="Credit cap for a one-game `backtest`. The one-game sample estimates 41 credits.",
+    )
+    parser.add_argument(
+        "--games",
+        type=int,
+        default=1,
+        help="Backtest size. 1 is the cheap sample. 30 runs the January 2026 cohort if the estimate is within 1,500 credits.",
+    )
+    parser.add_argument(
+        "--experiment",
+        choices=["interaction"],
+        help="Fit the opportunity-matchup interaction on January and validate it on February. March is not opened.",
     )
     return parser.parse_args()
 
@@ -300,7 +323,7 @@ def main() -> None:
     if args.debug_api:
         install_api_debug_logger()
 
-    if args.date:
+    if args.date and args.date.strip().lower() != "today":
         try:
             game_date = parse_date(args.date)
         except (ValueError, TypeError):
@@ -317,6 +340,95 @@ def main() -> None:
             f"[yellow]Future date selected ({game_date}).[/yellow] "
             f"Data may be incomplete or unavailable for upcoming games."
         )
+
+    if args.command == "backtest" and getattr(args, "experiment", None) == "interaction":
+        from engine.backtest.experiment import estimate_february_cost, run_interaction_experiment
+
+        print_header(game_date)
+        planned = estimate_february_cost()
+        console.print(
+            f"[cyan]Interaction experiment.[/cyan] January is training. "
+            f"February cold estimate {planned['total_credits']} credits "
+            f"for {planned['n_games']} games on {planned['n_dates']} dates. March is not opened."
+        )
+        report = run_interaction_experiment()
+        change = report.get("production_change") or {}
+        console.print(change.get("reason", ""))
+        february = report.get("february") or {}
+        console.print(f"February games: {february.get('n_games')}  Dates: {february.get('n_dates')}")
+        for name, block in (february.get("variants") or {}).items():
+            console.print(f"  {name}: n={block.get('n')} brier={block.get('brier')} log_loss={block.get('log_loss')}")
+        effect = february.get("e_minus_a") or {}
+        if effect:
+            console.print(
+                "E minus A Brier: "
+                f"{effect.get('mean_brier_difference')}  date SE {effect.get('date_cluster_se')}"
+            )
+        console.print("[dim]Wrote data/backtests/interaction_experiment.json[/dim]")
+        return
+
+    if args.command == "backtest" and int(getattr(args, "games", 1) or 1) > 1:
+        from engine.backtest.expanded import estimate_expanded_cost, run_expanded_backtest
+
+        print_header(game_date)
+        planned = estimate_expanded_cost(8, args.games)
+        console.print(
+            f"[cyan]Expanded backtest.[/cyan] Cold estimate {planned['total_credits']} credits "
+            f"for {args.games} games before any prop download. "
+            "Prices are not fabricated, and production weights are not changed."
+        )
+        if planned["total_credits"] > 1500:
+            console.print(
+                f"[yellow]Estimate {planned['total_credits']} is above 1,500 credits. "
+                "No prices will be downloaded until that spend is approved.[/yellow]"
+            )
+        report = run_expanded_backtest(max_games=args.games)
+        coverage = report.get("coverage") or {}
+        console.print(f"Status: {coverage.get('historical_odds')}")
+        if coverage.get("reason"):
+            console.print(coverage["reason"])
+        console.print(
+            f"Games: {report.get('n_games')}  Dates: {report.get('n_dates')}  Rows: {report.get('n_rows')}"
+        )
+        for variant in report.get("variants_over") or []:
+            console.print(
+                f"  {variant['variant']}: n={variant['n']} brier={variant['brier']} log_loss={variant['log_loss']}"
+            )
+        effect = report.get("positional_effect") or {}
+        if effect:
+            console.print(
+                "Positional Brier difference (B minus A): "
+                f"{effect.get('mean_brier_difference')}  "
+                f"game SE {effect.get('game_cluster_se')}  date SE {effect.get('date_cluster_se')}"
+            )
+        console.print(f"[dim]{report.get('parameter_update', {}).get('reason', '')}[/dim]")
+        console.print("[dim]Wrote data/backtests/expanded_report.json[/dim]")
+        return
+
+    if args.command == "backtest":
+        from engine.backtest.runner import run_sample_backtest
+
+        print_header(game_date)
+        console.print(
+            "[cyan]Historical sample.[/cyan] One events-list call, then one game "
+            "if the credit cap allows. Prices are not fabricated when the call fails."
+        )
+        report = run_sample_backtest(game_date, max_credits=args.max_credits)
+        coverage = report.get("coverage") or {}
+        console.print(f"Status: {coverage.get('historical_odds')}")
+        if coverage.get("reason"):
+            console.print(coverage["reason"])
+        console.print(f"Games graded: {report.get('n_games')}  Over rows: {report.get('n_over_rows')}")
+        for variant in report.get("variants") or []:
+            console.print(
+                f"  {variant['variant']}: n={variant['n']} brier={variant['brier']} "
+                f"log_loss={variant['log_loss']}"
+            )
+        if report.get("sample_warning"):
+            console.print(f"[yellow]{report['sample_warning']}[/yellow]")
+        console.print(f"[dim]{report.get('parameter_update', {}).get('reason', '')}[/dim]")
+        console.print("[dim]Wrote data/backtests/latest_report.json[/dim]")
+        return
 
     print_header(game_date)
     print_provider_status()
@@ -371,6 +483,10 @@ def main() -> None:
     )
 
     print_props_table(qualifying, top_n=20)
+
+    from engine.prediction_ledger import save_pregame_predictions
+    ledger_path = save_pregame_predictions(game_date, all_props)
+    console.print(f"[dim]Saved pregame snapshot: {ledger_path}[/dim]")
 
     # Build parlays
     console.print(f"\n[cyan]Building parlays (max {args.max_legs} legs, min edge >= {format_edge(args.min_edge)})...[/cyan]")

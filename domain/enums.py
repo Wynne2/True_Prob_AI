@@ -18,6 +18,13 @@ class PropType(str, Enum):
     BLOCKS = "blocks"
     STEALS = "steals"
     TURNOVERS = "turnovers"
+    # Retrieved from The Odds API and kept on the odds feed.
+    # No opportunity distribution is fitted for these yet, so they are not ranked.
+    POINTS_REBOUNDS = "points_rebounds"
+    POINTS_ASSISTS = "points_assists"
+    REBOUNDS_ASSISTS = "rebounds_assists"
+    DOUBLE_DOUBLE = "double_double"
+    TRIPLE_DOUBLE = "triple_double"
 
 
 class PropSide(str, Enum):

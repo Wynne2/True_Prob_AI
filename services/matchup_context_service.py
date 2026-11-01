@@ -16,19 +16,14 @@ import logging
 from datetime import date
 from typing import Optional
 
-from data.loaders.nba_api_loader import fetch_team_pace_batch, index_by_player_id
-from data.loaders.sportsdataio_loader import (
-    fetch_team_season_stats,
-    index_by_team_id,
-)
-from domain.constants import NBA_SEASON, SDIO_SEASON
+from data.loaders.nba_api_loader import fetch_team_pace_batch
+from domain.constants import NBA_SEASON
 from domain.provider_models import MatchupContext
 from services.cache_service import get_cache
 
 logger = logging.getLogger(__name__)
 _CACHE = get_cache("derived", default_ttl=21_600)
 
-_CURRENT_SEASON_SDIO = SDIO_SEASON
 _CURRENT_SEASON_NBA = NBA_SEASON
 
 # League-average references (2024-25 estimates)
@@ -39,31 +34,33 @@ _LEAGUE_AVG_PTS_ALLOWED = 113.0
 # Module-level indexes
 _team_stats_index: dict[str, dict] = {}    # team_id -> SportsDataIO team stats
 _team_pace_index: dict[str, dict] = {}     # team_id -> nba_api team pace
+_team_pace_by_abbr: dict[str, dict] = {}
 _loaded_date: Optional[date] = None
 
 
 def refresh(force: bool = False) -> None:
     """Load or refresh team-level context data."""
-    global _team_stats_index, _team_pace_index, _loaded_date
+    global _team_stats_index, _team_pace_index, _team_pace_by_abbr, _loaded_date
 
     today = date.today()
-    if not force and _loaded_date == today and _team_stats_index:
+    if not force and _loaded_date == today:
         return
 
     date_str = today.isoformat()
 
-    # SOURCE: SportsDataIO (team defensive stats)
-    sdio_teams = fetch_team_season_stats(season=_CURRENT_SEASON_SDIO)
-    _team_stats_index = {r["team_id"]: r for r in sdio_teams if r.get("team_id")}
-
-    # SOURCE: nba_api (pace/possessions environment)
     nba_teams = fetch_team_pace_batch(season=_CURRENT_SEASON_NBA, date_str=date_str)
     _team_pace_index = {r["team_id"]: r for r in nba_teams if r.get("team_id")}
+    _team_pace_by_abbr = {
+        str(r.get("team_abbr") or "").upper(): r
+        for r in nba_teams
+        if r.get("team_abbr")
+    }
+    _team_stats_index = _team_pace_index
 
     _loaded_date = today
     logger.info(
-        "MatchupContextService: loaded %d SDIO team records, %d nba_api pace records",
-        len(_team_stats_index), len(_team_pace_index),
+        "MatchupContextService: loaded %d BALLDONTLIE team pace/defense records",
+        len(_team_pace_index),
     )
 
 
@@ -89,12 +86,14 @@ def get_matchup_context(
     if not _team_stats_index:
         refresh()
 
-    sdio = _team_stats_index.get(defense_team_id, {})
-    nba = _team_pace_index.get(defense_team_id, {})
+    sdio = _lookup_team_row(defense_team_id)
+    nba = sdio
 
     # Defensive efficiency (SOURCE: nba_api primary for def_rating)
     def_rating = float(nba.get("def_rating", 0) or 0)
-    opp_pace = float(nba.get("pace", 0) or _LEAGUE_AVG_PACE)
+    measured_pace = float(nba.get("pace", 0) or 0)
+    pace_is_fallback = measured_pace <= 0
+    opp_pace = measured_pace if measured_pace > 0 else _LEAGUE_AVG_PACE
 
     # Points allowed (SOURCE: SportsDataIO for raw pts allowed)
     # SDIO reports raw pts/game; normalize to per-100-poss so it's comparable
@@ -143,11 +142,21 @@ def get_matchup_context(
         point_spread=point_spread,
         defense_factor=defense_factor,
         recent_defense_factor=recent_defense_factor,
+        pace_is_fallback=pace_is_fallback,
     )
+
+
+def _lookup_team_row(team_id: str) -> dict:
+    row = _team_pace_index.get(str(team_id))
+    if row:
+        return row
+    return _team_pace_by_abbr.get(str(team_id).upper(), {})
 
 
 def get_team_pace(team_id: str) -> float:
     """Return pace for *team_id* (possessions per 48 min)."""
     if not _team_pace_index:
         refresh()
-    return float(_team_pace_index.get(team_id, {}).get("pace", _LEAGUE_AVG_PACE))
+    row = _lookup_team_row(team_id)
+    pace = float(row.get("pace", 0) or 0)
+    return pace if pace > 0 else _LEAGUE_AVG_PACE

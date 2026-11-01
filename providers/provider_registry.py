@@ -5,11 +5,10 @@ Routes each data request to the appropriate provider according to the
 source-of-truth assignments from the architecture spec:
 
   Slate (game schedule):
-      Sportradar  ->  SportsDataIO (fallback)
+      BALLDONTLIE
 
   Player-prop modeling data:
-      nba_api     (PRIMARY: usage, touches, possessions, pace, splits)
-      SportsDataIO (PRIMARY: injuries, rosters, season stats, depth charts)
+      BALLDONTLIE (stats, injuries, pace, tracking)
 
   Odds / implied probability:
       The Odds API (ONLY source for sportsbook pricing)
@@ -17,8 +16,9 @@ source-of-truth assignments from the architecture spec:
   Cache fallback:
       Derived cache -> graceful empty if all live sources fail
 
-Retired from engine flow (stubs remain but not wired):
-  - BallDontLie
+Retired from the live scan (modules may remain on disk):
+  - SportsDataIO
+  - Sportradar
   - FantasyPros
   - StatMuse
   - RotoGrinders
@@ -64,52 +64,28 @@ def _build_providers() -> dict[str, list[BaseProvider]]:
     }
 
     # ------------------------------------------------------------------
-    # SLATE: Sportradar primary -> SportsDataIO fallback
+    # SLATE + MODELING: BALLDONTLIE only
     # ------------------------------------------------------------------
-    if creds.sportradar_key:
+    if creds.balldontlie_key:
         try:
-            from providers.sportradar_provider import SportradarProvider
-            p = SportradarProvider(creds.sportradar_key)
-            groups["slate"].append(p)
-            groups["general"].append(p)
-            logger.info("Sportradar provider registered (slate primary)")
+            from providers.balldontlie_provider import BallDontLieProvider
+            bdl = BallDontLieProvider(creds.balldontlie_key)
+            groups["slate"].append(bdl)
+            groups["modeling"].append(bdl)
+            logger.info("BALLDONTLIE provider registered (slate, players, injuries)")
         except Exception as exc:
-            logger.warning("Failed to load Sportradar provider: %s", exc)
+            logger.warning("Failed to load BALLDONTLIE provider: %s", exc)
+    else:
+        logger.warning("No BALLDONTLIE_API_KEY — games, stats, and injuries will be missing")
 
-    # ------------------------------------------------------------------
-    # MODELING: nba_api (no key required) + SportsDataIO
-    # nba_api handles: usage, touches, possessions, pace, splits
-    # SportsDataIO handles: injuries, season stats, rosters, depth charts
-    # ------------------------------------------------------------------
     try:
         from providers.nba_api_provider import NBAApiProvider
         nba = NBAApiProvider()
         if nba.is_available():
             groups["modeling"].append(nba)
-            logger.info("nba_api provider registered (modeling primary: usage/tracking/splits)")
-        else:
-            logger.warning("nba_api package not installed - install with: pip install nba_api")
+            logger.info("BALLDONTLIE stats facade registered (usage/tracking/splits)")
     except Exception as exc:
-        logger.warning("Failed to load nba_api provider: %s", exc)
-
-    if creds.sportsdataio_key:
-        try:
-            from providers.sportsdataio_provider import SportsDataIOProvider
-            sdio = SportsDataIOProvider(creds.sportsdataio_key)
-            groups["modeling"].append(sdio)
-            groups["slate"].append(sdio)   # also a slate fallback
-            groups["general"].append(sdio)
-            logger.info(
-                "SportsDataIO provider registered "
-                "(modeling primary: injuries/stats/rosters/depth)"
-            )
-        except Exception as exc:
-            logger.warning("Failed to load SportsDataIO provider: %s", exc)
-    else:
-        logger.warning(
-            "No SPORTSDATAIO_API_KEY found - injuries, rosters, and season stats "
-            "will be unavailable.  Add your key to .env to enable this source."
-        )
+        logger.warning("Failed to load stats facade: %s", exc)
 
     # ------------------------------------------------------------------
     # ODDS: The Odds API ONLY
@@ -218,38 +194,19 @@ class ProviderRegistry:
         """
         Return a fully-hydrated Player entity.
 
-        Merge strategy (not first-wins):
-          1. SportsDataIO provides the full Player shell (season stats, injury,
-             position, depth-chart role).
-          2. NBAApiProvider overlays usage_rate if SDIO left it at 0.
-
-        This prevents the minimal nba_api Player (no season stats) from
-        pre-empting SDIO's complete box-score Player.
+        First modeling provider that returns a player wins. Live scans
+        use BALLDONTLIE only.
         """
-        from providers.sportsdataio_provider import SportsDataIOProvider
-        from providers.nba_api_provider import NBAApiProvider
-
-        sdio_player: Optional[Player] = None
-        nba_player: Optional[Player] = None
-
         for provider in self._groups.get("modeling", []):
             try:
-                if isinstance(provider, SportsDataIOProvider) and sdio_player is None:
-                    sdio_player = provider.get_player_context(player_id)
-                elif isinstance(provider, NBAApiProvider) and nba_player is None:
-                    nba_player = provider.get_player_context(player_id)
+                result = provider.get_player_context(player_id)
+                if result is not None:
+                    return result
+            except NotImplementedError:
+                continue
             except Exception as exc:
                 logger.warning("get_player_context failed on %s: %s", provider.source_name, exc)
-
-        # Prefer SDIO shell; overlay nba_api usage_rate if SDIO has none
-        result = sdio_player or nba_player
-        if result is None:
-            return None
-
-        if result.usage_rate == 0.0 and nba_player is not None and nba_player.usage_rate > 0:
-            result.usage_rate = nba_player.usage_rate
-
-        return result
+        return None
 
     def get_player_recent_form(self, player_id: str, n: int = 10) -> list[dict]:
         return self._try_list("modeling", "get_player_recent_form", player_id, n)

@@ -1,7 +1,7 @@
 """
 Injury Context Service.
 
-Fetches and processes injury and availability data from SportsDataIO.
+Fetches and processes injury and availability data from BALLDONTLIE.
 
 Responsibilities:
   - Maintain a player_id → InjuryContext lookup for the current date.
@@ -9,7 +9,7 @@ Responsibilities:
     the remaining players receive redistributed usage.
   - Expose starter / role context from projected lineups.
 
-SOURCE: SportsDataIO primary (injuries, lineups, depth charts).
+SOURCE: BALLDONTLIE ``/v1/player_injuries``. Projected lineups are not on this API.
 """
 
 from __future__ import annotations
@@ -66,21 +66,18 @@ def refresh(game_date: Optional[date] = None) -> None:
 
     ds = game_date or date.today()
 
-    from data.loaders.sportsdataio_loader import (
-        fetch_injuries,
-        fetch_projected_lineups,
-    )
+    from data.loaders.nba_api_loader import fetch_balldontlie_injuries
 
-    injuries = fetch_injuries()
-    _injury_index = {r["player_id"]: r for r in injuries if r.get("player_id")}
-
-    lineups = fetch_projected_lineups(ds)
-    _lineup_index = {r["player_id"]: r for r in lineups if r.get("player_id")}
+    rows = fetch_balldontlie_injuries()
+    _injury_index = {r["player_id"]: r for r in rows if r.get("player_id")}
+    # BALLDONTLIE does not publish projected starting lineups.
+    _lineup_index = {}
 
     _loaded_date = ds
     logger.info(
-        "InjuryContextService: loaded %d injury records, %d lineup projections for %s",
-        len(_injury_index), len(_lineup_index), ds,
+        "InjuryContextService: loaded %d BALLDONTLIE injury records for %s "
+        "(no projected lineups from this API)",
+        len(_injury_index), ds,
     )
 
 

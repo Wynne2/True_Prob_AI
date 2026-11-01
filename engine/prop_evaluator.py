@@ -364,7 +364,7 @@ class PropEvaluator:
 
         model = _MODELS.get(prop_type)
         if model is None:
-            logger.warning("No model for prop type: %s", prop_type)
+            logger.debug("No opportunity model for prop type %s; selection kept off the EV board", prop_type)
             return []
 
         # --- Feature validation ---
@@ -855,6 +855,8 @@ class PropEvaluator:
                 expected_minutes=projection.expected_minutes,
                 calibration_warnings=cal_warnings,
                 true_probability=true_prob,
+                raw_model_probability=true_prob_pre_market,
+                calibrated_probability=true_prob,
                 implied_probability=implied,
                 edge=edge,
                 fair_odds=fair_odds_american,

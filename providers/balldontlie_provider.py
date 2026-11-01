@@ -421,6 +421,18 @@ def _map_odds_line(raw: dict, game_id: str) -> OddsLine | None:
 # Provider
 # ---------------------------------------------------------------------------
 
+def _match_team_row(rows: list[dict], team_id: str) -> Optional[dict]:
+    """Match a pace row by BALLDONTLIE team id or abbreviation."""
+    key = str(team_id).strip()
+    upper = key.upper()
+    for row in rows:
+        if str(row.get("team_id") or "") == key:
+            return row
+        if str(row.get("team_abbr") or "").upper() == upper:
+            return row
+    return None
+
+
 class BallDontLieProvider(BaseProvider):
     """
     Data provider backed exclusively by the BallDontLie API.
@@ -448,10 +460,15 @@ class BallDontLieProvider(BaseProvider):
 
     def get_games_for_date(self, game_date: date) -> list[Game]:
         date_str = game_date.isoformat()
-        rows = self._client.get_all(
-            "nba/v1/games",
-            {"dates[]": [date_str], "per_page": 100},
-        )
+        from data.loaders.balldontlie_client import BallDontLieClient, BallDontLieError
+        try:
+            rows = BallDontLieClient(self._api_key).paginate(
+                "v1/games",
+                {"dates": [date_str]},
+            )
+        except BallDontLieError as exc:
+            logger.error("BallDontLie games request failed: %s", exc)
+            return []
         if not rows:
             logger.info("BallDontLie: no games found for %s", date_str)
             return []
@@ -608,15 +625,75 @@ class BallDontLieProvider(BaseProvider):
 
     def get_team_defense(self, team_id: str) -> Optional[TeamDefense]:
         """
-        BallDontLie does not expose team defensive splits by position.
-        Return a neutral TeamDefense (all factors at league average) so
-        projection models run without crashing.  The evaluator already
-        handles defense=None; returning a neutral object is cleaner.
+        Pace and defensive rating come from BALLDONTLIE team season averages.
+        Positional allowances come from recent box scores already loaded into
+        the DvP tables. Missing pace is the league average and is flagged.
         """
+        from domain.constants import FPA_LEAGUE_AVG, NBA_SEASON
+        from domain.enums import Position as Pos
+        from data.loaders.nba_api_loader import fetch_team_pace_batch
+        from models.matchup_model import shrink_allowed
+        from services.dvp_service import get_dvp
+
+        try:
+            rows = fetch_team_pace_batch(
+                season=NBA_SEASON, date_str=date.today().isoformat(),
+            )
+        except Exception as exc:
+            logger.warning("Team pace lookup failed for %s: %s", team_id, exc)
+            rows = []
+        row = _match_team_row(rows, str(team_id))
+
+        pace = float((row or {}).get("pace") or 0)
+        def_rating = float((row or {}).get("def_rating") or 0)
+        abbr = str((row or {}).get("team_abbr") or "")
+        pace_fallback = pace <= 0
+        if pace_fallback:
+            pace = LEAGUE_AVG_PACE
+        if def_rating <= 0:
+            def_rating = LEAGUE_AVG_DEF_EFF
+
+        lookup_id = str((row or {}).get("team_id") or team_id)
+        slots = ("PG", "SG", "SF", "PF", "C")
+        baselines = {
+            "pts": {"PG": 22.0, "SG": 20.5, "SF": 21.5, "PF": 19.5, "C": 24.0},
+            "reb": {"PG": 3.2, "SG": 3.7, "SF": 5.2, "PF": 8.5, "C": 11.0},
+            "ast": {"PG": 6.4, "SG": 3.1, "SF": 2.6, "PF": 2.3, "C": 2.8},
+            "fg3": {"PG": 2.4, "SG": 2.3, "SF": 2.0, "PF": 0.9, "C": 0.4},
+        }
+        fpa_pos = {
+            "PG": Pos.PG, "SG": Pos.SG, "SF": Pos.SF, "PF": Pos.PF, "C": Pos.C,
+        }
+        filled: dict[str, float] = {}
+        for slot in slots:
+            entry = get_dvp(lookup_id, slot) or get_dvp(str(team_id), slot)
+            if entry is None or entry.games_sample <= 0:
+                continue
+            games = entry.games_sample
+            for stat, attr in (
+                ("pts", f"pts_allowed_{slot.lower()}"),
+                ("reb", f"reb_allowed_{slot.lower()}"),
+                ("ast", f"ast_allowed_{slot.lower()}"),
+            ):
+                observed = float(getattr(entry, f"{stat}_allowed", 0) or 0)
+                filled[attr] = shrink_allowed(observed, baselines[stat][slot], games)
+            threes = shrink_allowed(
+                float(entry.threes_allowed or 0), baselines["fg3"][slot], games,
+            )
+            if threes > 0:
+                filled[f"threes_allowed_{slot.lower()}"] = threes
+            fpa_league = FPA_LEAGUE_AVG.get(fpa_pos[slot], 33.0)
+            fpa = shrink_allowed(float(entry.fantasy_allowed or 0), fpa_league, games)
+            if fpa > 0:
+                filled[f"fpa_{slot.lower()}"] = fpa
+
         return TeamDefense(
-            team_id=team_id,
-            team_abbr="",
-            defensive_efficiency=LEAGUE_AVG_DEF_EFF,
-            pace=LEAGUE_AVG_PACE,
+            team_id=str(team_id),
+            team_abbr=abbr,
+            defensive_efficiency=def_rating,
+            pace=pace,
+            pace_is_fallback=pace_fallback,
+            pace_source="league_average_fallback" if pace_fallback else "balldontlie",
             data_source=DataSource.BALLDONTLIE,
+            **filled,
         )

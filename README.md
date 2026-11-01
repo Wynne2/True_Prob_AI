@@ -14,7 +14,7 @@ Estimates the **true probability** of NBA player prop outcomes, compares it agai
 | Terminal UI | `rich` |
 | Web UI | `streamlit` |
 | HTTP | `requests` |
-| NBA stats (free) | `nba_api` |
+| NBA stats | BALLDONTLIE GOAT (`BALLDONTLIE_API_KEY`) |
 | Config | `python-dotenv` |
 | Testing | `pytest`, `pytest-cov` |
 
@@ -37,12 +37,13 @@ cp .env.template .env
 Edit `.env` and fill in your keys:
 
 ```env
-SPORTSDATAIO_API_KEY=   # injuries, rosters, season stats, depth charts
+BALLDONTLIE_API_KEY=    # usage, tracking, pace, season averages (or BDL_API_KEY)
+SPORTSDATAIO_API_KEY=   # injuries, rosters, depth charts
 THE_ODDS_API_KEY=       # sportsbook odds and prop lines (required for pricing)
 SPORTRADAR_API_KEY=     # game schedule / slate (primary source)
 ```
 
-`nba_api` uses public NBA.com endpoints and **requires no key**.
+Player usage, tracking, pace, and season averages come from **BALLDONTLIE GOAT** (`BALLDONTLIE_API_KEY` or `BDL_API_KEY`). Sportsbook prices still come only from **The Odds API**. Set `BDL_REQUESTS_PER_MINUTE=5` on the trial tier and `600` on paid GOAT.
 
 ### 3. Verify provider status
 
@@ -167,15 +168,16 @@ True_Prob_AI/
 ├── services/                   # Service layer — data enrichment and context
 │   ├── player_context_service.py   # Season stats, roster, depth chart
 │   ├── injury_context_service.py   # Injury list, lineup projections
-│   ├── usage_tracking_service.py   # nba_api usage/tracking dashboard
-│   ├── splits_service.py           # nba_api split context dashboards
+│   ├── usage_tracking_service.py   # BALLDONTLIE usage/tracking
+│   ├── splits_service.py           # BALLDONTLIE season averages; home/last-N left empty when the API has no split filter
 │   ├── matchup_context_service.py  # Team pace, DvP context
 │   ├── dvp_service.py              # Defence vs Position accessor
 │   └── cache_service.py            # In-process cache wrapper
 │
 ├── data/
 │   ├── loaders/
-│   │   ├── nba_api_loader.py       # Loads from nba_api with disk caching
+│   │   ├── nba_api_loader.py       # Compatibility facade; fetches BALLDONTLIE
+│   │   ├── balldontlie_client.py   # Auth, pagination, retries
 │   │   └── sportsdataio_loader.py  # Loads from SportsDataIO with disk caching
 │   └── builders/
 │       ├── player_feature_builder.py  # Assembles FeatureVectors for all slate players
@@ -217,7 +219,7 @@ True_Prob_AI/
 
 The `SlateScanner` runs this sequence once per daily scan — no per-prop API calls:
 
-1. **Slate** — fetch today's games via Sportradar (fallback: SportsDataIO). Only pregame games are evaluated; in-progress and final games are excluded.
+1. **Slate** — fetch today's games from BALLDONTLIE. Only pregame games are evaluated; in-progress and final games are excluded.
 2. **Odds** — pull all prop markets from The Odds API (only source for sportsbook pricing).
 3. **Cache warm** — batch-fetch all service data: season stats, depth charts, injury lists, usage/tracking dashboards, split dashboards, team defense.
 4. **Player build** — construct `Player` entities from `PlayerContextService`.
@@ -285,6 +287,7 @@ All configuration is loaded from `.env` (or environment variables). Copy `.env.t
 
 | Variable | Required | Source |
 |---|---|---|
+| `BALLDONTLIE_API_KEY` | Required for advanced stats | [docs.balldontlie.io](https://docs.balldontlie.io/) |
 | `SPORTSDATAIO_API_KEY` | Recommended | [sportsdata.io](https://sportsdata.io/) |
 | `THE_ODDS_API_KEY` | Required for odds | [the-odds-api.com](https://the-odds-api.com/) |
 | `SPORTRADAR_API_KEY` | Recommended | [developer.sportradar.com](https://developer.sportradar.com/) |
@@ -292,13 +295,12 @@ All configuration is loaded from `.env` (or environment variables). Copy `.env.t
 ### Optional Settings
 
 ```env
-# nba_api
-NBA_SEASON=2025-26          # season string (default: 2025-26)
-NBA_API_SLEEP=0.6           # rate-limit delay in seconds between requests
-NBA_API_TTL_ADVANCED=86400  # disk cache TTL for advanced dashboard (seconds)
-NBA_API_TTL_TRACKING=86400  # disk cache TTL for tracking dashboard (seconds)
-NBA_API_TTL_GAMELOGS=43200  # disk cache TTL for game logs (seconds)
-NBA_API_TTL_SPLITS=86400    # disk cache TTL for split dashboards (seconds)
+# BALLDONTLIE GOAT
+NBA_SEASON=2026-27          # label; API season start year is 2026
+BDL_REQUESTS_PER_MINUTE=5   # trial. Paid GOAT: 600
+BDL_TTL_ADVANCED=86400      # disk cache TTL for season averages (seconds)
+BDL_TTL_TRACKING=86400
+BDL_TTL_GAMELOGS=43200
 
 # Odds API
 ODDS_API_REGIONS=us,us2     # book regions to query (comma-separated)
@@ -320,8 +322,8 @@ CSV_DEFENSE_PATH=data/import/defense.csv
 
 | Provider | Key required | Data supplied |
 |---|---|---|
-| `nba_api` | No | Usage rate, touches, pace, advanced stats, game logs, splits |
-| SportsDataIO | Yes | Injuries, rosters, depth charts, season stats |
+| BALLDONTLIE GOAT | Yes | Usage, tracking (potential assists, rebound chances, touches), pace, game logs, season averages |
+| SportsDataIO | No | Not used on the live scan. Injuries and season stats come from BALLDONTLIE. |
 | Sportradar | Yes | Game slate (primary schedule source) |
 | The Odds API | Yes | Prop lines, over/under pricing, multi-book odds |
 
@@ -337,8 +339,8 @@ CSV_DEFENSE_PATH=data/import/defense.csv
 **`UnicodeEncodeError` on Windows**
 The CLI automatically reconfigures stdout/stderr to UTF-8 on Windows. If you see this in a subprocess, set `PYTHONIOENCODING=utf-8` in your environment.
 
-**nba_api rate-limit errors**
-Increase `NBA_API_SLEEP` in `.env` (default `0.6` seconds). The data layer calls nba_api in batches, not per-prop, to minimise total requests.
+**BALLDONTLIE rate limits**
+Trial access is 5 requests per minute. Paid GOAT allows 600. Set `BDL_REQUESTS_PER_MINUTE` to match the key. HTTP 429 and 5xx are retried with backoff. Cached responses live under `data/cache/balldontlie/`.
 
 **Stale data returned**
 Set `DISK_CACHE_ENABLED=false` in `.env` or use the **API Debug** tab in the Streamlit UI (which bypasses disk cache automatically).

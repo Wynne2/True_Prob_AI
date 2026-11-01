@@ -104,6 +104,8 @@ class UsageTrackingContext:
     rebound_chances: float = 0.0
     oreb_chances: float = 0.0
     dreb_chances: float = 0.0
+    # Names of tracking inputs the feed did not return. 0.0 on those fields is missing, not a recorded zero.
+    missing_fields: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -134,6 +136,7 @@ class MatchupContext:
     # Normalised adjustment factors (derived; 1.0 = neutral)
     defense_factor: float = 1.0          # season def rating vs league avg
     recent_defense_factor: float = 1.0   # last-10 trend
+    pace_is_fallback: bool = False       # True when opp_pace is the league average, not a team row
 
 
 @dataclass
@@ -155,6 +158,7 @@ class DvPEntry:
     blk_forced: float = 0.0
     tov_forced: float = 0.0
     fantasy_allowed: float = 0.0   # DraftKings scoring formula
+    threes_allowed: float = 0.0    # made threes allowed; 0 when the box score had no fg3m
 
     # Windowed values
     last_10_pts: float = 0.0

@@ -106,6 +106,17 @@ _BOOK_MAP: dict[str, BookName] = {
     "prizepicks": BookName.OTHER,
 }
 
+# Documented NBA player-prop keys. Alternate lines share the base PropType.
+# Combo markets other than PRA are stored only when a PropType exists.
+# Discovery (GET .../events/{id}/markets) is optional and credit-costly;
+# the daily scan requests this catalog directly.
+PLAYER_PROP_MARKET_BATCHES: tuple[str, ...] = (
+    "player_points,player_points_alternate,player_rebounds,player_rebounds_alternate",
+    "player_assists,player_assists_alternate,player_threes,player_threes_alternate",
+    "player_points_rebounds_assists,player_blocks,player_steals,player_turnovers",
+    "player_points_rebounds,player_points_assists,player_rebounds_assists,player_double_double,player_triple_double",
+)
+
 
 class OddsAPIProvider(BaseProvider):
     """
@@ -123,6 +134,7 @@ class OddsAPIProvider(BaseProvider):
         self._session = requests.Session()
         adapter = _LaxSSLAdapter()
         self._session.mount("https://", adapter)
+        self.last_quota: dict[str, str] = {}
 
     def is_available(self) -> bool:
         return bool(self._key)
@@ -170,6 +182,18 @@ class OddsAPIProvider(BaseProvider):
                     logger.warning("The Odds API: rate limit exceeded (too many requests per minute)")
                     return None
                 resp.raise_for_status()
+                self.last_quota = {
+                    "remaining": resp.headers.get("x-requests-remaining", ""),
+                    "used": resp.headers.get("x-requests-used", ""),
+                    "last": resp.headers.get("x-requests-last", ""),
+                }
+                if self.last_quota["remaining"]:
+                    logger.info(
+                        "The Odds API quota: remaining=%s used=%s last_cost=%s",
+                        self.last_quota["remaining"],
+                        self.last_quota["used"],
+                        self.last_quota["last"],
+                    )
                 return resp.json()
             except requests.RequestException as exc:
                 if attempt < max_attempts - 1:
@@ -216,13 +240,11 @@ class OddsAPIProvider(BaseProvider):
         is always UTC — so we convert each timestamp to Eastern before comparing.
         """
         data = self._get(
-            f"sports/{self._cfg.sport_key}/odds",
-            regions=self._cfg.regions,
-            markets="h2h",
-            oddsFormat=self._cfg.odds_format,
+            f"sports/{self._cfg.sport_key}/events",
             dateFormat="iso",
         )
-        if not data:
+        if not isinstance(data, list):
+            logger.error("The Odds API events response was not a list")
             return []
         matched = [
             e for e in data
@@ -272,13 +294,12 @@ class OddsAPIProvider(BaseProvider):
         events = self._get_events(game_date)
         all_lines: list[OddsLine] = []
 
-        # The prop markets we request, split into two batches to avoid API limits
-        markets_batch1 = "player_points,player_rebounds,player_assists"
-        markets_batch2 = "player_threes,player_blocks,player_steals"
+        unsupported: set[str] = set()
+        one_sided = 0
 
         for evt in events:
             event_id = evt.get("id", "")
-            for markets in (markets_batch1, markets_batch2):
+            for markets in PLAYER_PROP_MARKET_BATCHES:
                 data = self._get(
                     f"sports/{self._cfg.sport_key}/events/{event_id}/odds",
                     regions=self._cfg.regions,
@@ -297,6 +318,8 @@ class OddsAPIProvider(BaseProvider):
                         market_key = market.get("key", "")
                         prop_type = PROP_ALIAS_MAP.get(market_key)
                         if not prop_type:
+                            if market_key:
+                                unsupported.add(market_key)
                             continue
 
                         # Group outcomes by (player_name, line_value).
@@ -323,6 +346,7 @@ class OddsAPIProvider(BaseProvider):
 
                         for (player_name, _pt), odds in player_outcomes.items():
                             if "over_odds" not in odds or "under_odds" not in odds:
+                                one_sided += 1
                                 continue
                             line = OddsLine(
                                 book=book,
@@ -338,7 +362,22 @@ class OddsAPIProvider(BaseProvider):
                             )
                             all_lines.append(line)
 
-        logger.info("The Odds API: loaded %d prop lines for %s", len(all_lines), game_date)
+        if unsupported:
+            logger.info(
+                "The Odds API returned markets with no probability model: %s",
+                ", ".join(sorted(unsupported)),
+            )
+        if one_sided:
+            logger.info(
+                "The Odds API: skipped %d one-sided selections (need both Over and Under)",
+                one_sided,
+            )
+        logger.info(
+            "The Odds API: loaded %d prop lines for %s (quota remaining=%s)",
+            len(all_lines),
+            game_date,
+            self.last_quota.get("remaining", "unknown"),
+        )
         return all_lines
 
     @staticmethod

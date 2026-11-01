@@ -5,13 +5,39 @@ All tunable parameters live here so they can be adjusted in one place
 without touching model logic.
 """
 
+import os
+from datetime import date
+
 from domain.enums import Position, PropType
 
 # ---------------------------------------------------------------------------
 # Season context
 # ---------------------------------------------------------------------------
 
-NBA_SEASON: str = "2025-26"             # nba_api season string (YYYY-YY format)
+def nba_season_label(on: date | None = None) -> str:
+    """Season label YYYY-YY. October starts the new season (2026-10 → 2026-27)."""
+    on = on or date.today()
+    start = on.year if on.month >= 10 else on.year - 1
+    return f"{start}-{str(start + 1)[-2:]}"
+
+
+def balldontlie_season_start_year(season: str | int | None = None) -> int:
+    """
+    BALLDONTLIE season query value is the start year.
+
+    ``2026-27`` and ``2026`` both mean season start year 2026.
+    """
+    if season is None or season == "":
+        season = os.environ.get("NBA_SEASON") or nba_season_label()
+    if isinstance(season, int):
+        return season
+    text = str(season).strip()
+    if "-" in text:
+        return int(text.split("-", 1)[0])
+    return int(text)
+
+
+NBA_SEASON: str = os.environ.get("NBA_SEASON", nba_season_label())
 SDIO_SEASON: str = "2026"               # SportsDataIO season string (end-year format)
 LEAGUE_AVG_PACE: float = 100.3          # possessions per 48 min, 2025-26 estimate
 
@@ -433,19 +459,24 @@ POSITION_ALIAS_MAP: dict[str, str] = {
 # Prop type alias map (normalise provider market names to PropType values)
 PROP_ALIAS_MAP: dict[str, PropType] = {
     "player_points": PropType.POINTS,
+    "player_points_alternate": PropType.POINTS,
     "pts": PropType.POINTS,
     "points": PropType.POINTS,
     "player_rebounds": PropType.REBOUNDS,
+    "player_rebounds_alternate": PropType.REBOUNDS,
     "reb": PropType.REBOUNDS,
     "rebounds": PropType.REBOUNDS,
     "player_assists": PropType.ASSISTS,
+    "player_assists_alternate": PropType.ASSISTS,
     "ast": PropType.ASSISTS,
     "assists": PropType.ASSISTS,
     "player_threes": PropType.THREES,
+    "player_threes_alternate": PropType.THREES,
     "three_pointers_made": PropType.THREES,
     "threes": PropType.THREES,
     "3pm": PropType.THREES,
     "player_pra": PropType.PRA,
+    "player_points_rebounds_assists": PropType.PRA,
     "pts_reb_ast": PropType.PRA,
     "pra": PropType.PRA,
     "player_blocks": PropType.BLOCKS,
@@ -454,6 +485,11 @@ PROP_ALIAS_MAP: dict[str, PropType] = {
     "player_steals": PropType.STEALS,
     "stl": PropType.STEALS,
     "steals": PropType.STEALS,
+    "player_points_rebounds": PropType.POINTS_REBOUNDS,
+    "player_points_assists": PropType.POINTS_ASSISTS,
+    "player_rebounds_assists": PropType.REBOUNDS_ASSISTS,
+    "player_double_double": PropType.DOUBLE_DOUBLE,
+    "player_triple_double": PropType.TRIPLE_DOUBLE,
     "player_turnovers": PropType.TURNOVERS,
     "tov": PropType.TURNOVERS,
     "turnovers": PropType.TURNOVERS,

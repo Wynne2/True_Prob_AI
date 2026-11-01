@@ -42,8 +42,10 @@ class UsageModel:
         if base_usage <= 0:
             base_usage = 0.20  # league average default
 
-        # Boost for missing teammates
-        usage = base_usage * (TEAMMATE_OUT_USAGE_BOOST ** missing_star_count)
+        # Boost for missing teammates. usage_vacuum is the redistribution
+        # multiplier from InjuryContext (1.0 when nobody is out).
+        vacuum = float(getattr(player, "usage_vacuum", 1.0) or 1.0)
+        usage = base_usage * (TEAMMATE_OUT_USAGE_BOOST ** missing_star_count) * max(vacuum, 0.0)
 
         # Player's own injury dampener
         if player.injury_status == InjuryStatus.QUESTIONABLE:

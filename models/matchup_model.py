@@ -25,6 +25,25 @@ from utils.math_helpers import clamp
 logger = logging.getLogger(__name__)
 
 
+def _present_mean(*values: float) -> float:
+    """Average only slots that actually have a measured allowance."""
+    present = [float(v) for v in values if v and v > 0]
+    if not present:
+        return 0.0
+    return sum(present) / len(present)
+
+
+def shrink_allowed(observed: float, league: float, games: int, full_sample: float = 12.0) -> float:
+    """
+    Pull a positional allowance toward the league baseline when the
+    box-score sample is short. A 12-game sample is full weight.
+    """
+    if observed <= 0 or league <= 0:
+        return 0.0
+    weight = clamp(games / full_sample, 0.0, 1.0)
+    return league * (1.0 - weight) + observed * weight
+
+
 class MatchupModel:
     """Produces matchup adjustment multipliers for individual stat projections."""
 
@@ -36,10 +55,10 @@ class MatchupModel:
             Position.SF: defense.pts_allowed_sf,
             Position.PF: defense.pts_allowed_pf,
             Position.C: defense.pts_allowed_c,
-            Position.G: (defense.pts_allowed_pg + defense.pts_allowed_sg) / 2,
-            Position.F: (defense.pts_allowed_sf + defense.pts_allowed_pf) / 2,
-            Position.FC: (defense.pts_allowed_pf + defense.pts_allowed_c) / 2,
-            Position.GF: (defense.pts_allowed_sg + defense.pts_allowed_sf) / 2,
+            Position.G: _present_mean(defense.pts_allowed_pg, defense.pts_allowed_sg),
+            Position.F: _present_mean(defense.pts_allowed_sf, defense.pts_allowed_pf),
+            Position.FC: _present_mean(defense.pts_allowed_pf, defense.pts_allowed_c),
+            Position.GF: _present_mean(defense.pts_allowed_sg, defense.pts_allowed_sf),
         }
         return mapping.get(position, 0.0)
 
@@ -50,10 +69,10 @@ class MatchupModel:
             Position.SF: defense.reb_allowed_sf,
             Position.PF: defense.reb_allowed_pf,
             Position.C: defense.reb_allowed_c,
-            Position.G: (defense.reb_allowed_pg + defense.reb_allowed_sg) / 2,
-            Position.F: (defense.reb_allowed_sf + defense.reb_allowed_pf) / 2,
-            Position.FC: (defense.reb_allowed_pf + defense.reb_allowed_c) / 2,
-            Position.GF: (defense.reb_allowed_sg + defense.reb_allowed_sf) / 2,
+            Position.G: _present_mean(defense.reb_allowed_pg, defense.reb_allowed_sg),
+            Position.F: _present_mean(defense.reb_allowed_sf, defense.reb_allowed_pf),
+            Position.FC: _present_mean(defense.reb_allowed_pf, defense.reb_allowed_c),
+            Position.GF: _present_mean(defense.reb_allowed_sg, defense.reb_allowed_sf),
         }
         return mapping.get(position, 0.0)
 
@@ -64,10 +83,10 @@ class MatchupModel:
             Position.SF: defense.ast_allowed_sf,
             Position.PF: defense.ast_allowed_pf,
             Position.C: defense.ast_allowed_c,
-            Position.G: (defense.ast_allowed_pg + defense.ast_allowed_sg) / 2,
-            Position.F: (defense.ast_allowed_sf + defense.ast_allowed_pf) / 2,
-            Position.FC: (defense.ast_allowed_pf + defense.ast_allowed_c) / 2,
-            Position.GF: (defense.ast_allowed_sg + defense.ast_allowed_sf) / 2,
+            Position.G: _present_mean(defense.ast_allowed_pg, defense.ast_allowed_sg),
+            Position.F: _present_mean(defense.ast_allowed_sf, defense.ast_allowed_pf),
+            Position.FC: _present_mean(defense.ast_allowed_pf, defense.ast_allowed_c),
+            Position.GF: _present_mean(defense.ast_allowed_sg, defense.ast_allowed_sf),
         }
         return mapping.get(position, 0.0)
 
@@ -78,10 +97,10 @@ class MatchupModel:
             Position.SF: defense.threes_allowed_sf,
             Position.PF: defense.threes_allowed_pf,
             Position.C: defense.threes_allowed_c,
-            Position.G: (defense.threes_allowed_pg + defense.threes_allowed_sg) / 2,
-            Position.F: (defense.threes_allowed_sf + defense.threes_allowed_pf) / 2,
-            Position.FC: (defense.threes_allowed_pf + defense.threes_allowed_c) / 2,
-            Position.GF: (defense.threes_allowed_sg + defense.threes_allowed_sf) / 2,
+            Position.G: _present_mean(defense.threes_allowed_pg, defense.threes_allowed_sg),
+            Position.F: _present_mean(defense.threes_allowed_sf, defense.threes_allowed_pf),
+            Position.FC: _present_mean(defense.threes_allowed_pf, defense.threes_allowed_c),
+            Position.GF: _present_mean(defense.threes_allowed_sg, defense.threes_allowed_sf),
         }
         return mapping.get(position, 0.0)
 
@@ -93,10 +112,10 @@ class MatchupModel:
             Position.SF: defense.fpa_sf,
             Position.PF: defense.fpa_pf,
             Position.C: defense.fpa_c,
-            Position.G: (defense.fpa_pg + defense.fpa_sg) / 2,
-            Position.F: (defense.fpa_sf + defense.fpa_pf) / 2,
-            Position.FC: (defense.fpa_pf + defense.fpa_c) / 2,
-            Position.GF: (defense.fpa_sg + defense.fpa_sf) / 2,
+            Position.G: _present_mean(defense.fpa_pg, defense.fpa_sg),
+            Position.F: _present_mean(defense.fpa_sf, defense.fpa_pf),
+            Position.FC: _present_mean(defense.fpa_pf, defense.fpa_c),
+            Position.GF: _present_mean(defense.fpa_sg, defense.fpa_sf),
         }
         return mapping.get(position, 0.0)
 

@@ -29,6 +29,7 @@ from engine.bankroll_engine import apply_stake_to_all, payout_summary
 from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays, summary_stats
 from engine.slate_scanner import SlateScanner
+from app.backtest_view import render_backtest_tab
 from engine.straight_bet_audit import (
     build_favorite_band_audit_table,
     format_favorite_band_summary_markdown,
@@ -786,8 +787,9 @@ def main() -> None:
         render_games_slate(st.session_state.games)
 
     # Tab layout
-    tab_straight, tab_parlays, tab_props, tab_lines, tab_debug = st.tabs([
-        "🎲 Straight Bets", "🎯 Parlays", "📊 Props Analysis", "🛒 Line Shopping", "🔬 API Debug"
+    tab_straight, tab_parlays, tab_props, tab_lines, tab_debug, tab_backtest = st.tabs([
+        "🎲 Straight Bets", "🎯 Parlays", "📊 Props Analysis", "🛒 Line Shopping",
+        "🔬 API Debug", "📏 Backtesting",
     ])
 
     all_props = st.session_state.all_props
@@ -829,6 +831,9 @@ def main() -> None:
 
     with tab_debug:
         render_api_debug_tab(params["date"])
+
+    with tab_backtest:
+        render_backtest_tab()
 
     # Footer
     st.divider()

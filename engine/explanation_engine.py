@@ -33,6 +33,9 @@ def build_explanation(
 
     proj_val = format_stat(projection.projected_value)
     parts.append(f"Projected {prop_type.value}: {proj_val} (model mean).")
+    opportunity_lines = list((projection.model_context or {}).get("explanation_lines") or [])
+    if opportunity_lines:
+        parts.extend(str(line) for line in opportunity_lines)
     if projection.baseline_projection > 0 and projection.environment_multiplier > 0:
         base_val = format_stat(projection.baseline_projection)
         parts.append(
@@ -72,10 +75,17 @@ def build_explanation(
                 "(FPA not used for glass)."
             )
 
-    # Pace context
-    if defense and defense.pace > 0:
-        pace_note = "high" if defense.pace > 102 else "low" if defense.pace < 98 else "average"
-        parts.append(f"Opponent pace: {defense.pace:.1f} ({pace_note}).")
+    # Pace context. Opportunity lines already name the source when the model wrote them.
+    if defense and defense.pace > 0 and not opportunity_lines:
+        if getattr(defense, "pace_is_fallback", False):
+            parts.append(
+                f"Opponent pace: {defense.pace:.1f} "
+                "(league-average fallback; team pace missing)."
+            )
+        else:
+            pace_note = "high" if defense.pace > 102 else "low" if defense.pace < 98 else "near the league average"
+            source = defense.pace_source or "team pace"
+            parts.append(f"Opponent pace: {defense.pace:.1f} ({source}, {pace_note}).")
 
     # Defensive context
     if defense:

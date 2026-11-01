@@ -153,27 +153,37 @@ def get_usage_context(
     rebounding = _lookup(_rebound_tracking_index, _rebound_name_index)
     team_pace = _team_pace_index.get(team_id, {})
 
-    # nba_api returns USG_PCT as a 0-1 fraction (e.g. 0.213 = 21.3%).
-    # Do NOT divide by 100 — the value is already in the domain's 0-1 contract.
-    raw_usg = float(adv.get("usg_pct", 0) or 0)
+    missing: list[str] = []
+
+    def _num(rec: dict, key: str) -> float:
+        if key not in rec or rec.get(key) is None:
+            missing.append(key)
+            return 0.0
+        return float(rec[key])
+
+    # usg_pct is already a 0-1 fraction when it came from BALLDONTLIE normalization.
+    raw_usg = _num(adv, "usg_pct") if adv else 0.0
+    if not adv:
+        missing.append("usg_pct")
 
     return UsageTrackingContext(
         player_id=player_id,
         player_name=adv.get("player_name", player_name),
         team_id=team_id,
         usage_rate=raw_usg,
-        possessions_per_game=float(adv.get("poss", 0) or 0),
-        team_pace=float(team_pace.get("pace", 0) or 0),
-        touches_per_game=float(poss.get("touches", 0) or 0),
-        time_of_possession=float(poss.get("time_of_poss", 0) or 0),
-        front_ct_touches=float(poss.get("front_ct_touches", 0) or 0),
-        paint_touches=float(poss.get("paint_touches", 0) or 0),
-        elbow_touches=float(poss.get("elbow_touches", 0) or 0),
-        post_touches=float(poss.get("post_touches", 0) or 0),
-        potential_assists=float(passing.get("potential_ast", 0) or 0),
-        rebound_chances=float(rebounding.get("reb_chances", 0) or 0),
-        oreb_chances=float(rebounding.get("oreb_chances", 0) or 0),
-        dreb_chances=float(rebounding.get("dreb_chances", 0) or 0),
+        possessions_per_game=_num(adv, "poss") if adv else 0.0,
+        team_pace=_num(team_pace, "pace") if team_pace else 0.0,
+        touches_per_game=_num(poss, "touches") if poss else 0.0,
+        time_of_possession=_num(poss, "time_of_poss") if poss else 0.0,
+        front_ct_touches=_num(poss, "front_ct_touches") if poss else 0.0,
+        paint_touches=_num(poss, "paint_touches") if poss else 0.0,
+        elbow_touches=_num(poss, "elbow_touches") if poss else 0.0,
+        post_touches=_num(poss, "post_touches") if poss else 0.0,
+        potential_assists=_num(passing, "potential_ast") if passing else 0.0,
+        rebound_chances=_num(rebounding, "reb_chances") if rebounding else 0.0,
+        oreb_chances=_num(rebounding, "oreb_chances") if rebounding else 0.0,
+        dreb_chances=_num(rebounding, "dreb_chances") if rebounding else 0.0,
+        missing_fields=missing,
     )
 
 
