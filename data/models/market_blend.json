@@ -1,0 +1,96 @@
+{
+  "fitted_at": "2026-11-02T02:05:35+00:00",
+  "method": "logit(p) = logit(market) + w * clip(logit(model) - logit(market), -c, c); w, c chosen by Brier, validated leave-one-date-out",
+  "train_variant": "A_opportunity",
+  "n_rows": 6010,
+  "n_dates": 19,
+  "weights": {
+    "assists": {
+      "weight": 0.0,
+      "clip": 0.25
+    },
+    "points": {
+      "weight": 0.5,
+      "clip": 0.5
+    },
+    "rebounds": {
+      "weight": 0.0,
+      "clip": 99.0
+    },
+    "threes": {
+      "weight": 0.0,
+      "clip": 0.5
+    }
+  },
+  "default": {
+    "weight": 0.1,
+    "clip": 0.25
+  },
+  "metrics": {
+    "assists": {
+      "weight": 0.0,
+      "clip": 0.25,
+      "n": 1022,
+      "n_dates": 19,
+      "market_brier": 0.240988,
+      "model_brier": 0.249679,
+      "cv_blend_brier": 0.241433,
+      "cv_delta_vs_market": 0.000446,
+      "cv_delta_date_se": 0.000159,
+      "dates_improved": 5,
+      "cv_beats_market": false
+    },
+    "points": {
+      "weight": 0.5,
+      "clip": 0.5,
+      "n": 2771,
+      "n_dates": 19,
+      "market_brier": 0.239352,
+      "model_brier": 0.240529,
+      "cv_blend_brier": 0.237289,
+      "cv_delta_vs_market": -0.002063,
+      "cv_delta_date_se": 0.001108,
+      "dates_improved": 13,
+      "cv_beats_market": true
+    },
+    "rebounds": {
+      "weight": 0.0,
+      "clip": 99.0,
+      "n": 1360,
+      "n_dates": 19,
+      "market_brier": 0.238835,
+      "model_brier": 0.259582,
+      "cv_blend_brier": 0.23959,
+      "cv_delta_vs_market": 0.000755,
+      "cv_delta_date_se": 0.000547,
+      "dates_improved": 10,
+      "cv_beats_market": false
+    },
+    "threes": {
+      "weight": 0.0,
+      "clip": 0.5,
+      "n": 857,
+      "n_dates": 19,
+      "market_brier": 0.240998,
+      "model_brier": 0.247156,
+      "cv_blend_brier": 0.241308,
+      "cv_delta_vs_market": 0.00031,
+      "cv_delta_date_se": 0.000689,
+      "dates_improved": 10,
+      "cv_beats_market": false
+    },
+    "all": {
+      "weight": 0.5,
+      "clip": 0.25,
+      "n": 6010,
+      "n_dates": 19,
+      "market_brier": 0.239748,
+      "model_brier": 0.247341,
+      "cv_blend_brier": 0.239239,
+      "cv_delta_vs_market": -0.000509,
+      "cv_delta_date_se": 0.000384,
+      "dates_improved": 13,
+      "cv_beats_market": true
+    }
+  }
+}

@@ -33,6 +33,7 @@ import logging
 from datetime import date
 from typing import Optional
 
+import domain.constants as _constants
 from domain.entities import Game, GameLine, OddsLine, Player, PropProbability
 from utils.date_utils import filter_pregame_games
 from domain.enums import PropType
@@ -269,6 +270,26 @@ class SlateScanner:
         # Build DvP tables from available game logs before evaluation
         self._ensure_dvp_tables(game_date)
 
+        # Only players with at least one priced line can produce a prop, so skip
+        # the per-player stat pulls for everyone else (same output, far fewer calls).
+        from engine.prop_evaluator import _normalize_name
+
+        priced_ids = {str(ol.player_id) for ol in all_odds if ol.player_id}
+        priced_names = {_normalize_name(ol.player_name) for ol in all_odds if ol.player_name}
+
+        def _is_priced(p: Player) -> bool:
+            return p.player_id in priced_ids or _normalize_name(p.name) in priced_names
+
+        if all_odds:
+            total_players = sum(len(v) for v in players_by_game.values())
+            players_by_game = {
+                gid: [p for p in plist if _is_priced(p)] for gid, plist in players_by_game.items()
+            }
+            logger.info(
+                "SlateScanner: %d of %d rostered players have a priced prop line",
+                sum(len(v) for v in players_by_game.values()), total_players,
+            )
+
         # Flatten all players for the feature builder
         all_players: list[Player] = []
         opponent_map: dict[str, tuple[str, str]] = {}
@@ -309,7 +330,12 @@ class SlateScanner:
             players = players_by_game.get(game.game_id, [])
             for player in players:
                 is_home = is_home_map.get(player.player_id, True)
+                if not player.team_abbr:
+                    player.team_abbr = game.home_team_abbr if is_home else game.away_team_abbr
                 opp_defense = self._load_defense(opponent_map.get(player.player_id, ("", ""))[0])
+                if opp_defense is not None and not _constants.MATCHUP_ADJUSTMENTS_ENABLED:
+                    from engine.backtest.variants import neutral_defense
+                    opp_defense = neutral_defense(opp_defense)
 
                 props = self._evaluator.evaluate_all_props(
                     player=player,

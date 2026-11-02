@@ -1,0 +1,106 @@
+{
+  "fitted_at": "2026-11-02T02:05:36+00:00",
+  "method": "Pearson correlation of per-prop standardized residuals (actual - projected)",
+  "variant": "A_opportunity",
+  "n_player_games": 781,
+  "same_player": {
+    "assists|points": 0.1348,
+    "assists|rebounds": 0.1789,
+    "assists|threes": 0.0431,
+    "points|rebounds": 0.2453,
+    "points|threes": 0.6861,
+    "rebounds|threes": 0.0548
+  },
+  "same_game": {
+    "assists|assists": 0.0,
+    "assists|points": 0.0326,
+    "assists|rebounds": -0.0215,
+    "assists|threes": 0.0,
+    "points|points": 0.0,
+    "points|rebounds": 0.0,
+    "points|threes": -0.0311,
+    "rebounds|rebounds": 0.0,
+    "rebounds|threes": 0.0,
+    "threes|threes": 0.0
+  },
+  "detail": {
+    "same_player": {
+      "assists|points": {
+        "rho": 0.1348,
+        "n": 732
+      },
+      "assists|rebounds": {
+        "rho": 0.1789,
+        "n": 730
+      },
+      "assists|threes": {
+        "rho": 0.0431,
+        "n": 669
+      },
+      "points|rebounds": {
+        "rho": 0.2453,
+        "n": 773
+      },
+      "points|threes": {
+        "rho": 0.6861,
+        "n": 702
+      },
+      "rebounds|threes": {
+        "rho": 0.0548,
+        "n": 698
+      }
+    },
+    "same_game": {
+      "assists|assists": {
+        "rho": 0.0112,
+        "n": 4382,
+        "kept": false
+      },
+      "assists|points": {
+        "rho": 0.0326,
+        "n": 9318,
+        "kept": true
+      },
+      "assists|rebounds": {
+        "rho": -0.0215,
+        "n": 9228,
+        "kept": true
+      },
+      "assists|threes": {
+        "rho": 0.0194,
+        "n": 8384,
+        "kept": false
+      },
+      "points|points": {
+        "rho": -0.0151,
+        "n": 4971,
+        "kept": false
+      },
+      "points|rebounds": {
+        "rho": 0.0011,
+        "n": 9845,
+        "kept": false
+      },
+      "points|threes": {
+        "rho": -0.0311,
+        "n": 8941,
+        "kept": true
+      },
+      "rebounds|rebounds": {
+        "rho": 0.0028,
+        "n": 4874,
+        "kept": false
+      },
+      "rebounds|threes": {
+        "rho": -0.0149,
+        "n": 8854,
+        "kept": false
+      },
+      "threes|threes": {
+        "rho": -0.0309,
+        "n": 4013,
+        "kept": false
+      }
+    }
+  }
+}

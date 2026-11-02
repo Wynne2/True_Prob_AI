@@ -71,6 +71,14 @@ def _parlay_legs_text(row: "ParlayRow", picks: dict[str, "PickRow"]) -> str:
 # Console
 # ---------------------------------------------------------------------------
 
+def _kelly_text(row, bankroll: Optional[float]) -> str:
+    """Quarter-Kelly bankroll share, plus the dollar stake when a bankroll is given."""
+    frac = getattr(row, "kelly_fraction", 0.0) or 0.0
+    if bankroll:
+        return f"{frac:.1%} ({format_currency(row.kelly_stake(bankroll))})"
+    return f"{frac:.1%}"
+
+
 def render_console(result: "AdvisorResult", console: "Console", max_parlays: int = 10) -> None:
     """Print picks, parlays, AI reasoning and saved file paths."""
     from rich import box
@@ -105,8 +113,8 @@ def render_console(result: "AdvisorResult", console: "Console", max_parlays: int
             ai_notes[tp.id] = tp.rationale
 
     t = Table(title=f"Top {len(result.picks)} picks", box=box.SIMPLE_HEAVY, show_lines=False)
-    for col in ("ID", "AI", "Player", "Prop", "Odds", "Venue", "Proj", "True", "Implied", "Edge", "Conf",
-                f"Return on {format_currency(opts.stake)}", "EV"):
+    for col in ("ID", "AI", "Player", "Prop", "Odds", "Venue", "Proj", "Market", "True", "Implied", "Edge",
+                "Conf", f"Return on {format_currency(opts.stake)}", "EV", "Kelly"):
         t.add_column(col, justify="right" if col not in ("Player", "Prop", "Venue", "Conf") else "left")
     for row in result.picks:
         p = row.prop
@@ -118,12 +126,14 @@ def render_console(result: "AdvisorResult", console: "Console", max_parlays: int
             format_american(p.sportsbook_odds),
             book_display_name(p.best_book, getattr(p, "best_book_key", "") or ""),
             f"{p.projected_value:.1f}",
+            format_prob(p.market_probability) if getattr(p, "market_probability", None) is not None else "–",
             format_prob(p.true_probability),
             format_prob(p.implied_probability),
             format_edge(p.edge),
             p.confidence.value,
             format_currency(row.total_return),
             f"{row.expected_value:+.2f}",
+            _kelly_text(row, opts.bankroll),
         )
     console.print(t)
 
@@ -133,7 +143,7 @@ def render_console(result: "AdvisorResult", console: "Console", max_parlays: int
     if result.parlays:
         pt = Table(title="Parlays (correlation-checked, sorted by model EV)", box=box.SIMPLE_HEAVY)
         for col in ("ID", "Legs", "Odds", "Implied", "Model true", "Edge",
-                    f"Return on {format_currency(opts.stake)}", "Profit", "EV", "Corr", "Venue", "Pick"):
+                    f"Return on {format_currency(opts.stake)}", "Profit", "EV", "Kelly", "Corr", "Venue", "Pick"):
             pt.add_column(col, justify="left" if col in ("Legs", "Venue", "Pick") else "right")
         for row in result.parlays[:max_parlays]:
             flag = "AI" if row.id in recommended else ("best EV" if row.id in det else "")
@@ -147,6 +157,7 @@ def render_console(result: "AdvisorResult", console: "Console", max_parlays: int
                 format_currency(row.total_return),
                 format_currency(row.profit),
                 f"{row.expected_value:+.2f}",
+                _kelly_text(row, opts.bankroll),
                 f"{row.correlation_risk_score:.2f}",
                 "single" if row.single_venue else "mixed",
                 flag,
@@ -245,8 +256,8 @@ def to_markdown(result: "AdvisorResult", max_parlays: int = 10) -> str:
         out += [
             "## Top picks",
             "",
-            "| ID | Player | Prop | Odds | Venue | True | Implied | Edge | Conf | Return | EV |",
-            "|---|---|---|---:|---|---:|---:|---:|---|---:|---:|",
+            "| ID | Player | Prop | Odds | Venue | Market | True | Implied | Edge | Conf | Return | EV | Kelly |",
+            "|---|---|---|---:|---|---:|---:|---:|---:|---|---:|---:|---:|",
         ]
         for row in result.picks:
             p = row.prop
@@ -254,9 +265,10 @@ def to_markdown(result: "AdvisorResult", max_parlays: int = 10) -> str:
                 f"| {row.id} | {p.player_name} | {p.prop_type.value.upper()} {p.side.value} {p.line:g} | "
                 f"{format_american(p.sportsbook_odds)} | "
                 f"{book_display_name(p.best_book, getattr(p, 'best_book_key', '') or '')} | "
+                f"{format_prob(p.market_probability) if getattr(p, 'market_probability', None) is not None else '–'} | "
                 f"{format_prob(p.true_probability)} | {format_prob(p.implied_probability)} | "
                 f"{format_edge(p.edge)} | {p.confidence.value} | {format_currency(row.total_return)} | "
-                f"{row.expected_value:+.2f} |"
+                f"{row.expected_value:+.2f} | {_kelly_text(row, opts.bankroll)} |"
             )
         out.append("")
 
@@ -264,8 +276,8 @@ def to_markdown(result: "AdvisorResult", max_parlays: int = 10) -> str:
         out += [
             "## Parlays",
             "",
-            "| ID | Legs | Odds | Implied | Model true | Edge | Return | Profit | EV | Corr | Venue |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| ID | Legs | Odds | Implied | Model true | Edge | Return | Profit | EV | Kelly | Corr | Venue |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
         for row in result.parlays[:max_parlays]:
             out.append(
@@ -273,7 +285,7 @@ def to_markdown(result: "AdvisorResult", max_parlays: int = 10) -> str:
                 f"{format_american(row.combined_american_odds)} | {format_prob(row.implied_probability)} | "
                 f"{format_prob(row.true_probability)} | {format_edge(row.edge)} | "
                 f"{format_currency(row.total_return)} | {format_currency(row.profit)} | "
-                f"{row.expected_value:+.2f} | {row.correlation_risk_score:.2f} | "
+                f"{row.expected_value:+.2f} | {_kelly_text(row, opts.bankroll)} | {row.correlation_risk_score:.2f} | "
                 f"{'single' if row.single_venue else 'mixed'} |"
             )
         out.append("")

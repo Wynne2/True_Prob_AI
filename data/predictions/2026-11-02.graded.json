@@ -1,0 +1,16 @@
+{
+  "summary": {
+    "date": "2026-11-02",
+    "ledger_rows": 732,
+    "final_games": 0,
+    "all": {
+      "n": 0,
+      "decided": 0
+    },
+    "positive_edge": {
+      "n": 0,
+      "decided": 0
+    }
+  },
+  "rows": []
+}

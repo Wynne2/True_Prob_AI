@@ -137,6 +137,8 @@ Requires OPENAI_API_KEY in .env unless --no-llm is used.
                         help="Edge must be strictly greater than this (default 0.0 = positive edge)")
     parser.add_argument("--top", type=int, default=5, help="Number of picks to keep (default 5)")
     parser.add_argument("--stake", type=float, default=100.0, help="Stake in $ for payout math (default 100)")
+    parser.add_argument("--bankroll", type=float, default=None,
+                        help="Bankroll in $; adds quarter-Kelly suggested stakes (capped at 5%% of bankroll)")
     parser.add_argument("--min-confidence", choices=["high", "medium", "low", "very_low"],
                         help="Minimum confidence tier per pick")
     prompt = parser.add_mutually_exclusive_group()
@@ -175,11 +177,16 @@ Examples:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["scan", "backtest", "advisor"],
-        help="Daily scan, `backtest` for a one-game historical sample, or `advisor` for the AI Advisor.",
+        choices=["scan", "backtest", "advisor", "fit-blend", "clv"],
+        help=(
+            "Daily scan, `backtest` for a one-game historical sample, `advisor` for the AI Advisor, "
+            "`fit-blend` to refit market-blend weights and parlay correlations from graded backtests, "
+            "or `clv` to record closing prices / grade a date's saved predictions."
+        ),
     )
     parser.add_argument("--date", help="Game date YYYY-MM-DD, or 'today'")
-    parser.add_argument("--min-edge", type=float, default=0.05, help="Min edge per leg (default 0.05 = 5%%)")
+    parser.add_argument("--min-edge", type=float, default=0.01,
+                        help="Min edge per leg (default 0.01 = 1%%; market-anchored edges are usually 1-4%%)")
     parser.add_argument("--max-legs", type=int, default=3, help="Max legs per parlay (default 3)")
     parser.add_argument("--min-legs", type=int, default=2, help="Min legs per parlay (default 2)")
     parser.add_argument("--stake", type=float, default=100.0, help="Stake amount in $ (default 100)")
@@ -381,8 +388,8 @@ def run_advisor_command(args: argparse.Namespace, game_date: date) -> None:
         except OSError as exc:
             console.print(f"[red]Could not read --prompt-file:[/red] {exc}")
             sys.exit(1)
-    if args.top < 1 or args.stake <= 0:
-        console.print("[red]--top must be ≥ 1 and --stake must be > 0.[/red]")
+    if args.top < 1 or args.stake <= 0 or (args.bankroll is not None and args.bankroll <= 0):
+        console.print("[red]--top must be ≥ 1, and --stake / --bankroll must be > 0.[/red]")
         sys.exit(1)
 
     cfg = get_openai_config()
@@ -402,6 +409,7 @@ def run_advisor_command(args: argparse.Namespace, game_date: date) -> None:
         min_edge=args.min_edge,
         top_n=args.top,
         stake=args.stake,
+        bankroll=args.bankroll,
         min_confidence=args.min_confidence,
         prompt=prompt,
         use_llm=not args.no_llm,
@@ -417,6 +425,77 @@ def run_advisor_command(args: argparse.Namespace, game_date: date) -> None:
             "Try --date with the next game day.[/yellow]"
         )
     render_console(result, console)
+
+
+def run_fit_blend_command() -> None:
+    """Refit market-blend weights and parlay correlations from graded backtests."""
+    from engine.market_blend_fit import DEFAULT_SOURCES, fit_blend
+    from engine.parlay_copula import DEFAULT_CORR_PATH, fit_correlations
+    from engine.market_blend import DEFAULT_PARAMS_PATH
+
+    try:
+        blend = fit_blend(DEFAULT_SOURCES)
+        corr = fit_correlations(DEFAULT_SOURCES)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        sys.exit(1)
+
+    t = Table(title=f"Market blend ({blend['n_rows']} graded rows, {blend['n_dates']} dates)", box=box.SIMPLE_HEAVY)
+    for col in ("Prop", "Rows", "Model weight", "Clip", "Market Brier", "Model Brier",
+                "CV blend Brier", "CV Δ vs market", "Dates improved"):
+        t.add_column(col, justify="left" if col == "Prop" else "right")
+    for prop, m in blend["metrics"].items():
+        w = blend["weights"].get(prop, blend["default"] if prop == "all" else {})
+        t.add_row(
+            prop, str(m["n"]), f"{w.get('weight', m['weight']):.3f}",
+            "none" if m["clip"] >= 99 else f"{m['clip']:.2f}",
+            f"{m['market_brier']:.4f}", f"{m['model_brier']:.4f}", f"{m['cv_blend_brier']:.4f}",
+            f"{m['cv_delta_vs_market']:+.5f}", f"{m['dates_improved']}/{m['n_dates']}",
+        )
+    console.print(t)
+    console.print(
+        f"[dim]Unlisted prop types use weight {blend['default']['weight']:.3f}. "
+        f"Weight 0 = model did not beat the market out of sample, so the price is pure consensus.[/dim]"
+    )
+    sp = ", ".join(f"{k} {v:+.2f}" for k, v in corr["same_player"].items())
+    sg = ", ".join(f"{k} {v:+.2f}" for k, v in corr["same_game"].items() if v) or "none significant"
+    console.print(f"Same-player stat correlations: {sp}")
+    console.print(f"Same-game, different-player correlations: {sg}")
+    console.print(f"[green]Saved[/green] {DEFAULT_PARAMS_PATH} and {DEFAULT_CORR_PATH}")
+
+
+def run_clv_command(game_date) -> None:
+    """Record closing prices for pregame rows and grade final games for *game_date*."""
+    from engine.clv import grade_predictions, load_ledger, record_closing
+
+    if not load_ledger(game_date):
+        console.print(f"[yellow]No saved predictions for {game_date}. Run a scan first.[/yellow]")
+        return
+    rec = record_closing(game_date)
+    console.print(
+        f"Closing prices: {rec['updated']} rows updated for {rec.get('pregame_games', 0)} pregame games "
+        f"({rec.get('closing_rows', 0)} stored) → {rec['path']}"
+    )
+    summary = grade_predictions(game_date)
+    if not summary.get("final_games"):
+        console.print("[dim]No final games yet; grading skipped. Re-run after games finish.[/dim]")
+        return
+    t = Table(title=f"Graded {game_date} ({summary['final_games']} final games)", box=box.SIMPLE_HEAVY)
+    for col in ("Set", "Rows", "Decided", "Hit rate", "Avg prob", "Brier model", "Brier market",
+                "Flat ROI/bet", "Avg CLV", "CLV>0"):
+        t.add_column(col, justify="left" if col == "Set" else "right")
+    for name in ("all", "positive_edge"):
+        s = summary[name]
+
+        def f(k, fmt):
+            return fmt.format(s[k]) if s.get(k) is not None else "–"
+
+        t.add_row(name, str(s["n"]), str(s["decided"]), f("hit_rate", "{:.1%}"),
+                  f("avg_model_probability", "{:.1%}"), f("brier_model", "{:.4f}"),
+                  f("brier_market", "{:.4f}"), f("flat_roi_per_bet", "{:+.3f}"),
+                  f("avg_clv", "{:+.4f}"), f("clv_positive_share", "{:.0%}"))
+    console.print(t)
+    console.print(f"[green]Saved[/green] {summary['path']}")
 
 
 # ---------------------------------------------------------------------------
@@ -450,6 +529,14 @@ def main() -> None:
 
     if args.command == "advisor":
         run_advisor_command(args, game_date)
+        return
+
+    if args.command == "fit-blend":
+        run_fit_blend_command()
+        return
+
+    if args.command == "clv":
+        run_clv_command(game_date)
         return
 
     if args.command == "backtest" and getattr(args, "experiment", None) == "interaction":

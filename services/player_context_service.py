@@ -242,6 +242,8 @@ def get_player(
         is_starter=is_starter,
         minutes_vacuum=inj_ctx.minutes_vacuum,
         usage_vacuum=float(inj_ctx.teammate_usage_vacuum or 1.0),
+        minutes_limit=getattr(inj_ctx, "minutes_limit", None),
+        news_note=getattr(inj_ctx, "news_note", "") or "",
 
         # Recent form (SOURCE: nba_api splits — single-element window averages;
         # enriched to per-game arrays by player_feature_builder via game logs)

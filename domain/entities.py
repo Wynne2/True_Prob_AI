@@ -90,6 +90,11 @@ class Player:
     minutes_vacuum: float = 0.0    # extra minutes available due to teammate absences
     usage_vacuum: float = 1.0      # multiplier on season usage when teammates are out
 
+    # Structured news features (engine/news_features.py): a reported minutes
+    # restriction for tonight, and the one-line reason the extractor gave.
+    minutes_limit: Optional[float] = None
+    news_note: str = ""
+
     data_source: DataSource = DataSource.SAMPLE
 
 
@@ -347,6 +352,12 @@ class PropProbability:
     raw_model_probability: float = 0.0
     # Probability after market calibration and the final gate. This is the number used for edge.
     calibrated_probability: float = 0.0
+    # Consensus de-vigged market probability for this side (median across venues).
+    market_probability: Optional[float] = None
+    # Effective log-odds weight the model had against the market (fitted weight x trust).
+    model_weight: float = 0.0
+    # "market_blend" or "legacy".
+    probability_method: str = "legacy"
 
 
 # ---------------------------------------------------------------------------

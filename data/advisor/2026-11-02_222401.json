@@ -1,0 +1,159 @@
+{
+  "generated_at": "2026-11-01T22:24:01",
+  "game_date": "2026-11-02",
+  "inputs": {
+    "options": {
+      "min_odds": -600,
+      "max_odds": -200,
+      "min_edge": 0.0,
+      "top_n": 5,
+      "stake": 100.0,
+      "bankroll": 1000.0,
+      "min_confidence": null,
+      "prompt": null,
+      "use_llm": true,
+      "save": true,
+      "output_dir": "C:\\Users\\michaelabate\\.copilot\\repos\\True_Prob_AI\\data\\advisor",
+      "is_playoff": false
+    },
+    "user_prompt": "Run the model to find the best positive-edge props with odds between -200 and -600. Give me the top 5 picks. Reason over them to decide whether I should combine them into a 2-leg or 3-leg parlay, which combination is best and why, and how much I get back if I put $100 on it.",
+    "filter_counts": {
+      "total_props": 738,
+      "positive_edge": 25,
+      "in_odds_band": 1,
+      "confidence_ok": 1,
+      "deduped": 1,
+      "selected": 1
+    },
+    "odds_source_counts": {
+      "kalshi": 447,
+      "polymarket": 107,
+      "odds_api": 0
+    },
+    "pregame_games": 15,
+    "payload": {
+      "date": "2026-11-02",
+      "settings": {
+        "odds_band_american": [
+          -600,
+          -200
+        ],
+        "min_edge_exclusive": 0.0,
+        "stake": 100.0,
+        "bankroll": 1000.0
+      },
+      "odds_sources": {
+        "kalshi": 447,
+        "odds_api": 0,
+        "polymarket": 107
+      },
+      "filter_counts": {
+        "total_props": 738,
+        "positive_edge": 25,
+        "in_odds_band": 1,
+        "confidence_ok": 1,
+        "deduped": 1,
+        "selected": 1
+      },
+      "notes": [
+        "model_true_probability is market-anchored: it starts from the de-vigged consensus market probability (market_probability) and moves toward the statistical model only by model_weight, a weight fitted on graded backtests (0 means the model did not beat the market for that prop type)",
+        "implied_probability is the vig-included price at the listed venue; edge = model_true_probability - implied_probability",
+        "parlay model_true_probability is a Gaussian-copula joint probability using correlations fitted from backtest residuals; it is not a naive product",
+        "kelly.bankroll_fraction is quarter-Kelly capped at 5% of bankroll; suggested_stake is null when no bankroll was given",
+        "Kalshi and Polymarket are separate venues: a parlay mixing venues cannot be placed as one ticket"
+      ],
+      "picks": [
+        {
+          "id": "P1",
+          "player": "Dejounte Murray",
+          "team": "NOP",
+          "opponent": "MEM",
+          "game_id": "21718019",
+          "market": "points",
+          "line": 9.5,
+          "side": "over",
+          "odds_american": -251,
+          "odds_decimal": 1.3984,
+          "venue": "Kalshi",
+          "projected_value": 20.14,
+          "model_true_probability": 0.7219,
+          "implied_probability": 0.7151,
+          "market_probability": 0.6691,
+          "model_weight": 0.5,
+          "probability_method": "market_blend",
+          "edge": 0.0068,
+          "fair_odds": -260,
+          "confidence": "low",
+          "expected_minutes": 37.3,
+          "calibration_warnings": [],
+          "model_notes": "Projected points: 20.1 (model mean). Minutes projected 37.3 (season 32.3). Expected FGA 17.9 from 15.5 season FGA \u00d7 minutes 37.3/32.3 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.000 \u00d7 positional volume \u00d71.000. Points per FGA 1.15 (80% season points/FGA, 20% league 1.15), then defensive-rating effi\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 139.84,
+            "profit": 39.84,
+            "expected_value": 0.96
+          },
+          "kelly": {
+            "bankroll_fraction": 0.006,
+            "suggested_stake": 6.0
+          }
+        }
+      ],
+      "parlays": []
+    }
+  },
+  "request": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "max_output_tokens": 8000,
+    "timeout_s": 120,
+    "transport": "http",
+    "attempts": 1,
+    "latency_s": 11.824,
+    "usage": {
+      "input_tokens": 1474,
+      "output_tokens": 471,
+      "total_tokens": 1945,
+      "reasoning_tokens": 200,
+      "cached_tokens": 0
+    },
+    "response_ids": [
+      "resp_042cca22608b782a016ae80246894087d280e0070bf2f06379"
+    ],
+    "errors": [],
+    "system_prompt": "You are a disciplined NBA player-prop betting analyst working on top of a quantitative true-probability model.\n\nRules you must follow:\n1. Use ONLY the JSON data provided in the user message. Do not invent players, lines, odds, injuries, news or statistics.\n2. Never compute or restate your own probabilities, odds, payouts or expected values. Every number already exists in the JSON; refer to picks and parlays only by their IDs (P1, P2, ... and PL1, PL2, ...).\n3. Every ID you return must exist in the JSON. Parlay legs must exactly match the legs listed for that parlay ID.\n4. For each top pick explain, in one or two sentences, why it ranks where it does: edge versus the venue price, how far the statistical model moved the market-anchored probability (model_weight 0 means the price is pure market consensus and any edge comes from venue price differences), confidence tier, projected value vs. the line, calibration warnings, minutes risk and injury news in model_notes.\n5. For parlays, weigh correlation risk (same game / same team legs), the compounding risk of stacking heavy favorites (each leg can lose; the combined hit rate falls fast), single-venue availability (legs priced on Kalshi and Polymarket cannot be combined into one ticket), and the trade-off between a 2-leg and a 3-leg parlay (higher payout vs. lower hit rate and EV).\n6. Recommend at most one 2-leg parlay and at most one 3-leg parlay. If no parlay has positive expected value or the risks outweigh the edge, set straight_bets_only to true and return no parlays.\n7. Be concise and specific. No hype, no guarantees.\n8. Finish with a one-line responsible-gambling note."
+  },
+  "ai_status": "ok",
+  "ai_error": "",
+  "raw_responses": [
+    {
+      "attempt": 1,
+      "text": "{\n  \"top_picks\": [\n    {\n      \"id\": \"P1\",\n      \"rank\": 1,\n      \"rationale\": \"P1 is the only qualifying pick, with a positive venue-price edge of 0.0068 and low confidence. The market-anchored blend moves halfway toward the statistical estimate, while the projected value of 20.14 exceeds the line of 9.5.\",\n      \"risk_notes\": \"The edge is thin and depends partly on projected minutes of 37.3 versus season minutes of 32.3. No calibration warnings are listed, but model_notes is truncated and provides no explicit injury update.\"\n    }\n  ],\n  \"parlay_recommendations\": [],\n  \"straight_bets_only\": true,\n  \"summary\": \"The supplied model output supports only P1, not five picks, and contains no eligible parlays. Neither parlay size can be recommended from these data. For P1, the supplied $100 straight-bet payout is $139.84 total return, including $39.84 profit if it wins; the model's suggested stake is $6.0.\",\n  \"responsible_gambling_note\": \"Keep stakes within an affordable loss limit; a positive modeled edge does not guarantee a win.\"\n}",
+      "status": "completed"
+    }
+  ],
+  "validated_output": {
+    "top_picks": [
+      {
+        "id": "P1",
+        "rank": 1,
+        "rationale": "P1 is the only qualifying pick, with a positive venue-price edge of 0.0068 and low confidence. The market-anchored blend moves halfway toward the statistical estimate, while the projected value of 20.14 exceeds the line of 9.5.",
+        "risk_notes": "The edge is thin and depends partly on projected minutes of 37.3 versus season minutes of 32.3. No calibration warnings are listed, but model_notes is truncated and provides no explicit injury update."
+      }
+    ],
+    "parlay_recommendations": [],
+    "straight_bets_only": true,
+    "summary": "The supplied model output supports only P1, not five picks, and contains no eligible parlays. Neither parlay size can be recommended from these data. For P1, the supplied $100 straight-bet payout is $139.84 total return, including $39.84 profit if it wins; the model's suggested stake is $6.0.",
+    "responsible_gambling_note": "Keep stakes within an affordable loss limit; a positive modeled edge does not guarantee a win."
+  },
+  "deterministic_recommendation": {
+    "top_pick_ids": [
+      "P1"
+    ],
+    "best_two_leg": null,
+    "best_three_leg": null,
+    "straight_bets_only": true,
+    "note": "Fewer than two non-correlated qualifying legs: straight bets only."
+  },
+  "warnings": []
+}

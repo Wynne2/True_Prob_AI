@@ -141,3 +141,32 @@ def test_integer_push_and_lookahead():
     assert brier_score(0.8, 1) == pytest.approx(0.04)
     assert realized_roi(None, -200, "win") == pytest.approx(0.5)
     assert realized_roi(None, -200, "push") == 0.0
+
+
+def test_player_logs_reuse_season_pull_across_window_sizes(monkeypatch):
+    from data.loaders import nba_api_loader as loader
+
+    class _Mem(dict):
+        def get(self, key):
+            return dict.get(self, key)
+
+        def set(self, key, value, *args, **kwargs):
+            self[key] = value
+
+    calls = []
+
+    class _FakeClient:
+        def paginate(self, path, params):
+            calls.append(params["player_ids"])
+            return [
+                {"game": {"id": i, "date": f"2026-10-{10 + i:02d}"}, "pts": 10 + i, "min": "30:00"}
+                for i in range(15)
+            ]
+
+    monkeypatch.setattr(loader, "_CACHE", _Mem())
+    monkeypatch.setattr(loader, "_client", lambda: _FakeClient())
+    ten = loader.fetch_recent_player_logs_batch(["7"], last_n=10)["7"]
+    twenty = loader.fetch_recent_player_logs_batch(["7"], last_n=20)["7"]
+    assert len(calls) == 1
+    assert len(ten) == 10 and len(twenty) == 15
+    assert ten[0]["game_date"] == "2026-10-24"

@@ -33,6 +33,9 @@ class InjuryContext:
     teammates_out_count: int = 0
     teammate_usage_vacuum: float = 1.0  # >1.0 = extra usage available
     minutes_vacuum: float = 0.0         # additional minutes available (additive)
+    # From engine/news_features.py (LLM-parsed injury note), when confident.
+    minutes_limit: Optional[float] = None
+    news_note: str = ""
 
 
 @dataclass

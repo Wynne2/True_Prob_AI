@@ -63,6 +63,17 @@ def suggested_kelly_stake(
     return round(bankroll * fractional, 2)
 
 
+def fractional_kelly(true_prob: float, decimal_odds: float) -> float:
+    """
+    Suggested bankroll fraction: KELLY_FRACTION × full Kelly, capped at
+    KELLY_MAX_BANKROLL_FRACTION. Zero when the bet has no positive edge.
+    """
+    from domain.constants import KELLY_FRACTION, KELLY_MAX_BANKROLL_FRACTION
+
+    full = kelly_fraction(true_prob, decimal_odds)
+    return min(full * KELLY_FRACTION, KELLY_MAX_BANKROLL_FRACTION)
+
+
 def payout_summary(parlay: Parlay) -> dict:
     """Return a dict of payout fields for display."""
     return {

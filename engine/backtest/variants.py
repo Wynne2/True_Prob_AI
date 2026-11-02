@@ -20,7 +20,8 @@ VARIANT_D = "D_quarter_strength"
 VARIANT_E = "E_interaction"
 
 
-def _neutral_defense(defense: TeamDefense) -> TeamDefense:
+def neutral_defense(defense: TeamDefense) -> TeamDefense:
+    """League pace and defensive rating, no positional allowances (the "opportunity" model)."""
     return TeamDefense(
         team_id=defense.team_id,
         team_abbr=defense.team_abbr,
@@ -30,6 +31,9 @@ def _neutral_defense(defense: TeamDefense) -> TeamDefense:
         defensive_efficiency=LEAGUE_AVG_DEF_EFF,
         data_source=defense.data_source,
     )
+
+
+_neutral_defense = neutral_defense
 
 
 def _without_position(defense: TeamDefense) -> TeamDefense:

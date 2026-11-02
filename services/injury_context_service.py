@@ -69,9 +69,19 @@ def refresh(game_date: Optional[date] = None) -> None:
     from data.loaders.nba_api_loader import fetch_balldontlie_injuries
 
     rows = fetch_balldontlie_injuries()
-    _injury_index = {r["player_id"]: r for r in rows if r.get("player_id")}
+    _injury_index = {r["player_id"]: dict(r) for r in rows if r.get("player_id")}
     # BALLDONTLIE does not publish projected starting lineups.
     _lineup_index = {}
+
+    from engine.news_features import apply_news_features, extract_news_features, news_features_enabled
+
+    if news_features_enabled():
+        features = extract_news_features(list(_injury_index.values()), ds)
+        counts = apply_news_features(_injury_index, features)
+        logger.info(
+            "InjuryContextService: AI news features for %s — %d status override(s), %d minutes limit(s)",
+            ds, counts["status_overrides"], counts["minutes_limits"],
+        )
 
     _loaded_date = ds
     logger.info(
@@ -160,6 +170,8 @@ def get_injury_context(
         teammates_out_count=out_count,
         teammate_usage_vacuum=vacancy_multiplier,
         minutes_vacuum=minutes_boost,
+        minutes_limit=injury_raw.get("minutes_limit"),
+        news_note=str(injury_raw.get("news_note") or ""),
     )
 
 

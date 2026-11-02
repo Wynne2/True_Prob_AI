@@ -1,0 +1,4692 @@
+[
+  {
+    "key": "21718012|1091351965|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718012|1091351965|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.111451
+  },
+  {
+    "key": "21718012|1091351965|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.450722,
+    "n_venues": 1,
+    "clv": -0.04679
+  },
+  {
+    "key": "21718012|1091351965|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.549278,
+    "n_venues": 1,
+    "clv": -0.057021
+  },
+  {
+    "key": "21718012|1091351965|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.454645,
+    "n_venues": 1,
+    "clv": -0.042867
+  },
+  {
+    "key": "21718012|1091351965|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.545355,
+    "n_venues": 1,
+    "clv": -0.05142
+  },
+  {
+    "key": "21718012|1091351965|blocks|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.459524,
+    "n_venues": 1,
+    "clv": -0.037989
+  },
+  {
+    "key": "21718012|1091351965|blocks|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.540476,
+    "n_venues": 1,
+    "clv": -0.086389
+  },
+  {
+    "key": "21718012|1028037477|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.806667,
+    "n_venues": 1,
+    "clv": -0.118483
+  },
+  {
+    "key": "21718012|1028037477|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.193333,
+    "n_venues": 1,
+    "clv": -0.028397
+  },
+  {
+    "key": "21718012|1028037477|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.382485,
+    "n_venues": 1,
+    "clv": -0.054197
+  },
+  {
+    "key": "21718012|1028037477|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.617515,
+    "n_venues": 1,
+    "clv": -0.097584
+  },
+  {
+    "key": "21718012|1028037477|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.486068,
+    "n_venues": 2,
+    "clv": -0.035463
+  },
+  {
+    "key": "21718012|1028037477|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.513932,
+    "n_venues": 2,
+    "clv": -0.03358
+  },
+  {
+    "key": "21718012|1028037477|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.568586,
+    "n_venues": 2,
+    "clv": -0.043817
+  },
+  {
+    "key": "21718012|1028037477|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.431414,
+    "n_venues": 2,
+    "clv": -0.035876
+  },
+  {
+    "key": "21718012|1028037477|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.373492,
+    "n_venues": 2,
+    "clv": -0.023334
+  },
+  {
+    "key": "21718012|1028037477|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.626508,
+    "n_venues": 2,
+    "clv": -0.039044
+  },
+  {
+    "key": "21718012|1028037477|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.437622,
+    "n_venues": 1,
+    "clv": -0.040846
+  },
+  {
+    "key": "21718012|1028037477|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.562378,
+    "n_venues": 1,
+    "clv": -0.084266
+  },
+  {
+    "key": "21718012|201|points|over|9.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.527506,
+    "n_venues": 2,
+    "clv": -0.045144
+  },
+  {
+    "key": "21718012|201|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.472494,
+    "n_venues": 2,
+    "clv": -0.044414
+  },
+  {
+    "key": "21718012|201|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.518394,
+    "n_venues": 1,
+    "clv": -0.068383
+  },
+  {
+    "key": "21718012|201|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.481606,
+    "n_venues": 1,
+    "clv": -0.065905
+  },
+  {
+    "key": "21718012|201|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.408399,
+    "n_venues": 2,
+    "clv": -0.03803
+  },
+  {
+    "key": "21718012|201|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.591601,
+    "n_venues": 2,
+    "clv": -0.044762
+  },
+  {
+    "key": "21718012|201|blocks|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.549278,
+    "n_venues": 1,
+    "clv": -0.057021
+  },
+  {
+    "key": "21718012|201|blocks|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.450722,
+    "n_venues": 1,
+    "clv": -0.04679
+  },
+  {
+    "key": "21718012|1028027372|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.68152,
+    "n_venues": 2,
+    "clv": -0.033579
+  },
+  {
+    "key": "21718012|1028027372|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.31848,
+    "n_venues": 2,
+    "clv": -0.006196
+  },
+  {
+    "key": "21718012|1028027372|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.563173,
+    "n_venues": 1,
+    "clv": -0.053686
+  },
+  {
+    "key": "21718012|1028027372|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.436827,
+    "n_venues": 1,
+    "clv": -0.041642
+  },
+  {
+    "key": "21718012|1028027372|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.117876,
+    "n_venues": 1,
+    "clv": -0.020055
+  },
+  {
+    "key": "21718012|1028027372|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.882124,
+    "n_venues": 1,
+    "clv": -0.07119
+  },
+  {
+    "key": "21718012|1028027372|threes|over|2.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.475501,
+    "n_venues": 2,
+    "clv": -0.04603
+  },
+  {
+    "key": "21718012|1028027372|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.524499,
+    "n_venues": 2,
+    "clv": -0.023013
+  },
+  {
+    "key": "21718012|175|points|over|29.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.469937,
+    "n_venues": 2,
+    "clv": -0.022673
+  },
+  {
+    "key": "21718012|175|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.530063,
+    "n_venues": 2,
+    "clv": -0.017449
+  },
+  {
+    "key": "21718012|175|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.55727,
+    "n_venues": 2,
+    "clv": -0.044323
+  },
+  {
+    "key": "21718012|175|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.44273,
+    "n_venues": 2,
+    "clv": -0.02456
+  },
+  {
+    "key": "21718012|175|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490642,
+    "n_venues": 1,
+    "clv": -0.046395
+  },
+  {
+    "key": "21718012|175|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509358,
+    "n_venues": 1,
+    "clv": -0.048164
+  },
+  {
+    "key": "21718012|175|assists|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.203829,
+    "n_venues": 1,
+    "clv": -0.048696
+  },
+  {
+    "key": "21718012|175|assists|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.796171,
+    "n_venues": 1,
+    "clv": -0.110109
+  },
+  {
+    "key": "21718012|175|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.545453,
+    "n_venues": 2,
+    "clv": -0.041324
+  },
+  {
+    "key": "21718012|175|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.454547,
+    "n_venues": 2,
+    "clv": -0.023922
+  },
+  {
+    "key": "21718012|175|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.257124,
+    "n_venues": 1,
+    "clv": -0.026967
+  },
+  {
+    "key": "21718012|175|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.742876,
+    "n_venues": 1,
+    "clv": -0.087345
+  },
+  {
+    "key": "21718012|175|pra|over|39.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490642,
+    "n_venues": 1,
+    "clv": -0.046395
+  },
+  {
+    "key": "21718012|175|pra|under|39.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509358,
+    "n_venues": 1,
+    "clv": -0.048164
+  },
+  {
+    "key": "21718012|175|blocks|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.589731,
+    "n_venues": 1,
+    "clv": -0.066627
+  },
+  {
+    "key": "21718012|175|blocks|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.410269,
+    "n_venues": 1,
+    "clv": -0.05702
+  },
+  {
+    "key": "21718012|175|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.363411,
+    "n_venues": 1,
+    "clv": -0.043093
+  },
+  {
+    "key": "21718012|175|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.636589,
+    "n_venues": 1,
+    "clv": -0.058533
+  },
+  {
+    "key": "21718012|175|steals|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.135829,
+    "n_venues": 1,
+    "clv": -0.012539
+  },
+  {
+    "key": "21718012|175|steals|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.864171,
+    "n_venues": 1,
+    "clv": -0.079775
+  },
+  {
+    "key": "21718012|322|points|over|24.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.39391,
+    "n_venues": 2,
+    "clv": -0.028031
+  },
+  {
+    "key": "21718012|322|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.60609,
+    "n_venues": 2,
+    "clv": -0.040553
+  },
+  {
+    "key": "21718012|322|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.21342,
+    "n_venues": 2,
+    "clv": -0.018599
+  },
+  {
+    "key": "21718012|322|points|under|29.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.78658,
+    "n_venues": 2,
+    "clv": -0.040708
+  },
+  {
+    "key": "21718012|322|assists|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.142932,
+    "n_venues": 1,
+    "clv": -0.016051
+  },
+  {
+    "key": "21718012|322|assists|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.857068,
+    "n_venues": 1,
+    "clv": -0.105618
+  },
+  {
+    "key": "21718012|322|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.453348,
+    "n_venues": 2,
+    "clv": -0.054041
+  },
+  {
+    "key": "21718012|322|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.546652,
+    "n_venues": 2,
+    "clv": -0.050122
+  },
+  {
+    "key": "21718012|322|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.248538,
+    "n_venues": 1,
+    "clv": -0.035553
+  },
+  {
+    "key": "21718012|322|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.751462,
+    "n_venues": 1,
+    "clv": -0.107494
+  },
+  {
+    "key": "21718012|322|pra|over|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.437629,
+    "n_venues": 1,
+    "clv": -0.018992
+  },
+  {
+    "key": "21718012|322|pra|under|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.562371,
+    "n_venues": 1,
+    "clv": -0.024406
+  },
+  {
+    "key": "21718012|322|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.357566,
+    "n_venues": 2,
+    "clv": -0.048938
+  },
+  {
+    "key": "21718012|322|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.642434,
+    "n_venues": 2,
+    "clv": -0.072666
+  },
+  {
+    "key": "21718012|322|steals|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.135829,
+    "n_venues": 1,
+    "clv": -0.012539
+  },
+  {
+    "key": "21718012|322|steals|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.864171,
+    "n_venues": 1,
+    "clv": -0.079775
+  },
+  {
+    "key": "21718012|17896076|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.750255,
+    "n_venues": 1,
+    "clv": -0.070533
+  },
+  {
+    "key": "21718012|17896076|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.249745,
+    "n_venues": 1,
+    "clv": -0.023479
+  },
+  {
+    "key": "21718012|17896076|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.123229,
+    "n_venues": 1,
+    "clv": -0.014702
+  },
+  {
+    "key": "21718012|17896076|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.876771,
+    "n_venues": 1,
+    "clv": -0.104601
+  },
+  {
+    "key": "21718012|17896076|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.418686,
+    "n_venues": 1,
+    "clv": -0.017995
+  },
+  {
+    "key": "21718012|17896076|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.581314,
+    "n_venues": 1,
+    "clv": -0.024985
+  },
+  {
+    "key": "21718012|17896076|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.514638,
+    "n_venues": 2,
+    "clv": -0.028741
+  },
+  {
+    "key": "21718012|17896076|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.485362,
+    "n_venues": 2,
+    "clv": -0.022027
+  },
+  {
+    "key": "21718012|17896076|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.39054,
+    "n_venues": 2,
+    "clv": -0.031401
+  },
+  {
+    "key": "21718012|17896076|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.60946,
+    "n_venues": 2,
+    "clv": -0.026903
+  },
+  {
+    "key": "21718012|17896076|blocks|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.363889,
+    "n_venues": 2,
+    "clv": -0.042616
+  },
+  {
+    "key": "21718012|17896076|blocks|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.636111,
+    "n_venues": 2,
+    "clv": -0.05901
+  },
+  {
+    "key": "21718012|192|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.827815,
+    "n_venues": 1,
+    "clv": -0.087939
+  },
+  {
+    "key": "21718012|192|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.172185,
+    "n_venues": 1,
+    "clv": -0.018291
+  },
+  {
+    "key": "21718012|192|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.579465,
+    "n_venues": 1,
+    "clv": -0.106069
+  },
+  {
+    "key": "21718012|192|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.420535,
+    "n_venues": 1,
+    "clv": -0.076978
+  },
+  {
+    "key": "21718012|192|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.214366,
+    "n_venues": 1,
+    "clv": -0.027764
+  },
+  {
+    "key": "21718012|192|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.785634,
+    "n_venues": 1,
+    "clv": -0.101754
+  },
+  {
+    "key": "21718012|192|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.133538,
+    "n_venues": 1,
+    "clv": -0.01483
+  },
+  {
+    "key": "21718012|192|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.866462,
+    "n_venues": 1,
+    "clv": -0.096225
+  },
+  {
+    "key": "21718012|192|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.491046,
+    "n_venues": 2,
+    "clv": -0.037256
+  },
+  {
+    "key": "21718012|192|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.508954,
+    "n_venues": 2,
+    "clv": -0.007954
+  },
+  {
+    "key": "21718012|192|pra|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.532682,
+    "n_venues": 1,
+    "clv": -0.045377
+  },
+  {
+    "key": "21718012|192|pra|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.467318,
+    "n_venues": 1,
+    "clv": -0.040071
+  },
+  {
+    "key": "21718012|192|steals|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.649382,
+    "n_venues": 1,
+    "clv": -0.065718
+  },
+  {
+    "key": "21718012|192|steals|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.350618,
+    "n_venues": 1,
+    "clv": -0.046208
+  },
+  {
+    "key": "21718012|192|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.288277,
+    "n_venues": 1,
+    "clv": -0.057744
+  },
+  {
+    "key": "21718012|192|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.711723,
+    "n_venues": 1,
+    "clv": -0.099598
+  },
+  {
+    "key": "21718012|9|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.555013,
+    "n_venues": 1,
+    "clv": -0.031764
+  },
+  {
+    "key": "21718012|9|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.444987,
+    "n_venues": 1,
+    "clv": -0.062402
+  },
+  {
+    "key": "21718012|9|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.310001,
+    "n_venues": 1,
+    "clv": -0.045871
+  },
+  {
+    "key": "21718012|9|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.689999,
+    "n_venues": 1,
+    "clv": -0.121321
+  },
+  {
+    "key": "21718012|9|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.476461,
+    "n_venues": 1,
+    "clv": -0.030928
+  },
+  {
+    "key": "21718012|9|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.523539,
+    "n_venues": 1,
+    "clv": -0.043561
+  },
+  {
+    "key": "21718012|9|blocks|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.406908,
+    "n_venues": 1,
+    "clv": -0.049713
+  },
+  {
+    "key": "21718012|9|blocks|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.593092,
+    "n_venues": 1,
+    "clv": -0.082233
+  },
+  {
+    "key": "21718012|38017721|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.148478,
+    "n_venues": 1,
+    "clv": -0.021014
+  },
+  {
+    "key": "21718012|38017721|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.851522,
+    "n_venues": 1,
+    "clv": -0.120514
+  },
+  {
+    "key": "21718012|38017721|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.523151,
+    "n_venues": 1,
+    "clv": -0.043949
+  },
+  {
+    "key": "21718012|38017721|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.476849,
+    "n_venues": 1,
+    "clv": -0.040059
+  },
+  {
+    "key": "21718012|38017721|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.123229,
+    "n_venues": 1,
+    "clv": -0.014702
+  },
+  {
+    "key": "21718012|38017721|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.876771,
+    "n_venues": 1,
+    "clv": -0.104601
+  },
+  {
+    "key": "21718012|38017721|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.459524,
+    "n_venues": 1,
+    "clv": -0.047866
+  },
+  {
+    "key": "21718012|38017721|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.540476,
+    "n_venues": 1,
+    "clv": -0.056298
+  },
+  {
+    "key": "21718012|38017721|blocks|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.350618,
+    "n_venues": 1,
+    "clv": -0.035483
+  },
+  {
+    "key": "21718012|38017721|blocks|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.649382,
+    "n_venues": 1,
+    "clv": -0.075136
+  },
+  {
+    "key": "21718012|38017721|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.317564,
+    "n_venues": 1,
+    "clv": -0.028457
+  },
+  {
+    "key": "21718012|38017721|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.682436,
+    "n_venues": 1,
+    "clv": -0.061153
+  },
+  {
+    "key": "21718012|38017721|steals|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.123229,
+    "n_venues": 1,
+    "clv": -0.014702
+  },
+  {
+    "key": "21718012|38017721|steals|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.876771,
+    "n_venues": 1,
+    "clv": -0.104601
+  },
+  {
+    "key": "21718012|3547299|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.476461,
+    "n_venues": 1,
+    "clv": -0.030928
+  },
+  {
+    "key": "21718012|3547299|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.523539,
+    "n_venues": 1,
+    "clv": -0.033984
+  },
+  {
+    "key": "21718012|3547299|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.425365,
+    "n_venues": 1,
+    "clv": -0.031256
+  },
+  {
+    "key": "21718012|3547299|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.574635,
+    "n_venues": 1,
+    "clv": -0.052231
+  },
+  {
+    "key": "21718013|56677826|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.512748,
+    "n_venues": 1,
+    "clv": -0.084026
+  },
+  {
+    "key": "21718013|56677826|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.487252,
+    "n_venues": 1,
+    "clv": -0.079848
+  },
+  {
+    "key": "21718013|17896075|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.738628,
+    "n_venues": 1,
+    "clv": -0.120328
+  },
+  {
+    "key": "21718013|17896075|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.261372,
+    "n_venues": 1,
+    "clv": -0.042579
+  },
+  {
+    "key": "21718013|17896075|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.205541,
+    "n_venues": 1,
+    "clv": -0.026478
+  },
+  {
+    "key": "21718013|17896075|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.794459,
+    "n_venues": 1,
+    "clv": -0.102342
+  },
+  {
+    "key": "21718013|17896075|rebounds|over|5.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.431895,
+    "n_venues": 2,
+    "clv": -0.020593
+  },
+  {
+    "key": "21718013|17896075|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.568105,
+    "n_venues": 2,
+    "clv": -0.018672
+  },
+  {
+    "key": "21718013|17896075|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.594614,
+    "n_venues": 2,
+    "clv": -0.061744
+  },
+  {
+    "key": "21718013|17896075|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.405386,
+    "n_venues": 2,
+    "clv": -0.021964
+  },
+  {
+    "key": "21718013|1028240128|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.210842,
+    "n_venues": 1,
+    "clv": -0.021177
+  },
+  {
+    "key": "21718013|1028240128|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.789158,
+    "n_venues": 1,
+    "clv": -0.079263
+  },
+  {
+    "key": "21718013|1028240128|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.149704,
+    "n_venues": 1,
+    "clv": -0.009279
+  },
+  {
+    "key": "21718013|1028240128|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.850296,
+    "n_venues": 1,
+    "clv": -0.131075
+  },
+  {
+    "key": "21718013|1028240128|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.488116,
+    "n_venues": 2,
+    "clv": -0.033415
+  },
+  {
+    "key": "21718013|1028240128|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.511884,
+    "n_venues": 2,
+    "clv": -0.035628
+  },
+  {
+    "key": "21718013|1028240128|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.365052,
+    "n_venues": 2,
+    "clv": -0.031774
+  },
+  {
+    "key": "21718013|1028240128|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.634948,
+    "n_venues": 2,
+    "clv": -0.050586
+  },
+  {
+    "key": "21718013|397|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.344688,
+    "n_venues": 1,
+    "clv": -0.061816
+  },
+  {
+    "key": "21718013|397|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.655312,
+    "n_venues": 1,
+    "clv": -0.078731
+  },
+  {
+    "key": "21718013|397|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.150954,
+    "n_venues": 1,
+    "clv": -0.018538
+  },
+  {
+    "key": "21718013|397|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.849046,
+    "n_venues": 1,
+    "clv": -0.11364
+  },
+  {
+    "key": "21718013|397|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.070621,
+    "n_venues": 1,
+    "clv": -0.003951
+  },
+  {
+    "key": "21718013|397|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.929379,
+    "n_venues": 1,
+    "clv": -0.051992
+  },
+  {
+    "key": "21718013|397|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.578768,
+    "n_venues": 2,
+    "clv": -0.048098
+  },
+  {
+    "key": "21718013|397|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.421232,
+    "n_venues": 2,
+    "clv": -0.015449
+  },
+  {
+    "key": "21718013|101|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.133538,
+    "n_venues": 1,
+    "clv": -0.01483
+  },
+  {
+    "key": "21718013|101|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.866462,
+    "n_venues": 1,
+    "clv": -0.096225
+  },
+  {
+    "key": "21718013|101|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.78916,
+    "n_venues": 1,
+    "clv": -0.117119
+  },
+  {
+    "key": "21718013|101|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.21084,
+    "n_venues": 1,
+    "clv": -0.031291
+  },
+  {
+    "key": "21718013|101|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.173672,
+    "n_venues": 1,
+    "clv": -0.027131
+  },
+  {
+    "key": "21718013|101|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.826328,
+    "n_venues": 1,
+    "clv": -0.079952
+  },
+  {
+    "key": "21718013|101|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.321261,
+    "n_venues": 2,
+    "clv": -0.02476
+  },
+  {
+    "key": "21718013|101|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.678739,
+    "n_venues": 2,
+    "clv": -0.055303
+  },
+  {
+    "key": "21718013|56677823|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.76648,
+    "n_venues": 1,
+    "clv": -0.120907
+  },
+  {
+    "key": "21718013|56677823|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.23352,
+    "n_venues": 1,
+    "clv": -0.008611
+  },
+  {
+    "key": "21718013|56677823|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.205541,
+    "n_venues": 1,
+    "clv": -0.026478
+  },
+  {
+    "key": "21718013|56677823|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.794459,
+    "n_venues": 1,
+    "clv": -0.092928
+  },
+  {
+    "key": "21718013|56677823|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.459524,
+    "n_venues": 1,
+    "clv": -0.047866
+  },
+  {
+    "key": "21718013|56677823|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.540476,
+    "n_venues": 1,
+    "clv": -0.0463
+  },
+  {
+    "key": "21718013|56677823|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.296652,
+    "n_venues": 2,
+    "clv": -0.038919
+  },
+  {
+    "key": "21718013|56677823|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.703348,
+    "n_venues": 2,
+    "clv": -0.088751
+  },
+  {
+    "key": "21718013|56677823|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.470925,
+    "n_venues": 2,
+    "clv": -0.036464
+  },
+  {
+    "key": "21718013|56677823|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.529075,
+    "n_venues": 2,
+    "clv": -0.038025
+  },
+  {
+    "key": "21718013|56677823|threes|over|4.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.270241,
+    "n_venues": 1,
+    "clv": -0.03371
+  },
+  {
+    "key": "21718013|56677823|threes|under|4.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.729759,
+    "n_venues": 1,
+    "clv": -0.081562
+  },
+  {
+    "key": "21718013|56677823|threes|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.169307,
+    "n_venues": 1,
+    "clv": -0.021169
+  },
+  {
+    "key": "21718013|56677823|threes|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.830693,
+    "n_venues": 1,
+    "clv": -0.103862
+  },
+  {
+    "key": "21718013|8|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.367944,
+    "n_venues": 2,
+    "clv": -0.03856
+  },
+  {
+    "key": "21718013|8|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.632056,
+    "n_venues": 2,
+    "clv": -0.063066
+  },
+  {
+    "key": "21718013|667378|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.72761,
+    "n_venues": 1,
+    "clv": -0.11239
+  },
+  {
+    "key": "21718013|667378|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.27239,
+    "n_venues": 1,
+    "clv": -0.042075
+  },
+  {
+    "key": "21718013|667378|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.245873,
+    "n_venues": 2,
+    "clv": -0.017285
+  },
+  {
+    "key": "21718013|667378|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.754127,
+    "n_venues": 2,
+    "clv": -0.028481
+  },
+  {
+    "key": "21718013|667378|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.52213,
+    "n_venues": 1,
+    "clv": -0.064647
+  },
+  {
+    "key": "21718013|667378|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.47787,
+    "n_venues": 1,
+    "clv": -0.059167
+  },
+  {
+    "key": "21718013|667378|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.341621,
+    "n_venues": 1,
+    "clv": -0.055204
+  },
+  {
+    "key": "21718013|667378|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.658379,
+    "n_venues": 1,
+    "clv": -0.066139
+  },
+  {
+    "key": "21718013|667378|rebounds|over|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.170735,
+    "n_venues": 1,
+    "clv": -0.040682
+  },
+  {
+    "key": "21718013|667378|rebounds|under|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.829265,
+    "n_venues": 1,
+    "clv": -0.058122
+  },
+  {
+    "key": "21718013|667378|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.144146,
+    "n_venues": 1,
+    "clv": -0.03571
+  },
+  {
+    "key": "21718013|667378|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.855854,
+    "n_venues": 1,
+    "clv": -0.088092
+  },
+  {
+    "key": "21718013|667378|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.399511,
+    "n_venues": 1,
+    "clv": -0.03717
+  },
+  {
+    "key": "21718013|667378|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.600489,
+    "n_venues": 1,
+    "clv": -0.065063
+  },
+  {
+    "key": "21718015|73|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.449163,
+    "n_venues": 1,
+    "clv": -0.029306
+  },
+  {
+    "key": "21718015|73|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.550837,
+    "n_venues": 1,
+    "clv": -0.045937
+  },
+  {
+    "key": "21718015|73|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.42413,
+    "n_venues": 2,
+    "clv": -0.054339
+  },
+  {
+    "key": "21718015|73|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.57587,
+    "n_venues": 2,
+    "clv": -0.050996
+  },
+  {
+    "key": "21718015|73|assists|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.166531,
+    "n_venues": 1,
+    "clv": -0.023946
+  },
+  {
+    "key": "21718015|73|assists|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.833469,
+    "n_venues": 1,
+    "clv": -0.129217
+  },
+  {
+    "key": "21718015|73|threes|over|2.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.412069,
+    "n_venues": 2,
+    "clv": -0.040419
+  },
+  {
+    "key": "21718015|73|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.587931,
+    "n_venues": 2,
+    "clv": -0.048433
+  },
+  {
+    "key": "21718015|73|pra|over|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490642,
+    "n_venues": 1,
+    "clv": -0.046395
+  },
+  {
+    "key": "21718015|73|pra|under|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509358,
+    "n_venues": 1,
+    "clv": -0.068701
+  },
+  {
+    "key": "21718015|202|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.468348,
+    "n_venues": 1,
+    "clv": -0.048561
+  },
+  {
+    "key": "21718015|202|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.531652,
+    "n_venues": 1,
+    "clv": -0.055124
+  },
+  {
+    "key": "21718015|202|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.226868,
+    "n_venues": 1,
+    "clv": -0.03629
+  },
+  {
+    "key": "21718015|202|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.773132,
+    "n_venues": 1,
+    "clv": -0.123669
+  },
+  {
+    "key": "21718015|202|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509549,
+    "n_venues": 1,
+    "clv": -0.023161
+  },
+  {
+    "key": "21718015|202|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490451,
+    "n_venues": 1,
+    "clv": -0.026457
+  },
+  {
+    "key": "21718015|202|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.392315,
+    "n_venues": 2,
+    "clv": -0.044367
+  },
+  {
+    "key": "21718015|202|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.607685,
+    "n_venues": 2,
+    "clv": -0.057866
+  },
+  {
+    "key": "21718015|447|rebounds|over|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.549278,
+    "n_venues": 1,
+    "clv": -0.057021
+  },
+  {
+    "key": "21718015|447|rebounds|under|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.450722,
+    "n_venues": 1,
+    "clv": -0.04679
+  },
+  {
+    "key": "21718015|447|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.518722,
+    "n_venues": 2,
+    "clv": -0.044597
+  },
+  {
+    "key": "21718015|447|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.481278,
+    "n_venues": 2,
+    "clv": -0.006527
+  },
+  {
+    "key": "21718015|447|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.502738,
+    "n_venues": 2,
+    "clv": -0.054784
+  },
+  {
+    "key": "21718015|447|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.497262,
+    "n_venues": 2,
+    "clv": -0.03104
+  },
+  {
+    "key": "21718015|414|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.115868,
+    "n_venues": 1,
+    "clv": -0.01152
+  },
+  {
+    "key": "21718015|414|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.884132,
+    "n_venues": 1,
+    "clv": -0.087904
+  },
+  {
+    "key": "21718015|414|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.467447,
+    "n_venues": 1,
+    "clv": -0.039942
+  },
+  {
+    "key": "21718015|414|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.532553,
+    "n_venues": 1,
+    "clv": -0.045506
+  },
+  {
+    "key": "21718015|61|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.228725,
+    "n_venues": 1,
+    "clv": -0.034433
+  },
+  {
+    "key": "21718015|61|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.771275,
+    "n_venues": 1,
+    "clv": -0.125525
+  },
+  {
+    "key": "21718015|61|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.404819,
+    "n_venues": 1,
+    "clv": -0.028082
+  },
+  {
+    "key": "21718015|61|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.595181,
+    "n_venues": 1,
+    "clv": -0.051462
+  },
+  {
+    "key": "21718015|61|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.461916,
+    "n_venues": 2,
+    "clv": -0.045473
+  },
+  {
+    "key": "21718015|61|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.538084,
+    "n_venues": 2,
+    "clv": -0.039975
+  },
+  {
+    "key": "21718015|17896033|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.459524,
+    "n_venues": 1,
+    "clv": -0.047866
+  },
+  {
+    "key": "21718015|17896033|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.540476,
+    "n_venues": 1,
+    "clv": -0.056298
+  },
+  {
+    "key": "21718015|18|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.783818,
+    "n_venues": 1,
+    "clv": -0.112983
+  },
+  {
+    "key": "21718015|18|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.216182,
+    "n_venues": 1,
+    "clv": -0.015836
+  },
+  {
+    "key": "21718015|18|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.157417,
+    "n_venues": 1,
+    "clv": -0.022439
+  },
+  {
+    "key": "21718015|18|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.842583,
+    "n_venues": 1,
+    "clv": -0.120104
+  },
+  {
+    "key": "21718015|18|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.450722,
+    "n_venues": 1,
+    "clv": -0.04679
+  },
+  {
+    "key": "21718015|18|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.549278,
+    "n_venues": 1,
+    "clv": -0.057021
+  },
+  {
+    "key": "21718015|18|threes|over|2.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.399511,
+    "n_venues": 1,
+    "clv": -0.02243
+  },
+  {
+    "key": "21718015|18|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.600489,
+    "n_venues": 1,
+    "clv": -0.065063
+  },
+  {
+    "key": "21718017|70|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.727405,
+    "n_venues": 2,
+    "clv": -0.083916
+  },
+  {
+    "key": "21718017|70|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.272595,
+    "n_venues": 2,
+    "clv": -0.000629
+  },
+  {
+    "key": "21718017|70|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.542431,
+    "n_venues": 2,
+    "clv": -0.059162
+  },
+  {
+    "key": "21718017|70|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.457569,
+    "n_venues": 2,
+    "clv": -0.0209
+  },
+  {
+    "key": "21718017|70|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.454772,
+    "n_venues": 2,
+    "clv": -0.037839
+  },
+  {
+    "key": "21718017|70|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.545228,
+    "n_venues": 2,
+    "clv": -0.041548
+  },
+  {
+    "key": "21718017|145|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.687745,
+    "n_venues": 1,
+    "clv": -0.027355
+  },
+  {
+    "key": "21718017|145|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.312255,
+    "n_venues": 1,
+    "clv": -0.01242
+  },
+  {
+    "key": "21718017|145|rebounds|over|7.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.437313,
+    "n_venues": 2,
+    "clv": -0.005165
+  },
+  {
+    "key": "21718017|145|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.562687,
+    "n_venues": 2,
+    "clv": 0.02565
+  },
+  {
+    "key": "21718017|145|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.570815,
+    "n_venues": 1,
+    "clv": -0.065548
+  },
+  {
+    "key": "21718017|145|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.429185,
+    "n_venues": 1,
+    "clv": -0.049284
+  },
+  {
+    "key": "21718017|145|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.34457,
+    "n_venues": 1,
+    "clv": -0.03137
+  },
+  {
+    "key": "21718017|145|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.65543,
+    "n_venues": 1,
+    "clv": -0.05967
+  },
+  {
+    "key": "21718017|145|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718017|145|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718017|237|points|over|14.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.698428,
+    "n_venues": 2,
+    "clv": -0.041155
+  },
+  {
+    "key": "21718017|237|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.301572,
+    "n_venues": 2,
+    "clv": -0.012894
+  },
+  {
+    "key": "21718017|237|rebounds|over|7.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.356322,
+    "n_venues": 2,
+    "clv": -0.035835
+  },
+  {
+    "key": "21718017|237|rebounds|under|7.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.643678,
+    "n_venues": 2,
+    "clv": -0.066467
+  },
+  {
+    "key": "21718017|237|assists|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.175186,
+    "n_venues": 1,
+    "clv": -0.01529
+  },
+  {
+    "key": "21718017|237|assists|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.824814,
+    "n_venues": 1,
+    "clv": -0.071987
+  },
+  {
+    "key": "21718017|237|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.385012,
+    "n_venues": 1,
+    "clv": -0.031655
+  },
+  {
+    "key": "21718017|237|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.614988,
+    "n_venues": 1,
+    "clv": -0.050563
+  },
+  {
+    "key": "21718017|237|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.15614,
+    "n_venues": 1,
+    "clv": -0.023716
+  },
+  {
+    "key": "21718017|237|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.84386,
+    "n_venues": 1,
+    "clv": -0.128176
+  },
+  {
+    "key": "21718017|3547254|points|over|24.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.520777,
+    "n_venues": 2,
+    "clv": -0.042542
+  },
+  {
+    "key": "21718017|3547254|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.479223,
+    "n_venues": 2,
+    "clv": -0.018289
+  },
+  {
+    "key": "21718017|3547254|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.560104,
+    "n_venues": 2,
+    "clv": -0.041489
+  },
+  {
+    "key": "21718017|3547254|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.439896,
+    "n_venues": 2,
+    "clv": -0.016725
+  },
+  {
+    "key": "21718017|3547254|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.383818,
+    "n_venues": 2,
+    "clv": -0.032848
+  },
+  {
+    "key": "21718017|3547254|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.616182,
+    "n_venues": 2,
+    "clv": -0.040176
+  },
+  {
+    "key": "21718017|3547254|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.452343,
+    "n_venues": 2,
+    "clv": -0.035462
+  },
+  {
+    "key": "21718017|3547254|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.547657,
+    "n_venues": 2,
+    "clv": -0.019443
+  },
+  {
+    "key": "21718017|3547254|pra|over|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.51357,
+    "n_venues": 1,
+    "clv": -0.064489
+  },
+  {
+    "key": "21718017|3547254|pra|under|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.48643,
+    "n_venues": 1,
+    "clv": -0.071092
+  },
+  {
+    "key": "21718017|1057261935|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.154885,
+    "n_venues": 1,
+    "clv": -0.024972
+  },
+  {
+    "key": "21718017|1057261935|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.845115,
+    "n_venues": 1,
+    "clv": -0.136256
+  },
+  {
+    "key": "21718017|1057261935|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718017|1057261935|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718017|1057261935|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.409377,
+    "n_venues": 2,
+    "clv": -0.047244
+  },
+  {
+    "key": "21718017|1057261935|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.590623,
+    "n_venues": 2,
+    "clv": -0.04574
+  },
+  {
+    "key": "21718017|1057261935|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718017|1057261935|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718017|1057261935|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.513455,
+    "n_venues": 1,
+    "clv": -0.038114
+  },
+  {
+    "key": "21718017|1057261935|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.486545,
+    "n_venues": 1,
+    "clv": -0.030364
+  },
+  {
+    "key": "21718017|1091343852|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.824588,
+    "n_venues": 1,
+    "clv": -0.119359
+  },
+  {
+    "key": "21718017|1091343852|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.175412,
+    "n_venues": 1,
+    "clv": -0.036004
+  },
+  {
+    "key": "21718017|1091343852|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.454184,
+    "n_venues": 2,
+    "clv": -0.062725
+  },
+  {
+    "key": "21718017|1091343852|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.545816,
+    "n_venues": 2,
+    "clv": -0.032243
+  },
+  {
+    "key": "21718017|1091343852|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.4959,
+    "n_venues": 1,
+    "clv": -0.032402
+  },
+  {
+    "key": "21718017|1091343852|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5041,
+    "n_venues": 1,
+    "clv": -0.032937
+  },
+  {
+    "key": "21718017|1091343852|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.577158,
+    "n_venues": 2,
+    "clv": -0.044054
+  },
+  {
+    "key": "21718017|1091343852|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.422842,
+    "n_venues": 2,
+    "clv": -0.004508
+  },
+  {
+    "key": "21718017|1091343852|blocks|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.365719,
+    "n_venues": 1,
+    "clv": -0.040785
+  },
+  {
+    "key": "21718017|1091343852|blocks|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.634281,
+    "n_venues": 1,
+    "clv": -0.080819
+  },
+  {
+    "key": "21718017|1091343852|steals|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.380446,
+    "n_venues": 2,
+    "clv": -0.031077
+  },
+  {
+    "key": "21718017|1091343852|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.619554,
+    "n_venues": 2,
+    "clv": -0.055771
+  },
+  {
+    "key": "21718017|3547264|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.114893,
+    "n_venues": 1,
+    "clv": -0.012496
+  },
+  {
+    "key": "21718017|3547264|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.885107,
+    "n_venues": 1,
+    "clv": -0.096264
+  },
+  {
+    "key": "21718017|3547264|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.56898,
+    "n_venues": 1,
+    "clv": -0.047878
+  },
+  {
+    "key": "21718017|3547264|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.43102,
+    "n_venues": 1,
+    "clv": -0.036269
+  },
+  {
+    "key": "21718017|3547264|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.466653,
+    "n_venues": 1,
+    "clv": -0.021152
+  },
+  {
+    "key": "21718017|3547264|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.533347,
+    "n_venues": 1,
+    "clv": -0.024175
+  },
+  {
+    "key": "21718017|3547264|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718017|3547264|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718017|3547264|threes|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.714547,
+    "n_venues": 1,
+    "clv": -0.125453
+  },
+  {
+    "key": "21718017|3547264|threes|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.285453,
+    "n_venues": 1,
+    "clv": -0.050117
+  },
+  {
+    "key": "21718017|3547264|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.491072,
+    "n_venues": 1,
+    "clv": -0.03723
+  },
+  {
+    "key": "21718017|3547264|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.508928,
+    "n_venues": 1,
+    "clv": -0.038583
+  },
+  {
+    "key": "21718017|17896065|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718017|17896065|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718017|17896065|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.558921,
+    "n_venues": 1,
+    "clv": -0.047379
+  },
+  {
+    "key": "21718017|17896065|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.441079,
+    "n_venues": 1,
+    "clv": -0.037389
+  },
+  {
+    "key": "21718017|17896065|assists|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.439156,
+    "n_venues": 1,
+    "clv": -0.028134
+  },
+  {
+    "key": "21718017|17896065|assists|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.560844,
+    "n_venues": 1,
+    "clv": -0.03593
+  },
+  {
+    "key": "21718017|17896065|threes|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.646116,
+    "n_venues": 1,
+    "clv": -0.058899
+  },
+  {
+    "key": "21718017|17896065|threes|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.353884,
+    "n_venues": 1,
+    "clv": -0.042941
+  },
+  {
+    "key": "21718017|17896065|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.335803,
+    "n_venues": 1,
+    "clv": -0.030497
+  },
+  {
+    "key": "21718017|17896065|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.664197,
+    "n_venues": 1,
+    "clv": -0.060321
+  },
+  {
+    "key": "21718017|17896065|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718017|17896065|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718017|17896065|pra|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509042,
+    "n_venues": 1,
+    "clv": -0.069017
+  },
+  {
+    "key": "21718017|17896065|pra|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490958,
+    "n_venues": 1,
+    "clv": -0.066565
+  },
+  {
+    "key": "21718017|1028025177|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.685993,
+    "n_venues": 2,
+    "clv": -0.029107
+  },
+  {
+    "key": "21718017|1028025177|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.314007,
+    "n_venues": 2,
+    "clv": -0.010668
+  },
+  {
+    "key": "21718017|1028025177|points|over|14.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.505413,
+    "n_venues": 2,
+    "clv": -0.057906
+  },
+  {
+    "key": "21718017|1028025177|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.494587,
+    "n_venues": 2,
+    "clv": -0.022321
+  },
+  {
+    "key": "21718017|1028025177|assists|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.60828,
+    "n_venues": 2,
+    "clv": -0.043288
+  },
+  {
+    "key": "21718017|1028025177|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.39172,
+    "n_venues": 2,
+    "clv": -0.024946
+  },
+  {
+    "key": "21718017|1028025177|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.502542,
+    "n_venues": 2,
+    "clv": -0.049027
+  },
+  {
+    "key": "21718017|1028025177|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.497458,
+    "n_venues": 2,
+    "clv": -0.019451
+  },
+  {
+    "key": "21718017|380|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.684541,
+    "n_venues": 2,
+    "clv": -0.030559
+  },
+  {
+    "key": "21718017|380|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.315459,
+    "n_venues": 2,
+    "clv": -0.009216
+  },
+  {
+    "key": "21718017|380|points|over|19.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.488917,
+    "n_venues": 2,
+    "clv": -0.032614
+  },
+  {
+    "key": "21718017|380|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.511083,
+    "n_venues": 2,
+    "clv": -0.025954
+  },
+  {
+    "key": "21718017|380|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.396179,
+    "n_venues": 1,
+    "clv": -0.040503
+  },
+  {
+    "key": "21718017|380|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.603821,
+    "n_venues": 1,
+    "clv": -0.061731
+  },
+  {
+    "key": "21718017|380|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.147273,
+    "n_venues": 1,
+    "clv": -0.022218
+  },
+  {
+    "key": "21718017|380|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.852727,
+    "n_venues": 1,
+    "clv": -0.128645
+  },
+  {
+    "key": "21718017|380|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.584259,
+    "n_venues": 1,
+    "clv": -0.101275
+  },
+  {
+    "key": "21718017|380|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.415741,
+    "n_venues": 1,
+    "clv": -0.030688
+  },
+  {
+    "key": "21718017|380|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.462457,
+    "n_venues": 2,
+    "clv": -0.054451
+  },
+  {
+    "key": "21718017|380|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.537543,
+    "n_venues": 2,
+    "clv": -0.019979
+  },
+  {
+    "key": "21718017|380|pra|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490958,
+    "n_venues": 1,
+    "clv": -0.066565
+  },
+  {
+    "key": "21718017|380|pra|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509042,
+    "n_venues": 1,
+    "clv": -0.069017
+  },
+  {
+    "key": "21718017|3547274|points|over|9.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.493497,
+    "n_venues": 2,
+    "clv": -0.049882
+  },
+  {
+    "key": "21718017|3547274|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.506503,
+    "n_venues": 2,
+    "clv": -0.021799
+  },
+  {
+    "key": "21718017|3547274|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5,
+    "n_venues": 1,
+    "clv": -0.047511
+  },
+  {
+    "key": "21718017|3547274|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5,
+    "n_venues": 1,
+    "clv": -0.047511
+  },
+  {
+    "key": "21718017|3547274|threes|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.642764,
+    "n_venues": 2,
+    "clv": -0.052358
+  },
+  {
+    "key": "21718017|3547274|threes|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.357236,
+    "n_venues": 2,
+    "clv": -0.018704
+  },
+  {
+    "key": "21718019|38017686|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.165177,
+    "n_venues": 1,
+    "clv": -0.025299
+  },
+  {
+    "key": "21718019|38017686|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.834823,
+    "n_venues": 1,
+    "clv": -0.137213
+  },
+  {
+    "key": "21718019|38017686|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.387558,
+    "n_venues": 1,
+    "clv": -0.039793
+  },
+  {
+    "key": "21718019|38017686|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.612442,
+    "n_venues": 1,
+    "clv": -0.073092
+  },
+  {
+    "key": "21718019|38017686|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.147273,
+    "n_venues": 1,
+    "clv": -0.022218
+  },
+  {
+    "key": "21718019|38017686|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.852727,
+    "n_venues": 1,
+    "clv": -0.128645
+  },
+  {
+    "key": "21718019|1091339280|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.750255,
+    "n_venues": 1,
+    "clv": -0.070533
+  },
+  {
+    "key": "21718019|1091339280|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.249745,
+    "n_venues": 1,
+    "clv": -0.034346
+  },
+  {
+    "key": "21718019|1091339280|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718019|1091339280|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718019|1091339280|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.429019,
+    "n_venues": 2,
+    "clv": -0.03827
+  },
+  {
+    "key": "21718019|1091339280|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.570981,
+    "n_venues": 2,
+    "clv": -0.045878
+  },
+  {
+    "key": "21718019|1091339280|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.436827,
+    "n_venues": 1,
+    "clv": -0.041642
+  },
+  {
+    "key": "21718019|1091339280|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.563173,
+    "n_venues": 1,
+    "clv": -0.063693
+  },
+  {
+    "key": "21718019|1091339280|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.574908,
+    "n_venues": 2,
+    "clv": -0.061456
+  },
+  {
+    "key": "21718019|1091339280|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.425092,
+    "n_venues": 2,
+    "clv": -0.031529
+  },
+  {
+    "key": "21718019|1057266649|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.665121,
+    "n_venues": 2,
+    "clv": -0.049978
+  },
+  {
+    "key": "21718019|1057266649|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.334879,
+    "n_venues": 2,
+    "clv": 0.010203
+  },
+  {
+    "key": "21718019|1057266649|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.209115,
+    "n_venues": 1,
+    "clv": -0.033016
+  },
+  {
+    "key": "21718019|1057266649|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.790885,
+    "n_venues": 1,
+    "clv": -0.124869
+  },
+  {
+    "key": "21718019|1057266649|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.517709,
+    "n_venues": 1,
+    "clv": -0.04939
+  },
+  {
+    "key": "21718019|1057266649|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.482291,
+    "n_venues": 1,
+    "clv": -0.046011
+  },
+  {
+    "key": "21718019|1057266649|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.250634,
+    "n_venues": 1,
+    "clv": -0.033457
+  },
+  {
+    "key": "21718019|1057266649|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.749366,
+    "n_venues": 1,
+    "clv": -0.100032
+  },
+  {
+    "key": "21718019|334|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.669097,
+    "n_venues": 2,
+    "clv": -0.046003
+  },
+  {
+    "key": "21718019|334|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.330903,
+    "n_venues": 2,
+    "clv": 0.006228
+  },
+  {
+    "key": "21718019|334|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.572922,
+    "n_venues": 1,
+    "clv": -0.053944
+  },
+  {
+    "key": "21718019|334|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.427078,
+    "n_venues": 1,
+    "clv": -0.051391
+  },
+  {
+    "key": "21718019|334|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.371774,
+    "n_venues": 2,
+    "clv": -0.03473
+  },
+  {
+    "key": "21718019|334|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.628226,
+    "n_venues": 2,
+    "clv": -0.037326
+  },
+  {
+    "key": "21718019|334|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.157417,
+    "n_venues": 1,
+    "clv": -0.022439
+  },
+  {
+    "key": "21718019|334|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.842583,
+    "n_venues": 1,
+    "clv": -0.120104
+  },
+  {
+    "key": "21718019|1057274415|points|over|9.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.498155,
+    "n_venues": 2,
+    "clv": -0.034556
+  },
+  {
+    "key": "21718019|1057274415|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.501845,
+    "n_venues": 2,
+    "clv": -0.015063
+  },
+  {
+    "key": "21718019|1057274415|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.252996,
+    "n_venues": 1,
+    "clv": -0.041122
+  },
+  {
+    "key": "21718019|1057274415|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.747004,
+    "n_venues": 1,
+    "clv": -0.130896
+  },
+  {
+    "key": "21718019|1028039105|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.123229,
+    "n_venues": 1,
+    "clv": -0.014702
+  },
+  {
+    "key": "21718019|1028039105|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.876771,
+    "n_venues": 1,
+    "clv": -0.104601
+  },
+  {
+    "key": "21718019|1028039105|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.458837,
+    "n_venues": 1,
+    "clv": -0.038675
+  },
+  {
+    "key": "21718019|1028039105|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.541163,
+    "n_venues": 1,
+    "clv": -0.045614
+  },
+  {
+    "key": "21718019|1028039105|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.176863,
+    "n_venues": 1,
+    "clv": -0.02394
+  },
+  {
+    "key": "21718019|1028039105|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.823137,
+    "n_venues": 1,
+    "clv": -0.102013
+  },
+  {
+    "key": "21718019|1028039105|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.570409,
+    "n_venues": 1,
+    "clv": -0.03589
+  },
+  {
+    "key": "21718019|1028039105|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.429591,
+    "n_venues": 1,
+    "clv": -0.02703
+  },
+  {
+    "key": "21718019|1028039105|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.158719,
+    "n_venues": 1,
+    "clv": -0.021137
+  },
+  {
+    "key": "21718019|1028039105|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.841281,
+    "n_venues": 1,
+    "clv": -0.112034
+  },
+  {
+    "key": "21718019|182|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.468348,
+    "n_venues": 1,
+    "clv": -0.048561
+  },
+  {
+    "key": "21718019|182|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.531652,
+    "n_venues": 1,
+    "clv": -0.055124
+  },
+  {
+    "key": "21718019|182|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.212595,
+    "n_venues": 1,
+    "clv": -0.029536
+  },
+  {
+    "key": "21718019|182|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.787405,
+    "n_venues": 1,
+    "clv": -0.109395
+  },
+  {
+    "key": "21718019|1057267077|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.550236,
+    "n_venues": 1,
+    "clv": -0.056063
+  },
+  {
+    "key": "21718019|1057267077|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.449764,
+    "n_venues": 1,
+    "clv": -0.047748
+  },
+  {
+    "key": "21718019|1057267077|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.465838,
+    "n_venues": 2,
+    "clv": -0.031675
+  },
+  {
+    "key": "21718019|1057267077|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.534162,
+    "n_venues": 2,
+    "clv": -0.032937
+  },
+  {
+    "key": "21718019|1057267077|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.397615,
+    "n_venues": 2,
+    "clv": -0.035285
+  },
+  {
+    "key": "21718019|1057267077|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.602385,
+    "n_venues": 2,
+    "clv": -0.044258
+  },
+  {
+    "key": "21718019|3547256|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718019|3547256|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718019|3547256|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.123229,
+    "n_venues": 1,
+    "clv": -0.014702
+  },
+  {
+    "key": "21718019|3547256|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.876771,
+    "n_venues": 1,
+    "clv": -0.104601
+  },
+  {
+    "key": "21718019|3547256|assists|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.592637,
+    "n_venues": 2,
+    "clv": -0.04894
+  },
+  {
+    "key": "21718019|3547256|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.407363,
+    "n_venues": 2,
+    "clv": -0.009303
+  },
+  {
+    "key": "21718019|3547256|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.49547,
+    "n_venues": 1,
+    "clv": -0.052041
+  },
+  {
+    "key": "21718019|3547256|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.50453,
+    "n_venues": 1,
+    "clv": -0.052992
+  },
+  {
+    "key": "21718019|3547256|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.230626,
+    "n_venues": 1,
+    "clv": -0.032532
+  },
+  {
+    "key": "21718019|3547256|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.769374,
+    "n_venues": 1,
+    "clv": -0.108526
+  },
+  {
+    "key": "21718019|18677986|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.687745,
+    "n_venues": 1,
+    "clv": -0.027355
+  },
+  {
+    "key": "21718019|18677986|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.312255,
+    "n_venues": 1,
+    "clv": -0.01242
+  },
+  {
+    "key": "21718019|18677986|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.523539,
+    "n_venues": 1,
+    "clv": -0.033984
+  },
+  {
+    "key": "21718019|18677986|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.476461,
+    "n_venues": 1,
+    "clv": -0.040447
+  },
+  {
+    "key": "21718019|18677986|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.294399,
+    "n_venues": 1,
+    "clv": -0.020066
+  },
+  {
+    "key": "21718019|18677986|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.705601,
+    "n_venues": 1,
+    "clv": -0.048094
+  },
+  {
+    "key": "21718019|18677986|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.114893,
+    "n_venues": 1,
+    "clv": -0.012496
+  },
+  {
+    "key": "21718019|18677986|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.885107,
+    "n_venues": 1,
+    "clv": -0.096264
+  },
+  {
+    "key": "21718019|18677986|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.391023,
+    "n_venues": 1,
+    "clv": -0.036327
+  },
+  {
+    "key": "21718019|18677986|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.608977,
+    "n_venues": 1,
+    "clv": -0.056575
+  },
+  {
+    "key": "21718019|18677986|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.198889,
+    "n_venues": 1,
+    "clv": -0.03313
+  },
+  {
+    "key": "21718019|18677986|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.801111,
+    "n_venues": 1,
+    "clv": -0.133444
+  },
+  {
+    "key": "21718019|666676|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.673672,
+    "n_venues": 2,
+    "clv": -0.041428
+  },
+  {
+    "key": "21718019|666676|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.326328,
+    "n_venues": 2,
+    "clv": 0.001653
+  },
+  {
+    "key": "21718019|666676|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.432872,
+    "n_venues": 1,
+    "clv": -0.034417
+  },
+  {
+    "key": "21718019|666676|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.567128,
+    "n_venues": 1,
+    "clv": -0.059738
+  },
+  {
+    "key": "21718019|666676|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.148478,
+    "n_venues": 1,
+    "clv": -0.021014
+  },
+  {
+    "key": "21718019|666676|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.851522,
+    "n_venues": 1,
+    "clv": -0.120514
+  },
+  {
+    "key": "21718019|666676|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.453348,
+    "n_venues": 2,
+    "clv": -0.054041
+  },
+  {
+    "key": "21718019|666676|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.546652,
+    "n_venues": 2,
+    "clv": -0.050122
+  },
+  {
+    "key": "21718019|1028025754|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.147273,
+    "n_venues": 1,
+    "clv": -0.022218
+  },
+  {
+    "key": "21718019|1028025754|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.852727,
+    "n_venues": 1,
+    "clv": -0.128645
+  },
+  {
+    "key": "21718019|1028025754|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5041,
+    "n_venues": 1,
+    "clv": -0.032937
+  },
+  {
+    "key": "21718019|1028025754|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.4959,
+    "n_venues": 1,
+    "clv": -0.032402
+  },
+  {
+    "key": "21718019|1028025754|rebounds|over|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.165177,
+    "n_venues": 1,
+    "clv": -0.025299
+  },
+  {
+    "key": "21718019|1028025754|rebounds|under|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.834823,
+    "n_venues": 1,
+    "clv": -0.137213
+  },
+  {
+    "key": "21718019|666969|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.659233,
+    "n_venues": 2,
+    "clv": -0.055866
+  },
+  {
+    "key": "21718019|666969|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.340767,
+    "n_venues": 2,
+    "clv": 0.016091
+  },
+  {
+    "key": "21718019|666969|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.16757,
+    "n_venues": 2,
+    "clv": -0.022906
+  },
+  {
+    "key": "21718019|666969|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.83243,
+    "n_venues": 2,
+    "clv": -0.083324
+  },
+  {
+    "key": "21718019|666969|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.439156,
+    "n_venues": 1,
+    "clv": -0.028134
+  },
+  {
+    "key": "21718019|666969|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.560844,
+    "n_venues": 1,
+    "clv": -0.045455
+  },
+  {
+    "key": "21718019|666969|pra|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.49547,
+    "n_venues": 1,
+    "clv": -0.052041
+  },
+  {
+    "key": "21718019|666969|pra|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.50453,
+    "n_venues": 1,
+    "clv": -0.06257
+  },
+  {
+    "key": "21718019|3547267|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718019|3547267|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718019|3547267|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.572922,
+    "n_venues": 1,
+    "clv": -0.053944
+  },
+  {
+    "key": "21718019|3547267|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.427078,
+    "n_venues": 1,
+    "clv": -0.040212
+  },
+  {
+    "key": "21718020|17895983|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718020|17895983|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718020|17895983|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.55727,
+    "n_venues": 2,
+    "clv": -0.044323
+  },
+  {
+    "key": "21718020|17895983|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.44273,
+    "n_venues": 2,
+    "clv": -0.035739
+  },
+  {
+    "key": "21718020|17895983|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.495171,
+    "n_venues": 1,
+    "clv": -0.041866
+  },
+  {
+    "key": "21718020|17895983|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.504829,
+    "n_venues": 1,
+    "clv": -0.042682
+  },
+  {
+    "key": "21718020|17895983|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.228725,
+    "n_venues": 1,
+    "clv": -0.034433
+  },
+  {
+    "key": "21718020|17895983|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.771275,
+    "n_venues": 1,
+    "clv": -0.116112
+  },
+  {
+    "key": "21718020|3547259|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.164161,
+    "n_venues": 1,
+    "clv": -0.015695
+  },
+  {
+    "key": "21718020|3547259|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.835839,
+    "n_venues": 1,
+    "clv": -0.08931
+  },
+  {
+    "key": "21718020|3547259|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.461383,
+    "n_venues": 2,
+    "clv": -0.03613
+  },
+  {
+    "key": "21718020|3547259|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.538617,
+    "n_venues": 2,
+    "clv": -0.028482
+  },
+  {
+    "key": "21718020|3547259|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.114893,
+    "n_venues": 1,
+    "clv": -0.012496
+  },
+  {
+    "key": "21718020|3547259|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.885107,
+    "n_venues": 1,
+    "clv": -0.096264
+  },
+  {
+    "key": "21718020|3547259|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5,
+    "n_venues": 1,
+    "clv": -0.047511
+  },
+  {
+    "key": "21718020|3547259|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5,
+    "n_venues": 1,
+    "clv": -0.047511
+  },
+  {
+    "key": "21718020|3547259|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.228725,
+    "n_venues": 1,
+    "clv": -0.034433
+  },
+  {
+    "key": "21718020|3547259|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.771275,
+    "n_venues": 1,
+    "clv": -0.116112
+  },
+  {
+    "key": "21718020|56677785|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.479241,
+    "n_venues": 2,
+    "clv": -0.037668
+  },
+  {
+    "key": "21718020|56677785|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.520759,
+    "n_venues": 2,
+    "clv": -0.007542
+  },
+  {
+    "key": "21718020|56677785|rebounds|over|5.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.412294,
+    "n_venues": 1,
+    "clv": -0.030184
+  },
+  {
+    "key": "21718020|56677785|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.587706,
+    "n_venues": 1,
+    "clv": -0.058937
+  },
+  {
+    "key": "21718020|56677785|threes|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.652215,
+    "n_venues": 1,
+    "clv": -0.0528
+  },
+  {
+    "key": "21718020|56677785|threes|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.347785,
+    "n_venues": 1,
+    "clv": -0.028155
+  },
+  {
+    "key": "21718020|17553979|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.518976,
+    "n_venues": 2,
+    "clv": -0.048124
+  },
+  {
+    "key": "21718020|17553979|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.481024,
+    "n_venues": 2,
+    "clv": -0.016488
+  },
+  {
+    "key": "21718020|17553979|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.4811,
+    "n_venues": 1,
+    "clv": -0.035808
+  },
+  {
+    "key": "21718020|17553979|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5189,
+    "n_venues": 1,
+    "clv": -0.038622
+  },
+  {
+    "key": "21718020|265|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.420291,
+    "n_venues": 2,
+    "clv": -0.03633
+  },
+  {
+    "key": "21718020|265|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.579709,
+    "n_venues": 2,
+    "clv": -0.047157
+  },
+  {
+    "key": "21718020|265|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.335803,
+    "n_venues": 1,
+    "clv": -0.030497
+  },
+  {
+    "key": "21718020|265|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.664197,
+    "n_venues": 1,
+    "clv": -0.060321
+  },
+  {
+    "key": "21718020|265|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718020|265|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718020|3547239|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.24761,
+    "n_venues": 1,
+    "clv": -0.046508
+  },
+  {
+    "key": "21718020|3547239|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.75239,
+    "n_venues": 1,
+    "clv": -0.077831
+  },
+  {
+    "key": "21718020|3547239|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.148035,
+    "n_venues": 2,
+    "clv": 0.010104
+  },
+  {
+    "key": "21718020|3547239|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.851965,
+    "n_venues": 2,
+    "clv": -0.054314
+  },
+  {
+    "key": "21718020|3547239|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.114893,
+    "n_venues": 1,
+    "clv": -0.012496
+  },
+  {
+    "key": "21718020|3547239|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.885107,
+    "n_venues": 1,
+    "clv": -0.096264
+  },
+  {
+    "key": "21718020|3547239|assists|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.182947,
+    "n_venues": 1,
+    "clv": -0.007529
+  },
+  {
+    "key": "21718020|3547239|assists|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.817053,
+    "n_venues": 1,
+    "clv": -0.089226
+  },
+  {
+    "key": "21718020|3547239|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.527785,
+    "n_venues": 1,
+    "clv": -0.039314
+  },
+  {
+    "key": "21718020|3547239|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.472215,
+    "n_venues": 1,
+    "clv": -0.035175
+  },
+  {
+    "key": "21718020|3547239|threes|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.187564,
+    "n_venues": 1,
+    "clv": -0.023853
+  },
+  {
+    "key": "21718020|3547239|threes|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.812436,
+    "n_venues": 1,
+    "clv": -0.112714
+  },
+  {
+    "key": "21718020|452|points|over|9.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.497558,
+    "n_venues": 2,
+    "clv": -0.023973
+  },
+  {
+    "key": "21718020|452|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.502442,
+    "n_venues": 2,
+    "clv": -0.014466
+  },
+  {
+    "key": "21718020|452|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718020|452|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718020|452|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.5041,
+    "n_venues": 1,
+    "clv": -0.043412
+  },
+  {
+    "key": "21718020|452|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.4959,
+    "n_venues": 1,
+    "clv": -0.021008
+  },
+  {
+    "key": "21718020|452|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.445849,
+    "n_venues": 1,
+    "clv": -0.041956
+  },
+  {
+    "key": "21718020|452|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.554151,
+    "n_venues": 1,
+    "clv": -0.052148
+  },
+  {
+    "key": "21718020|176|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.517709,
+    "n_venues": 1,
+    "clv": -0.04939
+  },
+  {
+    "key": "21718020|176|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.482291,
+    "n_venues": 1,
+    "clv": -0.046011
+  },
+  {
+    "key": "21718020|176|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.172587,
+    "n_venues": 1,
+    "clv": -0.028216
+  },
+  {
+    "key": "21718020|176|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.827413,
+    "n_venues": 1,
+    "clv": -0.135274
+  },
+  {
+    "key": "21718020|176|assists|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.497521,
+    "n_venues": 2,
+    "clv": -0.035189
+  },
+  {
+    "key": "21718020|176|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.502479,
+    "n_venues": 2,
+    "clv": -0.045033
+  },
+  {
+    "key": "21718020|38017712|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.467447,
+    "n_venues": 1,
+    "clv": -0.039942
+  },
+  {
+    "key": "21718020|38017712|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.532553,
+    "n_venues": 1,
+    "clv": -0.045506
+  },
+  {
+    "key": "21718020|38017712|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.513297,
+    "n_venues": 2,
+    "clv": -0.059353
+  },
+  {
+    "key": "21718020|38017712|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.486703,
+    "n_venues": 2,
+    "clv": -0.041599
+  },
+  {
+    "key": "21718020|38017712|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.558921,
+    "n_venues": 1,
+    "clv": -0.047379
+  },
+  {
+    "key": "21718020|38017712|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.441079,
+    "n_venues": 1,
+    "clv": -0.037389
+  },
+  {
+    "key": "21718020|666633|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.15614,
+    "n_venues": 1,
+    "clv": -0.023716
+  },
+  {
+    "key": "21718020|666633|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.84386,
+    "n_venues": 1,
+    "clv": -0.128176
+  },
+  {
+    "key": "21718020|666633|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.482291,
+    "n_venues": 1,
+    "clv": -0.046011
+  },
+  {
+    "key": "21718020|666633|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.517709,
+    "n_venues": 1,
+    "clv": -0.04939
+  },
+  {
+    "key": "21718022|161|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.586118,
+    "n_venues": 1,
+    "clv": -0.060525
+  },
+  {
+    "key": "21718022|161|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.413882,
+    "n_venues": 1,
+    "clv": -0.042739
+  },
+  {
+    "key": "21718022|161|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.552863,
+    "n_venues": 2,
+    "clv": -0.053436
+  },
+  {
+    "key": "21718022|161|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.447137,
+    "n_venues": 2,
+    "clv": -0.031332
+  },
+  {
+    "key": "21718022|161|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.430265,
+    "n_venues": 2,
+    "clv": -0.048204
+  },
+  {
+    "key": "21718022|161|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.569735,
+    "n_venues": 2,
+    "clv": -0.047123
+  },
+  {
+    "key": "21718022|161|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.363889,
+    "n_venues": 2,
+    "clv": -0.032937
+  },
+  {
+    "key": "21718022|161|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.636111,
+    "n_venues": 2,
+    "clv": -0.05901
+  },
+  {
+    "key": "21718022|3547246|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.615654,
+    "n_venues": 1,
+    "clv": -0.089361
+  },
+  {
+    "key": "21718022|3547246|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.384346,
+    "n_venues": 1,
+    "clv": -0.082944
+  },
+  {
+    "key": "21718022|3547246|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718022|3547246|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718022|3547246|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.580523,
+    "n_venues": 2,
+    "clv": -0.06612
+  },
+  {
+    "key": "21718022|3547246|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.419477,
+    "n_venues": 2,
+    "clv": -0.026952
+  },
+  {
+    "key": "21718022|1057262518|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.150954,
+    "n_venues": 1,
+    "clv": -0.018538
+  },
+  {
+    "key": "21718022|1057262518|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.849046,
+    "n_venues": 1,
+    "clv": -0.104268
+  },
+  {
+    "key": "21718022|1057262518|assists|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718022|1057262518|assists|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718022|1057262518|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.357473,
+    "n_venues": 2,
+    "clv": -0.028627
+  },
+  {
+    "key": "21718022|1057262518|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.642527,
+    "n_venues": 2,
+    "clv": -0.052595
+  },
+  {
+    "key": "21718022|38017649|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.479044,
+    "n_venues": 1,
+    "clv": -0.078478
+  },
+  {
+    "key": "21718022|38017649|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.520956,
+    "n_venues": 1,
+    "clv": -0.10591
+  },
+  {
+    "key": "21718022|38017649|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.41059,
+    "n_venues": 1,
+    "clv": -0.026092
+  },
+  {
+    "key": "21718022|38017649|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.58941,
+    "n_venues": 1,
+    "clv": -0.037455
+  },
+  {
+    "key": "21718022|38017649|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.403094,
+    "n_venues": 1,
+    "clv": -0.033588
+  },
+  {
+    "key": "21718022|38017649|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.596906,
+    "n_venues": 1,
+    "clv": -0.049737
+  },
+  {
+    "key": "21718022|38017649|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.202147,
+    "n_venues": 1,
+    "clv": -0.029872
+  },
+  {
+    "key": "21718022|38017649|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.797853,
+    "n_venues": 1,
+    "clv": -0.127297
+  },
+  {
+    "key": "21718022|38017649|threes|over|4.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.114893,
+    "n_venues": 1,
+    "clv": -0.012496
+  },
+  {
+    "key": "21718022|38017649|threes|under|4.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.885107,
+    "n_venues": 1,
+    "clv": -0.096264
+  },
+  {
+    "key": "21718022|666682|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.467318,
+    "n_venues": 1,
+    "clv": -0.030194
+  },
+  {
+    "key": "21718022|666682|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.532682,
+    "n_venues": 1,
+    "clv": -0.034418
+  },
+  {
+    "key": "21718022|666682|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718022|666682|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718022|1028025261|points|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.768861,
+    "n_venues": 1,
+    "clv": -0.071139
+  },
+  {
+    "key": "21718022|1028025261|points|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.231139,
+    "n_venues": 1,
+    "clv": -0.021386
+  },
+  {
+    "key": "21718022|1028025261|points|over|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.132424,
+    "n_venues": 1,
+    "clv": -0.015944
+  },
+  {
+    "key": "21718022|1028025261|points|under|24.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.867576,
+    "n_venues": 1,
+    "clv": -0.104459
+  },
+  {
+    "key": "21718022|1028025261|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.450722,
+    "n_venues": 1,
+    "clv": -0.04679
+  },
+  {
+    "key": "21718022|1028025261|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.549278,
+    "n_venues": 1,
+    "clv": -0.057021
+  },
+  {
+    "key": "21718022|1028025261|assists|over|5.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.558921,
+    "n_venues": 1,
+    "clv": -0.042673
+  },
+  {
+    "key": "21718022|1028025261|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.441079,
+    "n_venues": 1,
+    "clv": -0.037389
+  },
+  {
+    "key": "21718022|1028025261|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.246021,
+    "n_venues": 2,
+    "clv": -0.027203
+  },
+  {
+    "key": "21718022|1028025261|threes|under|2.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.753979,
+    "n_venues": 2,
+    "clv": -0.083155
+  },
+  {
+    "key": "21718022|56677822|points|over|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.163849,
+    "n_venues": 1,
+    "clv": -0.026627
+  },
+  {
+    "key": "21718022|56677822|points|under|34.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.836151,
+    "n_venues": 1,
+    "clv": -0.135885
+  },
+  {
+    "key": "21718022|56677822|rebounds|over|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.536278,
+    "n_venues": 1,
+    "clv": -0.050499
+  },
+  {
+    "key": "21718022|56677822|rebounds|under|11.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.463722,
+    "n_venues": 1,
+    "clv": -0.053186
+  },
+  {
+    "key": "21718022|56677822|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.594614,
+    "n_venues": 2,
+    "clv": -0.061744
+  },
+  {
+    "key": "21718022|56677822|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.405386,
+    "n_venues": 2,
+    "clv": -0.021964
+  },
+  {
+    "key": "21718022|56677822|blocks|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.423403,
+    "n_venues": 1,
+    "clv": -0.043887
+  },
+  {
+    "key": "21718022|56677822|blocks|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.576597,
+    "n_venues": 1,
+    "clv": -0.059766
+  },
+  {
+    "key": "21718022|56677822|steals|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.3244,
+    "n_venues": 2,
+    "clv": -0.03661
+  },
+  {
+    "key": "21718022|56677822|steals|under|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.6756,
+    "n_venues": 2,
+    "clv": -0.063984
+  },
+  {
+    "key": "21718022|1091342427|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.165593,
+    "n_venues": 1,
+    "clv": -0.003899
+  },
+  {
+    "key": "21718022|1091342427|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.834407,
+    "n_venues": 1,
+    "clv": -0.062394
+  },
+  {
+    "key": "21718022|1091342427|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.576597,
+    "n_venues": 1,
+    "clv": -0.059766
+  },
+  {
+    "key": "21718022|1091342427|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.423403,
+    "n_venues": 1,
+    "clv": -0.043887
+  },
+  {
+    "key": "21718022|1091342427|threes|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.439471,
+    "n_venues": 2,
+    "clv": -0.043621
+  },
+  {
+    "key": "21718022|1091342427|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.560529,
+    "n_venues": 2,
+    "clv": -0.04577
+  },
+  {
+    "key": "21718022|1028025362|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.097707,
+    "n_venues": 1,
+    "clv": -0.008563
+  },
+  {
+    "key": "21718022|1028025362|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.902293,
+    "n_venues": 1,
+    "clv": -0.079078
+  },
+  {
+    "key": "21718022|1028025362|assists|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.182987,
+    "n_venues": 1,
+    "clv": -0.028429
+  },
+  {
+    "key": "21718022|1028025362|assists|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.817013,
+    "n_venues": 1,
+    "clv": -0.126933
+  },
+  {
+    "key": "21718022|56677834|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.176863,
+    "n_venues": 1,
+    "clv": -0.02394
+  },
+  {
+    "key": "21718022|56677834|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.823137,
+    "n_venues": 1,
+    "clv": -0.111418
+  },
+  {
+    "key": "21718022|56677834|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490642,
+    "n_venues": 1,
+    "clv": -0.042068
+  },
+  {
+    "key": "21718022|56677834|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509358,
+    "n_venues": 1,
+    "clv": -0.038154
+  },
+  {
+    "key": "21718022|56677834|assists|over|5.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.551737,
+    "n_venues": 2,
+    "clv": -0.049857
+  },
+  {
+    "key": "21718022|56677834|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.448263,
+    "n_venues": 2,
+    "clv": -0.030206
+  },
+  {
+    "key": "21718022|56677834|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.427362,
+    "n_venues": 2,
+    "clv": -0.039928
+  },
+  {
+    "key": "21718022|56677834|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.572638,
+    "n_venues": 2,
+    "clv": -0.04422
+  },
+  {
+    "key": "21718022|297|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.131329,
+    "n_venues": 1,
+    "clv": -0.017039
+  },
+  {
+    "key": "21718022|297|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.868671,
+    "n_venues": 1,
+    "clv": -0.1127
+  },
+  {
+    "key": "21718022|297|rebounds|over|5.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.55363,
+    "n_venues": 2,
+    "clv": -0.038207
+  },
+  {
+    "key": "21718022|297|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.44637,
+    "n_venues": 2,
+    "clv": -0.032099
+  },
+  {
+    "key": "21718022|297|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.540476,
+    "n_venues": 1,
+    "clv": -0.065823
+  },
+  {
+    "key": "21718022|297|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.459524,
+    "n_venues": 1,
+    "clv": -0.068778
+  },
+  {
+    "key": "21718022|297|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.030076
+  },
+  {
+    "key": "21718022|297|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718022|297|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.459585,
+    "n_venues": 2,
+    "clv": -0.047804
+  },
+  {
+    "key": "21718022|297|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.540415,
+    "n_venues": 2,
+    "clv": -0.046362
+  },
+  {
+    "key": "21718023|278|rebounds|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.566333,
+    "n_venues": 2,
+    "clv": -0.07003
+  },
+  {
+    "key": "21718023|278|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.433667,
+    "n_venues": 2,
+    "clv": -0.033623
+  },
+  {
+    "key": "21718023|278|threes|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.401753,
+    "n_venues": 1,
+    "clv": -0.025597
+  },
+  {
+    "key": "21718023|278|threes|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.598247,
+    "n_venues": 1,
+    "clv": -0.067305
+  },
+  {
+    "key": "21718023|278|pra|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.522487,
+    "n_venues": 1,
+    "clv": -0.055572
+  },
+  {
+    "key": "21718023|278|pra|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.477513,
+    "n_venues": 1,
+    "clv": -0.050789
+  },
+  {
+    "key": "21718023|3547242|points|over|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.186013,
+    "n_venues": 1,
+    "clv": -0.025403
+  },
+  {
+    "key": "21718023|3547242|points|under|29.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.813987,
+    "n_venues": 1,
+    "clv": -0.111163
+  },
+  {
+    "key": "21718023|3547242|rebounds|over|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.453005,
+    "n_venues": 2,
+    "clv": -0.044508
+  },
+  {
+    "key": "21718023|3547242|rebounds|under|7.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.546995,
+    "n_venues": 2,
+    "clv": -0.039782
+  },
+  {
+    "key": "21718023|3547242|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.542339,
+    "n_venues": 1,
+    "clv": -0.035721
+  },
+  {
+    "key": "21718023|3547242|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.457661,
+    "n_venues": 1,
+    "clv": -0.049728
+  },
+  {
+    "key": "21718023|1028025344|rebounds|over|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.530252,
+    "n_venues": 2,
+    "clv": -0.076047
+  },
+  {
+    "key": "21718023|1028025344|rebounds|under|9.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.469748,
+    "n_venues": 2,
+    "clv": -0.058554
+  },
+  {
+    "key": "21718023|1028025344|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.49813,
+    "n_venues": 2,
+    "clv": -0.049381
+  },
+  {
+    "key": "21718023|1028025344|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.50187,
+    "n_venues": 2,
+    "clv": -0.045641
+  },
+  {
+    "key": "21718023|1028025344|threes|over|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.600489,
+    "n_venues": 1,
+    "clv": -0.055869
+  },
+  {
+    "key": "21718023|1028025344|threes|under|0.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.399511,
+    "n_venues": 1,
+    "clv": -0.03717
+  },
+  {
+    "key": "21718023|1028025344|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.114893,
+    "n_venues": 1,
+    "clv": -0.012496
+  },
+  {
+    "key": "21718023|1028025344|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.885107,
+    "n_venues": 1,
+    "clv": -0.096264
+  },
+  {
+    "key": "21718023|1028025344|blocks|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.508787,
+    "n_venues": 1,
+    "clv": -0.058313
+  },
+  {
+    "key": "21718023|1028025344|blocks|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.491213,
+    "n_venues": 1,
+    "clv": -0.066309
+  },
+  {
+    "key": "21718023|214|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.139415,
+    "n_venues": 1,
+    "clv": -0.019567
+  },
+  {
+    "key": "21718023|214|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.860585,
+    "n_venues": 1,
+    "clv": -0.120786
+  },
+  {
+    "key": "21718023|214|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.555371,
+    "n_venues": 2,
+    "clv": -0.065841
+  },
+  {
+    "key": "21718023|214|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.444629,
+    "n_venues": 2,
+    "clv": -0.03384
+  },
+  {
+    "key": "21718023|214|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.370121,
+    "n_venues": 1,
+    "clv": -0.026704
+  },
+  {
+    "key": "21718023|214|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.629879,
+    "n_venues": 1,
+    "clv": -0.075136
+  },
+  {
+    "key": "21718023|56677747|assists|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.408308,
+    "n_venues": 2,
+    "clv": -0.044181
+  },
+  {
+    "key": "21718023|56677747|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.591692,
+    "n_venues": 2,
+    "clv": -0.054951
+  },
+  {
+    "key": "21718023|56677747|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.586118,
+    "n_venues": 1,
+    "clv": -0.060525
+  },
+  {
+    "key": "21718023|56677747|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.413882,
+    "n_venues": 1,
+    "clv": -0.042739
+  },
+  {
+    "key": "21718023|56677850|points|over|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.134674,
+    "n_venues": 1,
+    "clv": -0.013694
+  },
+  {
+    "key": "21718023|56677850|points|under|19.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.865326,
+    "n_venues": 1,
+    "clv": -0.087989
+  },
+  {
+    "key": "21718023|56677850|assists|over|1.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.490604,
+    "n_venues": 2,
+    "clv": -0.042106
+  },
+  {
+    "key": "21718023|56677850|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.509396,
+    "n_venues": 2,
+    "clv": -0.038115
+  },
+  {
+    "key": "21718023|56677850|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.476849,
+    "n_venues": 1,
+    "clv": -0.040059
+  },
+  {
+    "key": "21718023|56677850|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.523151,
+    "n_venues": 1,
+    "clv": -0.043949
+  },
+  {
+    "key": "21718023|56677850|threes|over|4.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.132424,
+    "n_venues": 1,
+    "clv": -0.015944
+  },
+  {
+    "key": "21718023|56677850|threes|under|4.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.867576,
+    "n_venues": 1,
+    "clv": -0.104459
+  },
+  {
+    "key": "21718023|56677850|steals|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.396179,
+    "n_venues": 1,
+    "clv": -0.040503
+  },
+  {
+    "key": "21718023|56677850|steals|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.603821,
+    "n_venues": 1,
+    "clv": -0.061731
+  },
+  {
+    "key": "21718023|56677850|steals|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.163849,
+    "n_venues": 1,
+    "clv": -0.026627
+  },
+  {
+    "key": "21718023|56677850|steals|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.836151,
+    "n_venues": 1,
+    "clv": -0.135885
+  },
+  {
+    "key": "21718023|177|points|over|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.462416,
+    "n_venues": 1,
+    "clv": -0.025389
+  },
+  {
+    "key": "21718023|177|points|under|14.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.537584,
+    "n_venues": 1,
+    "clv": -0.029516
+  },
+  {
+    "key": "21718023|177|rebounds|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.455716,
+    "n_venues": 2,
+    "clv": -0.051674
+  },
+  {
+    "key": "21718023|177|rebounds|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.544284,
+    "n_venues": 2,
+    "clv": -0.05249
+  },
+  {
+    "key": "21718023|177|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.468348,
+    "n_venues": 1,
+    "clv": -0.048561
+  },
+  {
+    "key": "21718023|177|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.531652,
+    "n_venues": 1,
+    "clv": -0.055124
+  },
+  {
+    "key": "21718023|666679|rebounds|over|3.5|polymarket",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.513706,
+    "n_venues": 2,
+    "clv": -0.078131
+  },
+  {
+    "key": "21718023|666679|rebounds|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.486294,
+    "n_venues": 2,
+    "clv": -0.021095
+  },
+  {
+    "key": "21718023|666679|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.598247,
+    "n_venues": 1,
+    "clv": -0.077078
+  },
+  {
+    "key": "21718023|666679|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.401753,
+    "n_venues": 1,
+    "clv": -0.034928
+  },
+  {
+    "key": "21718023|666679|assists|over|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.163849,
+    "n_venues": 1,
+    "clv": -0.026627
+  },
+  {
+    "key": "21718023|666679|assists|under|3.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.836151,
+    "n_venues": 1,
+    "clv": -0.135885
+  },
+  {
+    "key": "21718023|666679|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.563173,
+    "n_venues": 1,
+    "clv": -0.053686
+  },
+  {
+    "key": "21718023|666679|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.436827,
+    "n_venues": 1,
+    "clv": -0.050977
+  },
+  {
+    "key": "21718023|38017709|assists|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.604317,
+    "n_venues": 1,
+    "clv": -0.081218
+  },
+  {
+    "key": "21718023|38017709|assists|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.395683,
+    "n_venues": 1,
+    "clv": -0.031667
+  },
+  {
+    "key": "21718023|38017709|threes|over|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.457661,
+    "n_venues": 1,
+    "clv": -0.030143
+  },
+  {
+    "key": "21718023|38017709|threes|under|1.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.542339,
+    "n_venues": 1,
+    "clv": -0.063961
+  },
+  {
+    "key": "21718023|38017709|steals|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.140566,
+    "n_venues": 1,
+    "clv": -0.03929
+  },
+  {
+    "key": "21718023|38017709|steals|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.859434,
+    "n_venues": 1,
+    "clv": -0.112602
+  },
+  {
+    "key": "21718023|335|assists|over|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.572922,
+    "n_venues": 1,
+    "clv": -0.053944
+  },
+  {
+    "key": "21718023|335|assists|under|5.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.427078,
+    "n_venues": 1,
+    "clv": -0.040212
+  },
+  {
+    "key": "21718023|335|threes|over|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.572922,
+    "n_venues": 1,
+    "clv": -0.053944
+  },
+  {
+    "key": "21718023|335|threes|under|2.5|kalshi",
+    "recorded_at": "2026-11-02T03:25:23+00:00",
+    "closing_probability": 0.427078,
+    "n_venues": 1,
+    "clv": -0.040212
+  }
+]

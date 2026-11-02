@@ -234,6 +234,30 @@ FINAL_GATE_TRUE_SHRINK: float = 0.93
 FINAL_GATE_IMPLIED_BLEND: float = 0.10
 
 # ---------------------------------------------------------------------------
+# Market-anchored probability (engine/market_blend.py)
+# ---------------------------------------------------------------------------
+# When True, the final probability is the de-vigged consensus market price moved
+# toward the model by a fitted, clipped log-odds weight (python main.py fit-blend).
+# When False, the legacy hand-tuned shrink / haircut / gate pipeline is used.
+USE_MARKET_BLEND: bool = True
+# Each audit or self-check flag halves how far the model may move the market price.
+BLEND_FLAG_TRUST_DECAY: float = 0.5
+BLEND_FLAG_TRUST_MAX_STEPS: int = 3
+
+# Opponent pace / defensive-rating / positional adjustments raised Brier in the
+# January and February backtests (+0.0073 to +0.0080), so production uses
+# league-average defense, matching the backtested "opportunity" model.
+MATCHUP_ADJUSTMENTS_ENABLED: bool = False
+
+# Price parlays with a Gaussian copula over fitted stat correlations
+# (engine/parlay_copula.py) instead of naive product × heuristic penalties.
+USE_COPULA_PARLAYS: bool = True
+# Fraction of full Kelly used for suggested stakes.
+KELLY_FRACTION: float = 0.25
+# Hard cap on any single suggested stake as a fraction of bankroll.
+KELLY_MAX_BANKROLL_FRACTION: float = 0.05
+
+# ---------------------------------------------------------------------------
 # Recent-form lookback windows
 # ---------------------------------------------------------------------------
 

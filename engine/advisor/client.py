@@ -151,7 +151,9 @@ class OpenAIAdvisorClient:
             )
         return self._sdk_client
 
-    def request_params(self, system_prompt: str, messages: list[dict], schema: dict) -> dict:
+    def request_params(
+        self, system_prompt: str, messages: list[dict], schema: dict, schema_name: str = SCHEMA_NAME,
+    ) -> dict:
         """Exact parameters sent to ``responses.create`` / ``POST /responses``."""
         effort = self.config.reasoning_effort
         if effort not in VALID_EFFORTS:
@@ -165,7 +167,7 @@ class OpenAIAdvisorClient:
             "text": {
                 "format": {
                     "type": "json_schema",
-                    "name": SCHEMA_NAME,
+                    "name": schema_name,
                     "schema": schema,
                     "strict": True,
                 }
@@ -211,9 +213,11 @@ class OpenAIAdvisorClient:
         self._model_verified = True
         logger.info("OpenAI model %s verified (%s transport)", model, self.transport)
 
-    def complete(self, system_prompt: str, messages: list[dict], schema: dict) -> LLMResult:
+    def complete(
+        self, system_prompt: str, messages: list[dict], schema: dict, schema_name: str = SCHEMA_NAME,
+    ) -> LLMResult:
         """Run one structured-output request and return the text plus metadata."""
-        params = self.request_params(system_prompt, messages, schema)
+        params = self.request_params(system_prompt, messages, schema, schema_name)
         start = time.perf_counter()
         try:
             if self.transport == "sdk":

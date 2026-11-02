@@ -411,6 +411,14 @@ def fetch_recent_player_logs_batch(
         if cached is not None:
             result[player_id] = cached
             continue
+        # The season pull is the same for every window size, so reuse it.
+        full_key = f"gamelogs_full_{player_id}_{season}"
+        full = _CACHE.get(full_key)
+        if full is not None:
+            trimmed = full[:last_n]
+            _CACHE.set(cache_key, trimmed)
+            result[player_id] = trimmed
+            continue
         try:
             rows = client.paginate(
                 "v1/stats",
@@ -445,6 +453,7 @@ def fetch_recent_player_logs_batch(
                 "source": "balldontlie",
             })
         logs.sort(key=lambda item: item.get("game_date") or "", reverse=True)
+        _CACHE.set(full_key, logs)
         trimmed = logs[:last_n]
         _CACHE.set(cache_key, trimmed)
         result[player_id] = trimmed

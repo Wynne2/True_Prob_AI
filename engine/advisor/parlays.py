@@ -2,7 +2,7 @@
 Deterministic pick and parlay table for the AI Advisor.
 
 Every number here comes from ``odds/parlay_math.py`` and the existing parlay
-builder (correlation blocking + calibrated combined probability). The LLM
+builder (correlation blocking + Gaussian-copula joint probability). The LLM
 only receives these numbers; it never produces them.
 """
 
@@ -12,6 +12,7 @@ import logging
 from dataclasses import dataclass, field
 
 from domain.entities import Parlay, PropProbability
+from engine.bankroll_engine import fractional_kelly
 from engine.parlay_builder import ParlayConstraints, build_parlays
 from odds.normalizer import american_to_decimal, decimal_to_american
 from odds.parlay_math import (
@@ -37,6 +38,10 @@ class PickRow:
     total_return: float
     profit: float
     expected_value: float
+    kelly_fraction: float = 0.0
+
+    def kelly_stake(self, bankroll: float | None) -> float | None:
+        return round(bankroll * self.kelly_fraction, 2) if bankroll else None
 
     @property
     def venue(self) -> str:
@@ -60,6 +65,10 @@ class ParlayRow:
     correlation_risk_score: float
     same_game: bool
     venues: list[str] = field(default_factory=list)
+    kelly_fraction: float = 0.0
+
+    def kelly_stake(self, bankroll: float | None) -> float | None:
+        return round(bankroll * self.kelly_fraction, 2) if bankroll else None
 
     @property
     def num_legs(self) -> int:
@@ -89,6 +98,7 @@ def build_pick_rows(picks: list[PropProbability], stake: float) -> list[PickRow]
             total_return=parlay_payout(stake, dec),
             profit=parlay_profit(stake, dec),
             expected_value=parlay_expected_value(stake, dec, prop.true_probability),
+            kelly_fraction=fractional_kelly(prop.true_probability, dec),
         ))
     return rows
 
@@ -106,7 +116,7 @@ def _parlay_to_row(parlay: Parlay, ids_by_identity: dict[tuple, str], stake: flo
     odds = [leg.sportsbook_odds for leg in parlay.legs]
     dec = parlay_combined_decimal(odds)
     implied = parlay_combined_implied_probability([leg.implied_probability for leg in parlay.legs])
-    true_p = parlay.combined_true_probability  # calibrated + correlation-penalised by the builder
+    true_p = parlay.combined_true_probability  # Gaussian-copula joint probability from the builder
     return ParlayRow(
         id="",
         leg_ids=leg_ids,
@@ -122,6 +132,7 @@ def _parlay_to_row(parlay: Parlay, ids_by_identity: dict[tuple, str], stake: flo
         correlation_risk_score=parlay.correlation_risk_score,
         same_game=len({leg.game_id for leg in parlay.legs}) < len(parlay.legs),
         venues=[leg.sportsbook.value for leg in parlay.legs],
+        kelly_fraction=fractional_kelly(true_p, dec),
     )
 
 

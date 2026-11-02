@@ -152,6 +152,12 @@ class MinutesModel:
                 )
                 projected = floor
 
+        # A reported minutes restriction (structured from the injury note) wins
+        # over every floor above.
+        limit = getattr(player, "minutes_limit", None)
+        if limit:
+            projected = min(projected, float(limit))
+
         return projected
 
     @staticmethod

@@ -285,7 +285,7 @@ class TestPayload:
         assert all(set(p) == set(PICK_FIELDS) for p in p1["picks"])
         assert all(set(p) == set(PARLAY_FIELDS) for p in p1["parlays"])
         assert p1["parlays"][0]["id"] == "PL1"
-        assert len(p1["picks"][0]["model_notes"]) <= 280
+        assert len(p1["picks"][0]["model_notes"]) <= 700
         assert p1["picks"][1]["venue"] == "Polymarket"
 
     def test_no_secrets(self, monkeypatch):
@@ -585,7 +585,7 @@ class TestCLI:
         adv2 = main.parse_args(["--date", "2026-11-01", "advisor", "--no-llm"])
         assert adv2.command == "advisor" and adv2.no_llm and adv2.date == "2026-11-01"
         scan = main.parse_args([])
-        assert (scan.min_edge, scan.max_odds, scan.top, scan.min_odds) == (0.05, 400, 10, -600)
+        assert (scan.min_edge, scan.max_odds, scan.top, scan.min_odds) == (0.01, 400, 10, -600)
 
     def test_advisor_no_llm_end_to_end(self, monkeypatch, tmp_path):
         import main

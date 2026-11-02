@@ -98,7 +98,8 @@ def render_sidebar() -> dict:
         st.subheader("Parlay Constraints")
 
         min_edge = st.slider(
-            "Min Edge per Leg (%)", min_value=0, max_value=20, value=5, step=1
+            "Min Edge per Leg (%)", min_value=0.0, max_value=20.0, value=1.0, step=0.5,
+            help="Market-anchored edges are realistic (typically 1–4%); 5%+ is rare.",
         ) / 100.0
 
         max_legs = st.selectbox("Max Legs", options=[2, 3, 4, 5], index=1)
@@ -809,15 +810,23 @@ def render_ai_advisor_tab(all_props: list, params: dict) -> None:
     max_odds = c3.number_input("Max odds", value=-200, step=10, key="adv_max_odds")
     min_edge_pct = c4.number_input("Edge > (%)", value=0.0, step=0.5, key="adv_min_edge")
     top_n = c5.number_input("Top N", min_value=1, max_value=10, value=5, step=1, key="adv_top")
-    min_conf = st.selectbox(
+    k1, k2 = st.columns(2)
+    min_conf = k1.selectbox(
         "Minimum confidence", ["(none)", "very_low", "low", "medium", "high"], key="adv_min_conf"
     )
-    prompt = st.text_area(
-        "Question for the AI",
-        value=default_user_prompt(min_odds=int(min_odds), max_odds=int(max_odds), top_n=int(top_n), stake=stake),
-        height=100,
-        key="adv_prompt",
+    bankroll = k2.number_input(
+        "Bankroll for Kelly sizing ($, 0 = off)", min_value=0.0, value=0.0, step=100.0, key="adv_bankroll"
     )
+    default_prompt = default_user_prompt(
+        min_odds=int(min_odds), max_odds=int(max_odds), top_n=int(top_n), stake=stake
+    )
+    # Keyed text_areas ignore later `value=` changes; keep the default question in
+    # sync with the band/stake/top-N widgets unless the user has edited it.
+    prev_default = st.session_state.get("adv_prompt_default")
+    if "adv_prompt" not in st.session_state or st.session_state["adv_prompt"] == prev_default:
+        st.session_state["adv_prompt"] = default_prompt
+    st.session_state["adv_prompt_default"] = default_prompt
+    prompt = st.text_area("Question for the AI", height=100, key="adv_prompt")
     use_llm = st.checkbox("Use OpenAI reasoning", value=cfg.is_configured, key="adv_use_llm")
 
     if st.button("Run AI Advisor", type="primary", key="adv_run"):
@@ -827,6 +836,7 @@ def render_ai_advisor_tab(all_props: list, params: dict) -> None:
             min_edge=float(min_edge_pct) / 100.0,
             top_n=int(top_n),
             stake=float(stake),
+            bankroll=float(bankroll) or None,
             min_confidence=None if min_conf == "(none)" else min_conf,
             prompt=prompt,
             use_llm=use_llm,
@@ -859,12 +869,16 @@ def render_ai_advisor_tab(all_props: list, params: dict) -> None:
         "Prop": f"{r.prop.prop_type.value.upper()} {r.prop.side.value} {r.prop.line:g}",
         "Odds": format_american(r.prop.sportsbook_odds),
         "Venue": book_display_name(r.prop.best_book, getattr(r.prop, "best_book_key", "") or ""),
+        "Market": format_prob(r.prop.market_probability) if r.prop.market_probability is not None else "–",
+        "Model wt": f"{r.prop.model_weight:.2f}",
         "True": format_prob(r.prop.true_probability),
         "Implied": format_prob(r.prop.implied_probability),
         "Edge": format_edge(r.prop.edge),
         "Conf": r.prop.confidence.value,
         f"Return on {format_currency(result.options.stake)}": format_currency(r.total_return),
         "EV": f"{r.expected_value:+.2f}",
+        "Kelly %": f"{r.kelly_fraction:.1%}",
+        "Kelly stake": format_currency(r.kelly_stake(result.options.bankroll)) if result.options.bankroll else "–",
     } for r in result.picks]), width="stretch", hide_index=True)
 
     if result.parlays:
@@ -878,6 +892,7 @@ def render_ai_advisor_tab(all_props: list, params: dict) -> None:
             "Return": format_currency(p.total_return),
             "Profit": format_currency(p.profit),
             "EV": f"{p.expected_value:+.2f}",
+            "Kelly %": f"{p.kelly_fraction:.1%}",
             "Venue": "single" if p.single_venue else "mixed",
         } for p in result.parlays[:10]]), width="stretch", hide_index=True)
 

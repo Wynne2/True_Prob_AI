@@ -62,8 +62,19 @@ from models.rebounds_model import ReboundsModel
 from models.steals_model import StealsModel
 from models.threes_model import ThreesModel
 from models.turnovers_model import TurnoversModel
-from engine.final_calibration_gate import apply_final_calibration_gate
+from engine.final_calibration_gate import (
+    apply_final_calibration_gate,
+    collect_calibration_flags,
+    downgrade_confidence_for_flags,
+)
+from engine.market_blend import (
+    blend_probability,
+    consensus_market_probability,
+    load_blend_params,
+    no_vig_side_probability,
+)
 from engine.market_calibration import calibrate_true_probability
+import domain.constants as _constants
 from models.points_low_usage_suppression import (
     apply_low_usage_points_suppression,
     cap_over_probability,
@@ -577,53 +588,109 @@ class PropEvaluator:
                 hf["line"] = float(numeric_line)
 
             true_prob_pre_market = float(true_prob)
-            true_prob, cal_warnings = calibrate_true_probability(
-                true_prob, implied, best.best_odds,
-            )
-            market_calibration_warnings = list(cal_warnings)
-            true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
-            true_prob_after_market_calibration = float(true_prob)
+            market_probability: Optional[float] = None
+            model_weight = 0.0
+            probability_method = "legacy"
+            if _constants.USE_MARKET_BLEND:
+                # Market-anchored: the consensus no-vig price is the prior and the
+                # model may move it by the fitted, clipped log-odds weight only.
+                # The model input is the plain distribution tail, which is what the
+                # blend weights were fitted on (engine/market_blend_fit.py).
+                model_tail = clamp(_true_prob(projection, numeric_line, side), 0.001, 0.999)
+                market_probability = consensus_market_probability(
+                    player_lines, numeric_line, side.value,
+                )
+                if market_probability is None:
+                    market_probability = no_vig_side_probability(
+                        ref.over_odds, ref.under_odds, side.value,
+                    )
+                prior = market_probability if market_probability is not None else implied
+                gate_warnings = collect_calibration_flags(
+                    player, game, is_home, prop_type, side, numeric_line, projection,
+                    model_tail, prior, model_tail - prior, completeness, best.best_odds,
+                )
+                n_flags = min(
+                    len(audit_flags) + len(gate_warnings),
+                    _constants.BLEND_FLAG_TRUST_MAX_STEPS,
+                )
+                trust = completeness * (_constants.BLEND_FLAG_TRUST_DECAY ** n_flags)
+                weights = load_blend_params().for_prop(prop_type)
+                model_weight = round(weights.weight * trust, 4)
+                true_prob = blend_probability(model_tail, prior, weights, trust=trust)
+                true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+                true_prob_pre_market = float(model_tail)
+                true_prob_after_market_calibration = float(true_prob)
+                market_calibration_warnings = []
+                probability_method = "market_blend"
+                cal_warnings = list(audit_flags)
+                edge = calculate_edge(true_prob, implied)
+                consistency = self._variance_model.consistency_score(
+                    player, prop_type, projection.projected_value
+                )
+                confidence, _ = self._confidence_model.score(
+                    player, prop_type, projection.projected_value,
+                    consistency, edge, has_defense_data=defense is not None,
+                )
+                if gate_warnings:
+                    confidence = downgrade_confidence_for_flags(confidence, edge)
+                if hf_log:
+                    hf["model_tail"] = round(float(model_tail), 5)
+                    hf["market_probability"] = (
+                        round(float(market_probability), 5) if market_probability is not None else None
+                    )
+                    hf["model_weight"] = model_weight
+                    hf["after_final_gate"] = round(float(true_prob), 5)
+                    hf["edge_final"] = round(float(edge), 5)
+                    hf["gate_warnings"] = list(gate_warnings)
+            else:
+                true_prob, cal_warnings = calibrate_true_probability(
+                    true_prob, implied, best.best_odds,
+                )
+                market_calibration_warnings = list(cal_warnings)
+                true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+                true_prob_after_market_calibration = float(true_prob)
+                if hf_log:
+                    hf["true_pre_market_cal"] = round(true_prob_pre_market, 5)
+                    hf["after_market_cal"] = round(float(true_prob), 5)
+                    hf["market_cal_warnings"] = list(market_calibration_warnings)
+
+                cal_warnings = list(cal_warnings)
+                cal_warnings.extend(audit_flags)
+
+                edge = calculate_edge(true_prob, implied)
+                if hf_log:
+                    hf["edge_pre_gate"] = round(float(edge), 5)
+
+                consistency = self._variance_model.consistency_score(
+                    player, prop_type, projection.projected_value
+                )
+                confidence, _ = self._confidence_model.score(
+                    player, prop_type, projection.projected_value,
+                    consistency, edge, has_defense_data=defense is not None,
+                )
+
+                true_prob, confidence, gate_warnings = apply_final_calibration_gate(
+                    player,
+                    game,
+                    is_home,
+                    prop_type,
+                    side,
+                    numeric_line,
+                    projection,
+                    true_prob,
+                    implied,
+                    edge,
+                    confidence,
+                    completeness,
+                    best.best_odds,
+                )
+                true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+                edge = calculate_edge(true_prob, implied)
+                if hf_log:
+                    hf["after_final_gate"] = round(float(true_prob), 5)
+                    hf["edge_final"] = round(float(edge), 5)
+                    hf["gate_warnings"] = list(gate_warnings)
             if hf_log:
-                hf["true_pre_market_cal"] = round(true_prob_pre_market, 5)
-                hf["after_market_cal"] = round(float(true_prob), 5)
-                hf["market_cal_warnings"] = list(market_calibration_warnings)
-
-            cal_warnings = list(cal_warnings)
-            cal_warnings.extend(audit_flags)
-
-            edge = calculate_edge(true_prob, implied)
-            if hf_log:
-                hf["edge_pre_gate"] = round(float(edge), 5)
-
-            consistency = self._variance_model.consistency_score(
-                player, prop_type, projection.projected_value
-            )
-            confidence, _ = self._confidence_model.score(
-                player, prop_type, projection.projected_value,
-                consistency, edge, has_defense_data=defense is not None,
-            )
-
-            true_prob, confidence, gate_warnings = apply_final_calibration_gate(
-                player,
-                game,
-                is_home,
-                prop_type,
-                side,
-                numeric_line,
-                projection,
-                true_prob,
-                implied,
-                edge,
-                confidence,
-                completeness,
-                best.best_odds,
-            )
-            true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
-            edge = calculate_edge(true_prob, implied)
-            if hf_log:
-                hf["after_final_gate"] = round(float(true_prob), 5)
-                hf["edge_final"] = round(float(edge), 5)
-                hf["gate_warnings"] = list(gate_warnings)
                 hf["would_fail_default_min_edge_5pct"] = bool(edge < 0.05)
                 hf["prob_drop_tail_to_pre_market"] = round(
                     true_prob_pre_market - float(hf.get("tail_after_step1", true_prob_pre_market)),
@@ -655,6 +722,19 @@ class PropEvaluator:
                 explanation = (
                     f"{explanation} Conservative final check applied "
                     f"({len(gate_warnings)} signal(s): {', '.join(gate_warnings[:6])})."
+                )
+            if probability_method == "market_blend" and market_probability is not None:
+                explanation = (
+                    f"{explanation} Market-anchored: consensus no-vig {market_probability:.1%}, "
+                    f"model tail {true_prob_pre_market:.1%}, model weight {model_weight:.2f} "
+                    f"→ {true_prob:.1%}."
+                )
+            news_note = (getattr(player, "news_note", "") or "").strip()
+            if news_note:
+                limit = getattr(player, "minutes_limit", None)
+                explanation = (
+                    f"{explanation} Injury news: {news_note}"
+                    f"{f' (minutes capped at {limit:.0f})' if limit else ''}."
                 )
             if points_sup and points_sup.active and points_sup.flags:
                 explanation = (
@@ -836,14 +916,17 @@ class PropEvaluator:
                     "points_suppression_active": bool(points_sup and points_sup.active),
                 }
 
+            team_abbr = player.team_abbr or best.team_abbr or (
+                game.home_team_abbr if is_home else game.away_team_abbr
+            )
             results.append(PropProbability(
                 player_id=player.player_id,
                 player_name=player.name,
-                team_abbr=player.team_abbr,
+                team_abbr=team_abbr,
                 # Opponent: if player is on home team → away is opponent, and vice versa.
                 opponent_abbr=best.opponent_abbr or (
                     game.away_team_abbr
-                    if player.team_abbr == game.home_team_abbr
+                    if team_abbr == game.home_team_abbr
                     else game.home_team_abbr
                 ),
                 game_id=game.game_id,
@@ -870,6 +953,9 @@ class PropEvaluator:
                 all_lines=player_lines,
                 debug_payload=debug_payload,
                 favorite_band_audit=favorite_band_audit,
+                market_probability=market_probability,
+                model_weight=model_weight,
+                probability_method=probability_method,
             ))
 
         return results

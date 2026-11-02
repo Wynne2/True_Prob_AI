@@ -30,6 +30,7 @@ from domain.constants import (
     PARLAY_RANK_WEIGHT_CORR_RISK,
     PARLAY_RANK_WEIGHT_EDGE,
 )
+import domain.constants as _constants
 from domain.entities import Parlay, ParlayLeg, PropProbability
 from domain.enums import BookName, ConfidenceTier, PropType
 from engine.correlation_engine import (
@@ -38,6 +39,7 @@ from engine.correlation_engine import (
     diversification_bonus,
     is_blocked,
 )
+from engine.parlay_copula import parlay_joint_probability
 from odds.normalizer import american_to_decimal, decimal_to_american, is_valid_american
 from odds.parlay_math import (
     parlay_combined_american,
@@ -194,13 +196,15 @@ def build_parlays(
 
             combined_decimal = parlay_combined_decimal(leg_odds)
             combined_american = decimal_to_american(combined_decimal)
-            avg_corr = combo_avg_correlation(legs)
-            combined_true = parlay_combined_true_probability_calibrated(
-                leg_true_probs,
-                legs=legs,
-                avg_pairwise_correlation=avg_corr,
-                combined_american_odds=combined_american,
-            )
+            if _constants.USE_COPULA_PARLAYS:
+                combined_true = parlay_joint_probability(legs, leg_true_probs)
+            else:
+                combined_true = parlay_combined_true_probability_calibrated(
+                    leg_true_probs,
+                    legs=legs,
+                    avg_pairwise_correlation=combo_avg_correlation(legs),
+                    combined_american_odds=combined_american,
+                )
             combined_implied = parlay_combined_implied_probability(leg_implied_probs)
             combined_edge = parlay_combined_edge(combined_true, combined_implied)
 

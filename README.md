@@ -74,7 +74,7 @@ python main.py --verbose                    # DEBUG-level log output
 | Flag | Default | Description |
 |---|---|---|
 | `--date` | today (ET) | Game date `YYYY-MM-DD` |
-| `--min-edge` | `0.05` | Minimum edge per leg (5%) |
+| `--min-edge` | `0.01` | Minimum edge per leg (1%; market-anchored edges are usually 1–4%) |
 | `--max-legs` | `3` | Maximum legs per parlay |
 | `--min-legs` | `2` | Minimum legs per parlay |
 | `--stake` | `100` | Wager amount in USD |
@@ -109,6 +109,7 @@ python main.py advisor                    # today, -600..-200, edge > 0, top 5, 
 python main.py advisor --stake 100 --date 2026-11-02
 python main.py advisor --no-llm           # deterministic report only (no OpenAI call)
 python main.py advisor --prompt "Only consider 2-leg parlays"
+python main.py advisor --bankroll 1000    # add quarter-Kelly stake suggestions
 python main.py advisor --help
 ```
 
@@ -119,6 +120,7 @@ python main.py advisor --help
 | `--min-edge` | `0.0` | Edge must be strictly greater |
 | `--top` | `5` | Picks kept |
 | `--stake` | `100` | Stake for payout math |
+| `--bankroll` | none | Bankroll for fractional-Kelly stake suggestions |
 | `--min-confidence` | none | Confidence floor |
 | `--prompt` / `--prompt-file` | standard question | Custom question for the AI |
 | `--no-llm` | off | Skip OpenAI |
@@ -126,6 +128,21 @@ python main.py advisor --help
 
 Requires `OPENAI_API_KEY` in `.env` (see Configuration). The official `openai` SDK is used when installed;
 otherwise the same Responses API endpoint is called with `requests`.
+
+### Model maintenance
+
+```bash
+python main.py fit-blend          # refit market-blend weights + parlay correlations from backtests
+python main.py clv --date 2026-11-02
+```
+
+- `fit-blend` reads `data/backtests/*.json` and writes `data/models/market_blend.json` (per-prop model
+  weight, chosen by date-grouped cross-validated Brier score against the no-vig market) and
+  `data/models/prop_correlations.json` (residual correlations for the parlay copula).
+- `clv` run **before tip-off** records closing prices for that date's ledger picks
+  (`data/predictions/<date>.closing.json`, CLV = closing no-vig − price taken). Run **after games finish**
+  it grades every pick against box scores (`<date>.graded.json`): hit rate, model vs market Brier score,
+  flat ROI and average CLV, for all picks and positive-edge picks.
 
 ### Streamlit UI
 
@@ -266,6 +283,7 @@ The `SlateScanner` runs this sequence once per daily scan — no per-prop API ca
 1. **Slate** — fetch today's games from BALLDONTLIE. Only pregame games are evaluated; in-progress and final games are excluded.
 2. **Odds** — on every scan, pull every NBA player prop for the selected date from Kalshi and Polymarket (public, keyless) and The Odds API (if keyed), in parallel. Each source fails independently. Moneyline/spread/total markets from both exchanges fill each game's total, home spread, and implied team totals.
 3. **Cache warm** — batch-fetch all service data: season stats, depth charts, injury lists, usage/tracking dashboards, split dashboards, team defense.
+3b. **Injury news → features** — when `OPENAI_API_KEY` is set, one structured OpenAI call turns the injury feed's free-text notes into typed features for the slate date (`status_tonight`, `minutes_limit`, `confidence`). Confident status corrections override the feed and minutes limits cap the minutes model. The LLM never outputs a probability; failures fall back to the raw feed. Cached in `data/cache/news_features/`; disable with `AI_NEWS_FEATURES=0`.
 4. **Player build** — construct `Player` entities from `PlayerContextService`.
 5. **Feature vectors** — `PlayerFeatureBuilder` assembles a `FeatureVector` per player × prop type from all service outputs.
 6. **Evaluate** — `PropEvaluator` runs the stat model, converts projection to true probability via the appropriate distribution, computes vig-removed implied probability, calculates edge, assigns confidence tier, and generates an explanation.
@@ -294,9 +312,32 @@ Additional adjustments: pace factor, Defence-vs-Position (DvP), injury redistrib
 
 A probability shrinkage factor and floor/ceiling clamps prevent extreme outputs.
 
+### Market-anchored probability
+
+Backtests show the de-vigged market price is better calibrated than the raw model, so the final
+probability starts from the **consensus no-vig market price** (median across venues at the same line) and
+the model may move it only by a fitted, clipped amount in log-odds:
+
+```
+logit(p) = logit(market) + w × trust × clip(logit(model) − logit(market), ±c)
+```
+
+`w` and `c` come from `data/models/market_blend.json` (`python main.py fit-blend`); `w = 0` for a prop type
+means the model has not beaten the market out-of-sample, so any edge comes only from a venue pricing the
+line worse than consensus. `trust` shrinks the model weight for incomplete data and audit/calibration
+flags. Each prop reports `market_probability`, `model_weight`, and `probability_method`. Set
+`USE_MARKET_BLEND = False` in `domain/constants.py` for the legacy calibration chain. The matchup layer is
+neutralised (`MATCHUP_ADJUSTMENTS_ENABLED = False`) because opponent-defence adjustments did not improve
+backtests.
+
 ### Parlay Builder
 
 - Generates all valid leg combinations from qualifying props (up to `--max-legs`)
+- Prices the joint hit probability with a **Gaussian copula** using residual correlations fitted from
+  backtests (same-player points/threes ≈ 0.69, points/rebounds ≈ 0.25; cross-player ≈ 0); unders flip
+  the sign. Disable with `USE_COPULA_PARLAYS = False`.
+- **Kelly sizing:** picks and parlays carry a quarter-Kelly bankroll fraction (capped), shown when a
+  bankroll is given.
 - Blocks highly correlated leg combinations (e.g. same-player, same-game double-counting)
 - Scores each parlay with a **correlation risk score** and **diversification bonus**
 - Supports five ranking fields: `edge`, `confidence`, `combined_odds`, `correlation_risk`, `balanced_score`
@@ -368,6 +409,8 @@ OPENAI_MODEL=gpt-6.1-sol          # verified with GET /v1/models/{id}; never sil
 OPENAI_REASONING_EFFORT=medium    # low | medium | high | xhigh | max
 OPENAI_TIMEOUT=120                # seconds
 OPENAI_MAX_OUTPUT_TOKENS=8000
+AI_NEWS_FEATURES=1                # 0 = skip the injury-note → features call during scans
+AI_NEWS_REASONING_EFFORT=low
 
 # Application
 LOG_LEVEL=INFO              # DEBUG | INFO | WARNING | ERROR

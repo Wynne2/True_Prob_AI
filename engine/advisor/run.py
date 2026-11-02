@@ -55,6 +55,7 @@ class AdvisorOptions:
     min_edge: float = 0.0
     top_n: int = 5
     stake: float = 100.0
+    bankroll: Optional[float] = None
     min_confidence: Optional[str] = None
     prompt: Optional[str] = None
     use_llm: bool = True
@@ -123,13 +124,20 @@ def _deterministic(picks: list[PickRow], parlays: list[ParlayRow]) -> Determinis
     )
 
 
-def _allowed_amounts(picks: list[PickRow], parlays: list[ParlayRow], stake: float) -> set[float]:
+def _allowed_amounts(
+    picks: list[PickRow], parlays: list[ParlayRow], stake: float, bankroll: Optional[float] = None,
+) -> set[float]:
     amounts = {round(stake, 2)}
+    if bankroll:
+        amounts.add(round(bankroll, 2))
     for row in [*picks, *parlays]:
         amounts.update({
             round(row.total_return, 2), round(row.profit, 2), round(row.expected_value, 2),
             round(abs(row.expected_value), 2),
         })
+        kelly = row.kelly_stake(bankroll)
+        if kelly:
+            amounts.add(kelly)
     return amounts
 
 
@@ -152,7 +160,7 @@ def _run_llm(result: AdvisorResult, client: OpenAIAdvisorClient) -> None:
     parlay_numbers = {
         p.id: {"total_return": p.total_return, "profit": p.profit} for p in result.parlays
     }
-    allowed = _allowed_amounts(result.picks, result.parlays, result.options.stake)
+    allowed = _allowed_amounts(result.picks, result.parlays, result.options.stake, result.options.bankroll)
 
     cfg = client.config
     meta: dict[str, Any] = {
@@ -286,6 +294,7 @@ def run_advisor(
         min_edge=options.min_edge,
         stake=options.stake,
         odds_source_counts=odds_source_counts,
+        bankroll=options.bankroll,
     )
     user_prompt = (options.prompt or "").strip() or default_user_prompt(
         min_odds=options.min_odds, max_odds=options.max_odds,

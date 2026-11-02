@@ -115,6 +115,35 @@ def _collect_flags(
     return flags
 
 
+def collect_calibration_flags(
+    player: Player,
+    game: Optional[Game],
+    is_home: bool,
+    prop_type: PropType,
+    side: PropSide,
+    line: float,
+    projection: StatProjection,
+    true_prob: float,
+    implied: float,
+    edge: float,
+    completeness: float,
+    american_odds: int,
+) -> list[str]:
+    """Self-check flags only; the probability is not changed."""
+    return _collect_flags(
+        player, game, is_home, prop_type, side, line, projection,
+        true_prob, implied, edge, completeness, american_odds,
+    )
+
+
+def downgrade_confidence_for_flags(confidence: ConfidenceTier, edge: float) -> ConfidenceTier:
+    """Confidence step-down used when any self-check flag fired."""
+    conf = _downgrade_confidence(confidence)
+    if edge >= FINAL_GATE_HIGH_EDGE_EDGE and conf == ConfidenceTier.HIGH:
+        conf = ConfidenceTier.MEDIUM
+    return conf
+
+
 def apply_final_calibration_gate(
     player: Player,
     game: Optional[Game],
