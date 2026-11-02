@@ -1,0 +1,34 @@
+{
+  "name": "true-prob-video",
+  "private": true,
+  "description": "Narrated 9:16 explainer videos rendered from JSON storyboards with Remotion",
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio",
+    "narrate": "node scripts/narrate.mjs",
+    "render": "node scripts/render.mjs",
+    "make": "node scripts/narrate.mjs && node scripts/render.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.3.0",
+    "@remotion/captions": "4.0.539",
+    "@remotion/cli": "4.0.539",
+    "@remotion/google-fonts": "4.0.539",
+    "@remotion/media": "4.0.539",
+    "@remotion/three": "4.0.539",
+    "@remotion/transitions": "4.0.539",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "remotion": "4.0.539",
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.12",
+    "@types/three": "0.180.0",
+    "typescript": "5.9.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

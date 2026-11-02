@@ -1,0 +1,73 @@
+{
+  "id": "true-prob-odds",
+  "title": "What your odds are really saying",
+  "voice": "ash",
+  "voiceInstructions": "Confident sports-explainer delivery. Upbeat and quick, but every number clear. Slight emphasis on the numbers.",
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "title": "−150 doesn’t mean what you think.",
+      "kicker": "Here’s what your odds are really saying.",
+      "say": "Minus one fifty doesn't mean what you think it means.",
+      "caption": "",
+      "seconds": 3.5
+    },
+    {
+      "id": "odds",
+      "type": "odds",
+      "title": "Every price hides a probability",
+      "odds": -150,
+      "say": "Every price hides a probability. Minus one fifty means the book is saying this hits sixty percent of the time.",
+      "caption": "Every price hides a probability. −150 means the book says this hits 60% of the time.",
+      "seconds": 7
+    },
+    {
+      "id": "vig",
+      "type": "vig",
+      "title": "Now price both sides",
+      "sides": [
+        {
+          "label": "Over",
+          "odds": -150
+        },
+        {
+          "label": "Under",
+          "odds": 130
+        }
+      ],
+      "say": "The other side, plus one thirty, is forty-three and a half percent. Together that's one hundred three and a half. The extra three and a half is the book's cut.",
+      "caption": "The other side, +130, is 43.5%. Together that’s 103.5%. The extra 3.5% is the book’s cut.",
+      "seconds": 10
+    },
+    {
+      "id": "model",
+      "type": "model",
+      "title": "True Prob AI builds its own number",
+      "factors": [
+        "Minutes",
+        "Shot volume",
+        "Pace"
+      ],
+      "model": 0.64,
+      "odds": -150,
+      "exampleLabel": "Example, not a pick",
+      "say": "True Prob AI builds its own number for every prop, from minutes, shot volume, and pace, and puts it right next to the price.",
+      "caption": "True Prob AI builds its own number for every prop, from minutes, shot volume and pace, and puts it right next to the price.",
+      "seconds": 9
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "title": "Know the number before you bet.",
+      "points": [
+        "Every prop on the slate",
+        "Prices from Kalshi and Polymarket",
+        "A plain-English reason for each pick"
+      ],
+      "say": "Know the number before you bet. Follow True Prob AI for more.",
+      "caption": "Know the number before you bet. Follow True Prob AI for more.",
+      "seconds": 4.5
+    }
+  ]
+}
