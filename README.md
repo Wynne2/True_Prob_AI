@@ -38,9 +38,7 @@ Edit `.env` and fill in your keys:
 
 ```env
 BALLDONTLIE_API_KEY=    # usage, tracking, pace, season averages (or BDL_API_KEY)
-SPORTSDATAIO_API_KEY=   # injuries, rosters, depth charts
 THE_ODDS_API_KEY=       # sportsbook odds and prop lines (required for pricing)
-SPORTRADAR_API_KEY=     # game schedule / slate (primary source)
 ```
 
 Player usage, tracking, pace, and season averages come from **BALLDONTLIE GOAT** (`BALLDONTLIE_API_KEY` or `BDL_API_KEY`). Prop and game prices come from the **Kalshi** and **Polymarket** public market-data APIs (no key, enabled by default) plus **The Odds API** when its key is set. Set `BDL_REQUESTS_PER_MINUTE=5` on the trial tier and `600` on paid GOAT.
@@ -167,6 +165,7 @@ Opens at `http://localhost:8501`. The sidebar exposes the same constraint contro
 
 ```bash
 pytest
+pytest -m "not live"  # offline only (what CI runs); live tests hit today's slate
 pytest --cov          # with coverage
 ```
 
@@ -245,10 +244,10 @@ True_Prob_AI/
 │   ├── odds_api_provider.py
 │   ├── kalshi_provider.py      # Kalshi public NBA props + game lines (no key)
 │   ├── polymarket_provider.py  # Polymarket Gamma NBA props + game lines (no key)
-│   ├── sportradar_provider.py
-│   ├── sportsdataio_provider.py
+│   ├── balldontlie_provider.py # Games, players, injuries, stats
+│   ├── csv_import_provider.py
 │   ├── nba_api_provider.py
-│   ├── sample_provider.py      # Fallback sample data (no keys required)
+│   ├── sample_provider.py      # Sample data for tests (not registered)
 │   └── provider_registry.py
 │
 ├── odds/
@@ -269,7 +268,7 @@ True_Prob_AI/
 │   ├── logging_utils.py
 │   └── math_helpers.py
 │
-└── tests/                      # 11 test modules
+└── tests/                      # pytest suite
 ```
 
 ---
@@ -375,9 +374,7 @@ All configuration is loaded from `.env` (or environment variables). Copy `.env.t
 | Variable | Required | Source |
 |---|---|---|
 | `BALLDONTLIE_API_KEY` | Required for advanced stats | [docs.balldontlie.io](https://docs.balldontlie.io/) |
-| `SPORTSDATAIO_API_KEY` | Recommended | [sportsdata.io](https://sportsdata.io/) |
 | `THE_ODDS_API_KEY` | Optional (adds sportsbooks) | [the-odds-api.com](https://the-odds-api.com/) |
-| `SPORTRADAR_API_KEY` | Recommended | [developer.sportradar.com](https://developer.sportradar.com/) |
 | `OPENAI_API_KEY` | Only for `main.py advisor` AI reasoning | [platform.openai.com](https://platform.openai.com/api-keys) |
 
 Kalshi and Polymarket need no key.
@@ -431,7 +428,6 @@ CSV_DEFENSE_PATH=data/import/defense.csv
 |---|---|---|
 | BALLDONTLIE GOAT | Yes | Usage, tracking (potential assists, rebound chances, touches), pace, game logs, season averages |
 | SportsDataIO | No | Not used on the live scan. Injuries and season stats come from BALLDONTLIE. |
-| Sportradar | Yes | Game slate (primary schedule source) |
 | The Odds API | Yes | Prop lines, over/under pricing, multi-book odds |
 | Kalshi | No | NBA player props, moneylines, spreads, totals (public market data) |
 | Polymarket | No | NBA player props, moneylines, spreads, totals (Gamma API) |

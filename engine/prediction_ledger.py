@@ -6,6 +6,8 @@ import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+DEFAULT_DIR = Path(__file__).resolve().parents[1] / "data" / "predictions"
+
 
 def _row_key(row: dict) -> tuple:
     return (
@@ -49,7 +51,7 @@ def _prop_row(prop, game_date: date, saved_at: str) -> dict:
     }
 
 
-def save_pregame_predictions(game_date: date, props: list, directory: str = "data/predictions") -> Path:
+def save_pregame_predictions(game_date: date, props: list, directory: str | Path = DEFAULT_DIR) -> Path:
     """
     Add new pregame rows. An existing key keeps its original odds and probabilities.
     """

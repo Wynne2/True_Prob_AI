@@ -3,7 +3,6 @@ Tests for the bankroll / payout calculator.
 
 Covers:
 - apply_stake returns correct payout fields
-- Kelly fraction suggestion is in valid range
 - Batch stake application
 - Parlay payout matches manual calculation
 """
@@ -17,7 +16,6 @@ from domain.enums import (
 from engine.bankroll_engine import (
     apply_stake,
     apply_stake_to_all,
-    suggested_kelly_stake,
     payout_summary,
 )
 from engine.slate_scanner import SlateScanner
@@ -106,24 +104,6 @@ class TestApplyStakeToAll:
         assert len(result) == 1
 
 
-class TestKelly:
-    def test_kelly_with_edge(self):
-        parlay = make_parlay(350, combined_true_prob=0.25, combined_implied_prob=0.18)
-        stake = suggested_kelly_stake(parlay, bankroll=1000.0, kelly_fraction_multiplier=0.25)
-        assert stake >= 0
-
-    def test_kelly_no_edge(self):
-        # Edge is 0 → Kelly should be ~0
-        parlay = make_parlay(350, combined_true_prob=0.18, combined_implied_prob=0.18)
-        stake = suggested_kelly_stake(parlay, bankroll=1000.0)
-        assert stake <= 5.0  # near zero
-
-    def test_kelly_within_bankroll(self):
-        parlay = make_parlay(300, combined_true_prob=0.30)
-        stake = suggested_kelly_stake(parlay, bankroll=1000.0)
-        assert stake <= 1000.0
-
-
 class TestPayoutSummary:
     def test_summary_keys(self):
         parlay = make_parlay(350)
@@ -145,6 +125,7 @@ class TestPayoutSummary:
         assert "%" in summary["combined_edge"]
 
 
+@pytest.mark.live
 class TestIntegration:
     """End-to-end: scan → parlays → stake."""
 

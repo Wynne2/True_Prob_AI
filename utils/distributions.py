@@ -66,14 +66,12 @@ def poisson_prob_over(lambda_: float, line: float, min_lambda: float = 0.01) -> 
     We use P(X >= ceil(line + ε)) to handle half-integer lines.
     """
     lambda_ = max(lambda_, min_lambda)
-    threshold = math.floor(line) + 1  # first integer strictly greater than line
-    # P(X >= threshold) = 1 - P(X <= threshold - 1) = SF of floor(line)
     return float(stats.poisson.sf(math.floor(line), mu=lambda_))
 
 
 def poisson_prob_under(lambda_: float, line: float, min_lambda: float = 0.01) -> float:
-    """P(X <= line) where X ~ Poisson(lambda_)."""
-    return 1.0 - poisson_prob_over(lambda_, line, min_lambda)
+    """P(X < line) where X ~ Poisson(lambda_); a push on a whole-number line is neither side."""
+    return float(stats.poisson.cdf(math.ceil(line) - 1, mu=max(lambda_, min_lambda)))
 
 
 # ---------------------------------------------------------------------------
@@ -125,8 +123,10 @@ def negbinom_prob_under(
     line: float = 0.0,
     min_mean: float = 0.1,
 ) -> float:
-    """P(X <= line) where X ~ NegativeBinomial."""
-    return 1.0 - negbinom_prob_over(mean, variance_inflation, line, min_mean)
+    """P(X < line) where X ~ NegativeBinomial; a push on a whole-number line is neither side."""
+    mean = max(mean, min_mean)
+    r, p = _negbinom_params(mean, mean * variance_inflation)
+    return float(stats.nbinom.cdf(math.ceil(line) - 1, r, p))
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +158,10 @@ def binomial_prob_under(
     line: float,
     min_attempts: float = 1.0,
 ) -> float:
-    """P(X <= line) where X ~ Binomial(n, p)."""
-    return 1.0 - binomial_prob_over(n_attempts, make_rate, line, min_attempts)
+    """P(X < line) where X ~ Binomial(n, p); a push on a whole-number line is neither side."""
+    n = max(int(round(n_attempts)), int(min_attempts))
+    p = max(0.001, min(0.999, make_rate))
+    return float(stats.binom.cdf(math.ceil(line) - 1, n, p))
 
 
 # ---------------------------------------------------------------------------

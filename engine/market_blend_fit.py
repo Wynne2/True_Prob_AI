@@ -22,9 +22,10 @@ import numpy as np
 
 from engine.market_blend import DEFAULT_PARAMS_PATH
 
+_DATA = Path(__file__).resolve().parents[1] / "data"
 DEFAULT_SOURCES = (
-    Path("data/backtests/expanded_report.json"),
-    Path("data/backtests/interaction_experiment.json"),
+    _DATA / "backtests" / "expanded_report.json",
+    _DATA / "backtests" / "interaction_experiment.json",
 )
 TRAIN_VARIANT = "A_opportunity"
 WEIGHT_GRID = tuple(round(x * 0.025, 3) for x in range(0, 21))  # 0 … 0.5 (wider grids overfit in CV)

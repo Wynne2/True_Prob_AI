@@ -130,6 +130,7 @@ class TestPropEvaluator:
                 assert r.fair_odds < 0, f"Expected negative fair odds for prob={r.true_probability}"
 
 
+@pytest.mark.live
 class TestSlateScanner:
     def setup_method(self):
         self.scanner = SlateScanner()

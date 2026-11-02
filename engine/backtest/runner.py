@@ -64,7 +64,7 @@ _STAT_FIELD = {
     PropType.ASSISTS: "ast",
     PropType.THREES: "fg3m",
 }
-_REPORT_PATH = Path("data/backtests/latest_report.json")
+_REPORT_PATH = Path(__file__).resolve().parents[2] / "data" / "backtests" / "latest_report.json"
 
 
 def _models():

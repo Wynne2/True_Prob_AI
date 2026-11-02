@@ -7,7 +7,7 @@ given a user-supplied stake amount.
 Supports:
 - Single-parlay payout
 - Batch payout for a list of parlays
-- Kelly fraction suggestion per parlay
+- Capped fractional-Kelly bankroll fraction
 """
 
 from __future__ import annotations
@@ -37,30 +37,6 @@ def apply_stake(parlay: Parlay, stake: float) -> Parlay:
 def apply_stake_to_all(parlays: list[Parlay], stake: float) -> list[Parlay]:
     """Apply *stake* payout to every parlay in the list."""
     return [apply_stake(p, stake) for p in parlays]
-
-
-def suggested_kelly_stake(
-    parlay: Parlay,
-    bankroll: float,
-    kelly_fraction_multiplier: float = 0.25,  # quarter Kelly by default
-) -> float:
-    """
-    Return the suggested stake size based on the (fractional) Kelly criterion.
-
-    Args:
-        parlay: The parlay to compute Kelly for.
-        bankroll: Total available bankroll.
-        kelly_fraction_multiplier: Fraction of full Kelly to use (default 0.25).
-
-    Returns:
-        Suggested stake in dollars.
-    """
-    full_kelly = kelly_fraction(
-        parlay.combined_true_probability,
-        parlay.combined_decimal_odds,
-    )
-    fractional = full_kelly * kelly_fraction_multiplier
-    return round(bankroll * fractional, 2)
 
 
 def fractional_kelly(true_prob: float, decimal_odds: float) -> float:

@@ -29,7 +29,7 @@ from engine.market_blend import consensus_market_probability
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DIR = Path("data/predictions")
+DEFAULT_DIR = Path(__file__).resolve().parents[1] / "data" / "predictions"
 
 _STAT_FIELDS = {
     "points": ("pts",),

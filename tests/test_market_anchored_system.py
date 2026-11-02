@@ -98,6 +98,9 @@ class TestBlendMath:
         path = tmp_path / "bad.json"
         path.write_text("{not json", encoding="utf-8")
         assert load_blend_params(path).source == "fallback"
+        for bad in ({"weight": 1.5, "clip": 0.5}, {"weight": 0.3, "clip": float("nan")}):
+            path.write_text(json.dumps({"weights": {"points": bad}}), encoding="utf-8")
+            assert load_blend_params(path).source == "fallback"
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +292,12 @@ class TestNewsFeatures:
         assert set(out) == {"1"}
         assert out["1"].confidence == 1.0
         assert out["1"].minutes_limit == 10.0
+
+    def test_parse_drops_nan_confidence(self):
+        from engine.news_features import parse_features
+
+        text = '{"players": [{"player_id": "1", "status_tonight": "out", "minutes_limit": null, "confidence": NaN, "reason": "x"}]}'
+        assert parse_features(text, {"1"}) == {}
 
     def test_extract_apply_and_cache(self, tmp_path):
         from engine.news_features import apply_news_features, extract_news_features

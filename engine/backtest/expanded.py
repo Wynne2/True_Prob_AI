@@ -61,7 +61,7 @@ BACKUP_DATES = (
     date(2026, 2, 12),
 )
 _PER_DATE = (4, 4, 4, 4, 4, 3, 4, 3)
-_REPORT_PATH = Path("data/backtests/expanded_report.json")
+_REPORT_PATH = Path(__file__).resolve().parents[2] / "data" / "backtests" / "expanded_report.json"
 _COMPLETE_PROPS = {PropType.POINTS.value, PropType.REBOUNDS.value, PropType.THREES.value}
 
 

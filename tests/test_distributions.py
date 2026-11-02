@@ -79,7 +79,7 @@ class TestNegBinom:
         assert 0.5 < p < 0.95
 
     def test_under_at_mean(self):
-        # P(X <= mean) should be near 50% but slightly above due to overdispersion
+        # P(X < mean): near 50%, minus the push mass at exactly 10
         p = negbinom_prob_under(10.0, line=10.0)
         assert 0.4 < p < 0.7
 
@@ -111,6 +111,16 @@ class TestBinomial:
         over = binomial_prob_over(8, 0.38, 2.5)
         under = binomial_prob_under(8, 0.38, 2.5)
         assert abs(over + under - 1.0) < 1e-6
+
+
+def test_whole_number_line_push_counts_for_neither_side():
+    from scipy import stats
+
+    push = stats.poisson.pmf(2, 2.0)
+    assert poisson_prob_over(2.0, 2) + poisson_prob_under(2.0, 2) == pytest.approx(1 - push)
+    push = stats.binom.pmf(3, 8, 0.38)
+    assert binomial_prob_over(8, 0.38, 3) + binomial_prob_under(8, 0.38, 3) == pytest.approx(1 - push)
+    assert negbinom_prob_over(10.0, line=10.0) + negbinom_prob_under(10.0, line=10.0) < 0.97
 
 
 class TestHelpers:

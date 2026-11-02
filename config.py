@@ -6,8 +6,6 @@ variables (or a .env file).
 
 Active provider credentials (as of re-architecture):
   - BALLDONTLIE_API_KEY or BDL_API_KEY → player stats, tracking, pace, splits
-  - SPORTSDATAIO_API_KEY  →  injuries, rosters, season stats, depth charts
-  - SPORTRADAR_API_KEY    →  game slate (primary)
   - THE_ODDS_API_KEY      →  sportsbook odds, prop lines, implied probability
 
 Keyless public sources (enabled by default):
@@ -63,11 +61,6 @@ class ProviderCredentials:
         default_factory=lambda: _key("BALLDONTLIE_API_KEY") or _key("BDL_API_KEY")
     )
 
-    # SLATE SUPPORT
-    sportradar_key: str | None = field(
-        default_factory=lambda: _key("SPORTRADAR_API_KEY")
-    )
-
     # ODDS / SPORTSBOOK PRICING
     odds_api_key: str | None = field(
         default_factory=lambda: _key("THE_ODDS_API_KEY") or _key("ODDS_API_KEY")
@@ -105,24 +98,6 @@ class ProviderCredentials:
 class SportsDataIOConfig:
     base_url: str = "https://api.sportsdata.io/v3/nba"
     odds_base_url: str = "https://api.sportsdata.io/v3/nba"
-    timeout: int = 15
-
-
-# ---------------------------------------------------------------------------
-# Sportradar Synergy Basketball config
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class SportradarConfig:
-    """Configuration for the Sportradar Synergy Basketball API.
-
-    Base URL:  https://api.sportradar.com/synergy/basketball/{league}/
-    Auth:      x-api-key header  (NOT a query parameter)
-    League:    nba
-
-    API reference: https://api.sportradar.com/synergy/basketball/nba/...
-    """
-    base_url: str = "https://api.sportradar.com/synergy/basketball/nba"
     timeout: int = 15
 
 
@@ -235,8 +210,6 @@ class NBAApiConfig:
     """Legacy name kept so older imports still resolve. Stats now come from BALLDONTLIE."""
     season: str = os.environ.get("NBA_SEASON", "2025-26")
     rate_limit_sleep: float = float(os.environ.get("BDL_MIN_INTERVAL", "0"))
-    cache_dir: str = "data/cache/balldontlie"
-    derived_cache_dir: str = "data/cache/derived"
     ttl_advanced: int = int(os.environ.get("BDL_TTL_ADVANCED", "86400"))
     ttl_tracking: int = int(os.environ.get("BDL_TTL_TRACKING", "86400"))
     ttl_gamelogs: int = int(os.environ.get("BDL_TTL_GAMELOGS", "43200"))
@@ -280,7 +253,6 @@ class AppSettings:
 _credentials: ProviderCredentials | None = None
 _app_settings: AppSettings | None = None
 _sdio_config: SportsDataIOConfig | None = None
-_sr_config: SportradarConfig | None = None
 _odds_config: OddsAPIConfig | None = None
 _nba_config: NBAApiConfig | None = None
 _bdl_config: BallDontLieConfig | None = None
@@ -323,13 +295,6 @@ def get_sdio_config() -> SportsDataIOConfig:
     return _sdio_config
 
 
-def get_sportradar_config() -> SportradarConfig:
-    global _sr_config
-    if _sr_config is None:
-        _sr_config = SportradarConfig()
-    return _sr_config
-
-
 def get_odds_api_config() -> OddsAPIConfig:
     global _odds_config
     if _odds_config is None:
@@ -353,14 +318,13 @@ def get_bdl_config() -> BallDontLieConfig:
 
 def reload_config() -> None:
     """Force re-read of env vars (useful in tests)."""
-    global _credentials, _app_settings, _sdio_config, _sr_config, _odds_config, _nba_config, _bdl_config, _pm_config, _openai_config
+    global _credentials, _app_settings, _sdio_config, _odds_config, _nba_config, _bdl_config, _pm_config, _openai_config
     load_dotenv(dotenv_path=_ENV_PATH, override=True)
     _credentials = None
     _pm_config = None
     _openai_config = None
     _app_settings = None
     _sdio_config = None
-    _sr_config = None
     _odds_config = None
     _nba_config = None
     _bdl_config = None

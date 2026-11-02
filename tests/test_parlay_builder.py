@@ -143,6 +143,7 @@ class TestLegOddsConstraints:
         assert leg_odds_match_constraints(-250, -600, 400) is True
 
 
+@pytest.mark.live
 class TestParlayBuilder:
     def _get_sample_props(self):
         scanner = SlateScanner()
@@ -197,6 +198,7 @@ class TestParlayBuilder:
                     f"Blocked correlation found: {a.player_name} {a.prop_type} + {b.player_name} {b.prop_type}"
 
 
+@pytest.mark.live
 class TestRankingEngine:
     def _get_parlays(self):
         from engine.slate_scanner import SlateScanner

@@ -18,14 +18,8 @@ source-of-truth assignments from the architecture spec:
   Cache fallback:
       Derived cache -> graceful empty if all live sources fail
 
-Retired from the live scan (modules may remain on disk):
-  - SportsDataIO
-  - Sportradar
-  - FantasyPros
-  - StatMuse
-  - RotoGrinders
-  - Rotowire
-  - NBA Official (API-key based; nba_api Python package is used instead)
+Retired from the live scan: SportsDataIO, Sportradar, FantasyPros, StatMuse,
+RotoGrinders, Rotowire, NBA Official.
 
 Usage:
     registry = ProviderRegistry.build()
@@ -237,14 +231,14 @@ class ProviderRegistry:
         return None
 
     # ------------------------------------------------------------------
-    # Schedule / Games  (SOURCE: Sportradar -> SportsDataIO)
+    # Schedule / Games
     # ------------------------------------------------------------------
 
     def get_games_for_date(self, game_date: date) -> list[Game]:
         return self._try_list("slate", "get_games_for_date", game_date)
 
     # ------------------------------------------------------------------
-    # Player data  (SOURCE: SportsDataIO primary, nba_api supplement)
+    # Player data
     # ------------------------------------------------------------------
 
     def get_players_for_game(self, game_id: str) -> list[Player]:

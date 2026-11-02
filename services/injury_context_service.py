@@ -21,10 +21,9 @@ from typing import Optional
 from domain.enums import InjuryStatus, Position
 from domain.provider_models import InjuryContext
 from models.injury_redistribution_model import build_teammates_out_dicts, compute_vacancy_factor
-from services.cache_service import get_cache
+from utils.date_utils import today_eastern
 
 logger = logging.getLogger(__name__)
-_CACHE = get_cache("sportsdataio", default_ttl=900)   # 15-min TTL for injuries
 
 _STATUS_MAP: dict[str, InjuryStatus] = {
     "active": InjuryStatus.ACTIVE,
@@ -57,14 +56,13 @@ _loaded_date: Optional[date] = None
 
 def refresh(game_date: Optional[date] = None) -> None:
     """
-    Load or refresh injury and lineup data from SportsDataIO.
+    Load or refresh BALLDONTLIE injury data.
 
-    Safe to call multiple times — re-fetches from provider (with 15-min
-    disk cache backing) each time.
+    Safe to call multiple times — re-fetches from the provider each time.
     """
     global _injury_index, _lineup_index, _loaded_date
 
-    ds = game_date or date.today()
+    ds = game_date or today_eastern()
 
     from data.loaders.nba_api_loader import fetch_balldontlie_injuries
 
@@ -102,7 +100,7 @@ def get_injury_context(
     Computes teammate vacancy factor from the set of OUT teammates on the
     same team for *game_date*.
     """
-    if _loaded_date != (game_date or date.today()):
+    if _loaded_date != (game_date or today_eastern()):
         refresh(game_date)
 
     injury_raw = _injury_index.get(player_id, {})

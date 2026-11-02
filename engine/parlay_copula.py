@@ -28,7 +28,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CORR_PATH = Path("data/models/prop_correlations.json")
+DEFAULT_CORR_PATH = Path(__file__).resolve().parents[1] / "data" / "models" / "prop_correlations.json"
 
 # Priors used for pairs without a fitted value (blocks, steals, turnovers, PRA ...).
 PRIOR_SAME_PLAYER = 0.20

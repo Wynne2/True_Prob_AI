@@ -53,8 +53,9 @@ FEBRUARY_DATES = (
     date(2026, 2, 23), date(2026, 2, 25),
 )
 FEBRUARY_BACKUP = (date(2026, 2, 27), date(2026, 2, 1), date(2026, 2, 3), date(2026, 2, 8))
-_REPORT = Path("data/backtests/interaction_experiment.json")
-_JANUARY = Path("data/backtests/expanded_report.json")
+_BACKTESTS = Path(__file__).resolve().parents[2] / "data" / "backtests"
+_REPORT = _BACKTESTS / "interaction_experiment.json"
+_JANUARY = _BACKTESTS / "expanded_report.json"
 
 
 def estimate_february_cost(n_dates: int = 10, n_games: int = 30) -> dict:

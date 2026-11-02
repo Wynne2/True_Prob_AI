@@ -93,15 +93,17 @@ class TestProviderRegistry:
         assert registry is not None
         assert len(registry.active_providers) >= 1
 
-    def test_sample_always_in_registry(self):
+    def test_csv_import_always_in_registry(self):
         registry = ProviderRegistry.build()
-        assert "sample" in registry.active_providers
+        assert DataSource.CSV_IMPORT.value in registry.active_providers
 
+    @pytest.mark.live
     def test_registry_get_games(self):
         registry = ProviderRegistry.build()
         games = registry.get_games_for_date(date.today())
         assert len(games) > 0
 
+    @pytest.mark.live
     def test_registry_get_props(self):
         registry = ProviderRegistry.build()
         props = registry.get_player_props(date.today())

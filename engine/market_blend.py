@@ -29,7 +29,7 @@ from odds.normalizer import american_to_raw_implied_prob
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_PARAMS_PATH = Path("data/models/market_blend.json")
+DEFAULT_PARAMS_PATH = Path(__file__).resolve().parents[1] / "data" / "models" / "market_blend.json"
 
 # Used only when no fitted file exists. Mirrors the leave-one-date-out fit on 19 graded dates.
 _FALLBACK_WEIGHTS: dict[str, tuple[float, float]] = {
@@ -60,6 +60,10 @@ class BlendWeights:
     """Model weight and log-odds clip for one prop type."""
     weight: float
     clip: float
+
+    def __post_init__(self) -> None:
+        if not (0.0 <= self.weight <= 1.0 and 0.0 <= self.clip < math.inf):
+            raise ValueError(f"blend weight must be in [0, 1] and clip finite >= 0, got {self}")
 
 
 @dataclass

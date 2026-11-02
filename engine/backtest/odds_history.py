@@ -18,7 +18,7 @@ from domain.constants import PROP_ALIAS_MAP
 from domain.entities import OddsLine
 from domain.enums import BookName, DataSource
 
-_ODDS_CACHE = Path("data/cache/odds_history")
+_ODDS_CACHE = Path(__file__).resolve().parents[2] / "data" / "cache" / "odds_history"
 
 HISTORICAL_EVENTS_COST = 1
 HISTORICAL_EVENT_ODDS_COST_PER_MARKET_PER_REGION = 10

@@ -6,8 +6,8 @@ Re-exports all public loader functions so that existing imports like:
 continue to work after data/loaders/ became a package directory.
 
 All functions delegate to the ProviderRegistry, which routes to the
-correct source (Sportradar/SportsDataIO for slate, The Odds API for odds,
-nba_api + SportsDataIO for player data).
+correct source (BALLDONTLIE for slate and player data; Kalshi, Polymarket and
+The Odds API for odds).
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def _get_registry():
 
 
 # ---------------------------------------------------------------------------
-# Game slate  (SOURCE: Sportradar primary -> SportsDataIO fallback)
+# Game slate  (SOURCE: BALLDONTLIE)
 # ---------------------------------------------------------------------------
 
 def load_games(game_date: date) -> list[Game]:
@@ -43,7 +43,7 @@ def load_games(game_date: date) -> list[Game]:
 
 
 # ---------------------------------------------------------------------------
-# Players  (SOURCE: SportsDataIO primary + nba_api supplement)
+# Players  (SOURCE: BALLDONTLIE)
 # ---------------------------------------------------------------------------
 
 def load_players_for_game(game_id: str) -> list[Player]:
@@ -70,7 +70,7 @@ def load_player(player_id: str) -> Optional[Player]:
 
 
 # ---------------------------------------------------------------------------
-# Team defence  (SOURCE: SportsDataIO + dvp_service derived)
+# Team defence  (SOURCE: BALLDONTLIE + dvp_service derived)
 # ---------------------------------------------------------------------------
 
 def load_team_defense(team_id: str) -> Optional[TeamDefense]:
@@ -80,7 +80,7 @@ def load_team_defense(team_id: str) -> Optional[TeamDefense]:
 
 def load_defense_by_abbr(team_abbr: str) -> Optional[TeamDefense]:
     """Load defensive profile using team abbreviation."""
-    # Try registry first (SportsDataIO), fall back to sample data
+    # Try registry first (BALLDONTLIE), fall back to sample data
     registry = _get_registry()
     defense = registry.get_team_defense(team_abbr)
     if defense:
@@ -130,7 +130,7 @@ def load_odds_for_player(
 
 
 # ---------------------------------------------------------------------------
-# Injuries / lineup  (SOURCE: SportsDataIO primary)
+# Injuries / lineup  (SOURCE: BALLDONTLIE)
 # ---------------------------------------------------------------------------
 
 def load_injuries(game_date: Optional[date] = None) -> list[dict]:

@@ -101,25 +101,6 @@ from utils.math_helpers import clamp
 logger = logging.getLogger(__name__)
 
 
-# #region agent log
-def _agent_debug_heavy_fav(payload: dict) -> None:
-    """Append one NDJSON line for debug session 9df441 (heavy-favorite audit)."""
-    import json
-    import time
-    from pathlib import Path
-
-    row = {"sessionId": "9df441", "timestamp": int(time.time() * 1000), **payload}
-    path = Path(__file__).resolve().parent.parent / "debug-9df441.log"
-    try:
-        with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(row, default=str) + "\n")
-    except Exception:
-        pass
-
-
-# #endregion
-
-
 def _sync_season_stat_from_feature_vector(player: Player, fv: FeatureVector) -> None:
     """
     Align per-game season stats on Player with FeatureVector.season_avg.
@@ -440,8 +421,6 @@ class PropEvaluator:
                 <= best.best_odds
                 <= FAVORITE_STRAIGHT_BET_AUDIT_BAND_HIGH
             )
-            hf_log = in_favorite_audit_band
-            hf: dict = {}
 
             points_sup: Optional[PointsLowUsageSuppressionResult] = None
             effective_mean = float(projection.dist_mean)
@@ -461,12 +440,6 @@ class PropEvaluator:
                 player, prop_type, std_input_mean, prop_line=numeric_line
             )
             projection.dist_std = base_std
-            if hf_log:
-                hf["raw_dist_mean"] = round(float(projection.dist_mean), 4)
-                hf["effective_mean"] = round(float(effective_mean), 4)
-                hf["dist_std"] = round(float(base_std), 4)
-                hf["prop_type"] = prop_type.value
-                hf["side"] = side.value
 
             # --- 3-step probability calibration pipeline ---
             # Step 1: raw tail probability from the chosen distribution
@@ -505,15 +478,11 @@ class PropEvaluator:
                     raw_prob, projection, numeric_line, best.best_odds,
                 )
             tail_prob_pre_probability_shrink = float(raw_prob)
-            if hf_log:
-                hf["tail_after_step1"] = round(float(raw_prob), 5)
 
             # Step 2: shrinkage toward 50% — accounts for inherent single-game
             # unpredictability that distributions cannot fully capture.
             # Example: raw=99.9% → shrunk=89.9%  |  raw=80% → shrunk=74%
             shrunk_prob = 0.5 + (raw_prob - 0.5) * PROBABILITY_SHRINKAGE_FACTOR
-            if hf_log:
-                hf["shrunk"] = round(float(shrunk_prob), 5)
 
             # Step 3: data-completeness penalty — blend toward 50% when feature
             # inputs are sparse / unreliable (fv.data_completeness from builder,
@@ -527,15 +496,10 @@ class PropEvaluator:
                 base_completeness = min(base_completeness, effective_completeness)
             completeness = clamp(base_completeness, 0.20, 1.0)
             calibrated_prob = shrunk_prob * completeness + 0.5 * (1.0 - completeness)
-            if hf_log:
-                hf["completeness"] = round(float(completeness), 4)
-                hf["after_completeness"] = round(float(calibrated_prob), 5)
 
             # Step 4: hard ceiling / floor — no single-game prop should ever
             # reach near certainty without extraordinary evidence.
             true_prob = clamp(calibrated_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
-            if hf_log:
-                hf["after_step4_clamp"] = round(float(true_prob), 5)
 
             audit_flags = list(getattr(projection, "projection_audit_flags", None) or [])
             if points_sup and points_sup.flags:
@@ -545,14 +509,9 @@ class PropEvaluator:
                 shrink = AUDIT_FLAG_TRUE_PROB_SHRINK_STEP ** n_audit
                 true_prob = 0.5 + (true_prob - 0.5) * shrink
                 true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
-            if hf_log:
-                hf["after_audit_flags"] = round(float(true_prob), 5)
-                hf["audit_flags"] = list(audit_flags)
 
             if numeric_line <= LOW_LINE_THRESHOLD and prop_type in volatile_low_line:
                 true_prob = 0.5 + (true_prob - 0.5) * 0.90
-            if hf_log:
-                hf["after_volatile_low_line"] = round(float(true_prob), 5)
 
             # Raw implied probability (vig included) for the priced side — same
             # definition as the posted American odds, so edge is vs the number on the ticket.
@@ -573,19 +532,6 @@ class PropEvaluator:
                 continue
 
             implied = raw_implied_prob_for_side(best.side, ref.over_odds, ref.under_odds)
-            if hf_log:
-                from odds.implied_probability import implied_prob_for_side as _fair_side_hf
-                from odds.normalizer import american_to_raw_implied_prob as _raw_imp_hf
-
-                raw_side_odds = ref.over_odds if side == PropSide.OVER else ref.under_odds
-                hf["american_best"] = int(best.best_odds)
-                hf["ref_over_amer"] = int(ref.over_odds)
-                hf["ref_under_amer"] = int(ref.under_odds)
-                hf["raw_implied_side"] = round(float(_raw_imp_hf(raw_side_odds)), 5)
-                hf["fair_implied_side"] = round(
-                    float(_fair_side_hf(best.side, ref.over_odds, ref.under_odds)), 5
-                )
-                hf["line"] = float(numeric_line)
 
             true_prob_pre_market = float(true_prob)
             market_probability: Optional[float] = None
@@ -633,15 +579,6 @@ class PropEvaluator:
                 )
                 if gate_warnings:
                     confidence = downgrade_confidence_for_flags(confidence, edge)
-                if hf_log:
-                    hf["model_tail"] = round(float(model_tail), 5)
-                    hf["market_probability"] = (
-                        round(float(market_probability), 5) if market_probability is not None else None
-                    )
-                    hf["model_weight"] = model_weight
-                    hf["after_final_gate"] = round(float(true_prob), 5)
-                    hf["edge_final"] = round(float(edge), 5)
-                    hf["gate_warnings"] = list(gate_warnings)
             else:
                 true_prob, cal_warnings = calibrate_true_probability(
                     true_prob, implied, best.best_odds,
@@ -649,17 +586,11 @@ class PropEvaluator:
                 market_calibration_warnings = list(cal_warnings)
                 true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
                 true_prob_after_market_calibration = float(true_prob)
-                if hf_log:
-                    hf["true_pre_market_cal"] = round(true_prob_pre_market, 5)
-                    hf["after_market_cal"] = round(float(true_prob), 5)
-                    hf["market_cal_warnings"] = list(market_calibration_warnings)
 
                 cal_warnings = list(cal_warnings)
                 cal_warnings.extend(audit_flags)
 
                 edge = calculate_edge(true_prob, implied)
-                if hf_log:
-                    hf["edge_pre_gate"] = round(float(edge), 5)
 
                 consistency = self._variance_model.consistency_score(
                     player, prop_type, projection.projected_value
@@ -686,32 +617,6 @@ class PropEvaluator:
                 )
                 true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
                 edge = calculate_edge(true_prob, implied)
-                if hf_log:
-                    hf["after_final_gate"] = round(float(true_prob), 5)
-                    hf["edge_final"] = round(float(edge), 5)
-                    hf["gate_warnings"] = list(gate_warnings)
-            if hf_log:
-                hf["would_fail_default_min_edge_5pct"] = bool(edge < 0.05)
-                hf["prob_drop_tail_to_pre_market"] = round(
-                    true_prob_pre_market - float(hf.get("tail_after_step1", true_prob_pre_market)),
-                    5,
-                )
-                hf["prob_drop_pre_market_to_final"] = round(
-                    true_prob_pre_market - float(true_prob), 5,
-                )
-                if points_sup and points_sup.flags:
-                    hf["points_suppression_flags"] = list(points_sup.flags)
-                _agent_debug_heavy_fav(
-                    {
-                        "hypothesisId": "H_heavy_fav_pipeline",
-                        "location": "prop_evaluator.evaluate",
-                        "message": "heavy_favorite_leg_trace",
-                        "data": {
-                            "player": player.name,
-                            **hf,
-                        },
-                    }
-                )
 
             fair_odds_american = true_prob_to_american_odds(true_prob)
             cal_warnings = list(cal_warnings) + gate_warnings

@@ -4,20 +4,20 @@ Slate Scanner.
 Orchestrates the full daily scan:
 
 STEP 1: Pull today's slate (game IDs, team matchups)
-        SOURCE: Sportradar (primary) → SportsDataIO (fallback)
+        SOURCE: BALLDONTLIE (via ProviderRegistry)
 
 STEP 2: Pull live prop markets and odds (fresh every scan)
         SOURCE: Kalshi + Polymarket (keyless) + The Odds API (keyed), merged
 
 STEP 3: Warm all service-layer caches (batch, not per-prop)
-        - PlayerContextService  → SportsDataIO season stats + depth charts
-        - InjuryContextService  → SportsDataIO injuries + projected lineups
+        - PlayerContextService  → BALLDONTLIE season stats + depth charts
+        - InjuryContextService  → BALLDONTLIE injuries + projected lineups
         - UsageTrackingService  → nba_api advanced + tracking dashboards
         - SplitsService         → nba_api split context dashboards
-        - MatchupContextService → SportsDataIO + nba_api team stats
+        - MatchupContextService → BALLDONTLIE team stats
 
 STEP 4: Build Player objects for all players on today's slate
-        SOURCE: PlayerContextService (SportsDataIO primary + nba_api supplement)
+        SOURCE: PlayerContextService (BALLDONTLIE)
 
 STEP 5: Build feature store (FeatureVectors for all player × prop_type combos)
         SOURCE: PlayerFeatureBuilder (blends all service outputs)
@@ -79,7 +79,7 @@ class SlateScanner:
 
         # ----------------------------------------------------------
         # STEP 1: Pull slate
-        # SOURCE: Sportradar → SportsDataIO (via ProviderRegistry)
+        # SOURCE: BALLDONTLIE (via ProviderRegistry)
         # ----------------------------------------------------------
         games, all_odds = self._pull_slate_and_odds(game_date)
         if is_playoff:
@@ -114,7 +114,7 @@ class SlateScanner:
 
         # ----------------------------------------------------------
         # STEP 3: Warm all service-layer caches (batch pulls, not per-prop)
-        # SOURCE: nba_api (usage/tracking/splits) + SportsDataIO (injuries/stats)
+        # SOURCE: BALLDONTLIE
         # ----------------------------------------------------------
         self._warm_services(game_date)
 
@@ -175,38 +175,22 @@ class SlateScanner:
 
     def _warm_services(self, game_date: date) -> None:
         """
-        Pre-warm all service-layer caches with batch API pulls.
+        Pre-warm all service-layer caches with batch BALLDONTLIE pulls.
 
         Called ONCE per daily scan.  All subsequent per-player lookups
         are served from in-memory / disk cache.
-
-        SOURCE:
-          - nba_api    → UsageTrackingService, SplitsService
-          - SportsDataIO → PlayerContextService, InjuryContextService, MatchupContextService
         """
-        from services import (
-            injury_context_service,
-            matchup_context_service,
-            splits_service,
-            usage_tracking_service,
-        )
+        from services import injury_context_service, matchup_context_service
         from services.player_context_service import refresh as refresh_player_context
 
         logger.info("SlateScanner: warming service caches (batch pull)...")
 
-        # PlayerContextService: SportsDataIO season stats + depth chart
+        # Season stats, plus usage/tracking and splits (each skips if already loaded today)
         refresh_player_context(game_date)
 
-        # InjuryContextService: SportsDataIO injuries + projected lineups
+        # Injuries always re-pull: player context returns early on a same-day re-scan
         injury_context_service.refresh(game_date)
 
-        # UsageTrackingService: nba_api advanced + tracking dashboards
-        usage_tracking_service.refresh()
-
-        # SplitsService: nba_api home/away/last-N split dashboards
-        splits_service.refresh()
-
-        # MatchupContextService: SportsDataIO + nba_api team stats
         matchup_context_service.refresh()
 
         logger.info("SlateScanner: service caches warmed")
@@ -217,7 +201,7 @@ class SlateScanner:
         """
         Build player lists for each game.
 
-        SOURCE: PlayerContextService (SportsDataIO + nba_api blend).
+        SOURCE: PlayerContextService (BALLDONTLIE blend).
 
         Returns:
             players_by_game: game_id -> list of Player objects
@@ -237,7 +221,7 @@ class SlateScanner:
                 game_date,
             )
             if not players:
-                # Fallback: use the registry directly (SportsDataIO game participants)
+                # Fallback: use the registry directly (BALLDONTLIE game participants)
                 from data.loaders import load_players_for_game
                 players = load_players_for_game(game.game_id)
 
@@ -365,7 +349,7 @@ class SlateScanner:
         """
         Build DvP tables if not already loaded.
 
-        SOURCE: nba_api + SportsDataIO game logs via dvp_service.
+        SOURCE: BALLDONTLIE game logs via dvp_service.
         """
         from services.dvp_service import is_loaded, refresh_dvp_tables
 

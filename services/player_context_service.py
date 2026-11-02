@@ -30,6 +30,7 @@ from services import injury_context_service, usage_tracking_service, splits_serv
 logger = logging.getLogger(__name__)
 
 from domain.constants import NBA_SEASON
+from utils.date_utils import today_eastern
 _CURRENT_SEASON_NBA = NBA_SEASON
 
 # Module-level indexes
@@ -65,7 +66,7 @@ def refresh(game_date: Optional[date] = None, force: bool = False) -> None:
     """Load or refresh all player context data for *game_date*."""
     global _season_stats_index, _depth_index, _loaded_date
 
-    today = game_date or date.today()
+    today = game_date or today_eastern()
     if not force and _loaded_date == today and _season_stats_index:
         return
 
