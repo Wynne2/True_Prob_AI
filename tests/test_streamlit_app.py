@@ -101,7 +101,7 @@ def test_first_load_shows_empty_state():
     at = AppTest.from_file(APP, default_timeout=60).run()
     assert not at.exception
     assert "Scan tonight" in _html(at)
-    assert len(at.tabs) == 8
+    assert len(at.tabs) == 9
     assert "1-800-GAMBLER" in _html(at)
 
 

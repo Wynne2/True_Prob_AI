@@ -30,6 +30,7 @@ from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_mat
 from engine.ranking_engine import rank_parlays, summary_stats
 from engine.slate_scanner import SlateScanner
 from app import ui
+from app.arbitrage_view import render_arbitrage_tab
 from app.backtest_view import render_backtest_tab
 from engine.straight_bet_audit import (
     build_favorite_band_audit_table,
@@ -949,7 +950,8 @@ def main() -> None:
     render_odds_sources(*st.session_state.odds_source_counts)
 
     # Tab layout
-    tab_straight, tab_parlays, tab_props, tab_lines, tab_game_lines, tab_advisor, tab_debug, tab_backtest = st.tabs([
+    (tab_straight, tab_parlays, tab_props, tab_lines, tab_game_lines, tab_advisor, tab_debug, tab_backtest,
+     tab_arb) = st.tabs([
         ":material/target: Straight bets",
         ":material/stacks: Parlays",
         ":material/table_chart: Props",
@@ -958,6 +960,7 @@ def main() -> None:
         ":material/auto_awesome: AI Advisor",
         ":material/lan: API diagnostics",
         ":material/query_stats: Backtesting",
+        ":material/currency_exchange: Arbitrage",
     ], key="main_tabs")
 
     scan_first = "Scan the slate from the sidebar to fill this in."
@@ -1011,6 +1014,9 @@ def main() -> None:
 
     with tab_backtest:
         render_backtest_tab()
+
+    with tab_arb:
+        render_arbitrage_tab()
 
     ui.footer()
 

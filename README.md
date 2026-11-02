@@ -142,6 +142,35 @@ python main.py clv --date 2026-11-02
   it grades every pick against box scores (`<date>.graded.json`): hit rate, model vs market Brier score,
   flat ROI and average CLV, for all picks and positive-edge picks.
 
+### Arbitrage (`python main.py arb`)
+
+Model-free: no stat model, no AI. It scans **every** open Kalshi and Polymarket event (all categories,
+not only basketball) for baskets that pay more than they cost **after fees**, then walks the live order
+books to size them.
+
+```bash
+python main.py arb                                  # defaults: ≥ $5 locked and ≥ 10% annualized
+python main.py arb --min-profit 0 --min-annual 0    # show every depth-real arb, however small
+python main.py arb --watch 5                        # rescan every 5 minutes; hits go to data/arbs/<date>.jsonl
+python main.py arb --propose                        # fuzzy cross-venue pairs to review (not arbs)
+```
+
+| Kind | Bet | Needs |
+|---|---|---|
+| `all-no` | NO on every outcome of a mutually exclusive event (pays n − 1) | exclusive outcomes |
+| `all-yes` | YES on every outcome (pays 1) | exclusive **and** complete outcome list |
+| `cross-pair` | YES on one venue + NO on the other for the same outcome (pays 1) | complete, confirmed match |
+
+- Games are matched across venues automatically (league, date ±1 day, both team names, prices within
+  15¢). Anything else must be confirmed by hand in `data/arb_pairs.json`
+  (`[{"kalshi_ticker": "<market ticker>", "polymarket_id": "<condition id>", "yes_maps_to": "yes"}]`;
+  use `"no"` when Polymarket's YES is Kalshi's NO) after reading both rulebooks. `--propose` prints these ids.
+- Fees: Kalshi `0.07 × multiplier × p × (1 − p)` per contract, plus 1¢ of rounding per order book level;
+  Polymarket `rate × p × (1 − p)` for takers, using each market's own fee schedule.
+- Markets are usually efficient: live scans find a few depth-real arbs, typically worth well under $5.
+  **Risks it does not remove:** prices moving between legs, venues settling the same event differently
+  (voids, postponements, ties), and whether you can legally use each venue. It places no orders.
+
 ### Streamlit UI
 
 ```bash
@@ -160,6 +189,7 @@ Opens at `http://localhost:8501`. The sidebar exposes the same constraint contro
 | **🤖 AI Advisor** | Runs the AI Advisor on the current scan (stake, odds band, top N, custom question) |
 | **API Debug** | Live diagnostic tool — fetches raw API responses and previews them in-browser |
 | **Backtesting** | Historical calibration sample |
+| **Arbitrage** | On-demand Kalshi + Polymarket arbitrage scan (same as `python main.py arb`) |
 
 ### Tests
 
@@ -201,7 +231,13 @@ True_Prob_AI/
 ├── .env.template
 │
 ├── app/
-│   └── streamlit_app.py        # Streamlit dashboard
+│   ├── streamlit_app.py        # Streamlit dashboard
+│   └── arbitrage_view.py       # Arbitrage tab
+│
+├── arbitrage/                  # Kalshi + Polymarket arbitrage (model-free)
+│   ├── finder.py               # Strategies, order-book walk, cross-venue game matching
+│   ├── venues.py               # Fetch + normalize markets, fees, order books
+│   └── scanner.py              # scan(): fetch → match → screen → depth-check → log
 │
 ├── domain/
 │   ├── entities.py             # Core data classes: Player, Game, PropProbability, Parlay, …

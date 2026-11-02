@@ -15,7 +15,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date
+import time
+from datetime import date, datetime
 
 # Force UTF-8 output on Windows so Rich markup and Unicode chars don't crash
 # cp1252 terminals with UnicodeEncodeError.
@@ -177,11 +178,12 @@ Examples:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["scan", "backtest", "advisor", "fit-blend", "clv"],
+        choices=["scan", "backtest", "advisor", "fit-blend", "clv", "arb"],
         help=(
             "Daily scan, `backtest` for a one-game historical sample, `advisor` for the AI Advisor, "
             "`fit-blend` to refit market-blend weights and parlay correlations from graded backtests, "
-            "or `clv` to record closing prices / grade a date's saved predictions."
+            "`clv` to record closing prices / grade a date's saved predictions, "
+            "or `arb` to scan every Kalshi + Polymarket market for depth-verified arbitrage."
         ),
     )
     parser.add_argument("--date", help="Game date YYYY-MM-DD, or 'today'")
@@ -238,6 +240,13 @@ Examples:
         choices=["interaction"],
         help="Fit the opportunity-matchup interaction on January and validate it on February. March is not opened.",
     )
+    parser.add_argument("--min-profit", type=float, default=5.0, help="`arb`: min locked $ profit (default 5)")
+    parser.add_argument("--min-annual", type=float, default=0.10,
+                        help="`arb`: min annualized return on capital (default 0.10 = 10%%)")
+    parser.add_argument("--propose", action="store_true",
+                        help="`arb`: list fuzzy cross-venue matches to review into data/arb_pairs.json")
+    parser.add_argument("--watch", type=float, default=0, metavar="MINUTES",
+                        help="`arb`: rescan every MINUTES until Ctrl+C (default: scan once)")
     return parser.parse_args(argv)
 
 
@@ -498,6 +507,35 @@ def run_clv_command(game_date) -> None:
     console.print(f"[green]Saved[/green] {summary['path']}")
 
 
+def run_arb_command(args) -> None:
+    """Scan all open Kalshi + Polymarket markets for depth-verified, fee-inclusive arbitrage."""
+    from arbitrage.scanner import propose, scan
+
+    if args.propose:
+        t = Table(title="Candidate pairs to review (NOT arbs)", box=box.SIMPLE_HEAVY)
+        for col in ("Score", "Kalshi", "Polymarket", "Kalshi ticker", "Polymarket id"):
+            t.add_column(col)
+        for r in propose(limit=args.top):
+            t.add_row(str(r["score"]), r["kalshi"], r["polymarket"], r["kalshi_ticker"], r["polymarket_id"])
+        console.print(t)
+        console.print("[dim]Read both rulebooks, then add confirmed pairs to data/arb_pairs.json.[/dim]")
+        return
+    with console.status("Scanning every open Kalshi + Polymarket market (about a minute)..."):
+        res = scan(min_profit=args.min_profit, min_annual=args.min_annual)
+    console.print(f"[bold]{datetime.now():%H:%M:%S}[/bold]  " +
+                  " | ".join(f"{k.replace('_', ' ')}: {v:,}" for k, v in res["stats"].items()))
+    for title, rows in (("Arbitrage (passes every filter)", res["arbs"]),
+                        ("Depth-real but below --min-profit/--min-annual", res["near"][: args.top])):
+        t = Table(title=f"{title}: {len(rows)}", box=box.SIMPLE_HEAVY)
+        for col in ("Kind", "Event", "Contracts", "Cost", "Locked $", "ROI", "Annual", "Closes", "Legs"):
+            t.add_column(col, justify="right" if col in {"Contracts", "Cost", "Locked $", "ROI", "Annual"} else "left")
+        for r in rows:
+            t.add_row(r["kind"], r["title"], f"{r['contracts']:,.0f}", f"${r['cost']:,.2f}", f"${r['profit']:,.2f}",
+                      f"{r['roi']:.2%}", f"{r['annualized']:.0%}", (r["closes"] or "")[:16], "\n".join(r["legs"]))
+        console.print(t)
+    console.print("[dim]Prices move: re-check each book before every leg. Read both venues' rules for cross-venue legs.[/dim]")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -505,6 +543,14 @@ def run_clv_command(game_date) -> None:
 def main() -> None:
     args = parse_args()
     setup_logging(level="DEBUG" if args.verbose else "WARNING")
+
+    if args.command == "arb":
+        while True:
+            run_arb_command(args)
+            if not args.watch or args.propose:
+                return
+            console.print(f"[dim]Next scan in {args.watch:g} min; hits are logged to data/arbs/. Ctrl+C to stop.[/dim]")
+            time.sleep(args.watch * 60)
 
     if args.debug_api:
         install_api_debug_logger()
