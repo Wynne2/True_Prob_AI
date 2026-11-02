@@ -1,19 +1,28 @@
 import { Composition, staticFile, type CalculateMetadataFunction } from "remotion";
 import { Explainer, type ExplainerProps } from "./Explainer";
-import { sceneTiming, totalFrames, type Storyboard } from "./storyboard";
+import { PixelVideo } from "./pixel/PixelVideo";
+import { pacing, sceneTiming, totalFrames, type Storyboard, type Word } from "./storyboard";
+import houseEdge from "../storyboards/house-edge.json";
 import trueProbOdds from "../storyboards/true-prob-odds.json";
 
 // Add a storyboard JSON here to register it as a composition.
-const STORYBOARDS = [trueProbOdds] as Storyboard[];
+const STORYBOARDS = [trueProbOdds, houseEdge] as Storyboard[];
 
 const FPS = 30;
 
+const fetchJson = async <T,>(path: string): Promise<T | null> => {
+  const res = await fetch(staticFile(path)).catch(() => null);
+  return res && res.ok ? ((await res.json()) as T) : null;
+};
+
 const calculateMetadata: CalculateMetadataFunction<ExplainerProps> = async ({ props }) => {
-  // narrate.mjs writes {sceneId: seconds}; without it, scenes use their fallback lengths.
-  const res = await fetch(staticFile(`narration/${props.storyboard.id}/manifest.json`)).catch(() => null);
-  const manifest = res && res.ok ? ((await res.json()) as Record<string, number>) : null;
-  const timing = sceneTiming(props.storyboard.scenes, FPS, manifest);
-  return { durationInFrames: totalFrames(timing.sceneFrames), props: { ...props, timing } };
+  const { id, scenes, style } = props.storyboard;
+  // narrate.mjs writes {sceneId: seconds} and per-scene word timings; without them, scenes use fallback lengths.
+  const manifest = await fetchJson<Record<string, number>>(`narration/${id}/manifest.json`);
+  const words = manifest ? await Promise.all(scenes.map((s) => fetchJson<Word[]>(`narration/${id}/${s.id}.words.json`))) : [];
+  const { tailSeconds, transitionFrames } = pacing(style);
+  const timing = sceneTiming(scenes, FPS, manifest, words, tailSeconds);
+  return { durationInFrames: totalFrames(timing.sceneFrames, transitionFrames), props: { ...props, timing } };
 };
 
 export const RemotionRoot: React.FC = () => (
@@ -22,7 +31,7 @@ export const RemotionRoot: React.FC = () => (
       <Composition
         key={sb.id}
         id={sb.id}
-        component={Explainer}
+        component={sb.style === "pixel" ? PixelVideo : Explainer}
         width={1080}
         height={1920}
         fps={FPS}

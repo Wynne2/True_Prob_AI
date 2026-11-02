@@ -5,7 +5,7 @@ import { Fragment } from "react";
 import { AbsoluteFill, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { SceneCaptions } from "./Captions";
 import { SceneView } from "./scenes";
-import { TRANSITION_FRAMES, type Storyboard, type Timing } from "./storyboard";
+import { pacing, type Storyboard, type Timing } from "./storyboard";
 import { color, font, safe } from "./theme";
 
 export type ExplainerProps = { storyboard: Storyboard; timing: Timing };
@@ -68,7 +68,7 @@ export const Explainer: React.FC<ExplainerProps> = ({ storyboard, timing }) => {
         return (
           <Fragment key={scene.id}>
             {i > 0 ? (
-              <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: TRANSITION_FRAMES })} />
+              <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: pacing(storyboard.style).transitionFrames })} />
             ) : null}
             <TransitionSeries.Sequence name={scene.id} durationInFrames={timing.sceneFrames[i]}>
               <SceneView scene={scene} />

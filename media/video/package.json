@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "remotion studio",
     "narrate": "node scripts/narrate.mjs",
+    "sfx": "node scripts/sfx.mjs",
     "render": "node scripts/render.mjs",
     "make": "node scripts/narrate.mjs && node scripts/render.mjs",
     "typecheck": "tsc --noEmit"

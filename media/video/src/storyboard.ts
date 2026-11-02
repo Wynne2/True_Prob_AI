@@ -31,13 +31,24 @@ export type Scene =
       odds: number;
       exampleLabel: string;
     })
-  | (SceneBase & { type: "cta"; title: string; points: string[] });
+  | (SceneBase & { type: "cta"; title: string; points: string[] })
+  | (SceneBase & { type: "pixel"; shot: PixelShot });
+
+/** Hand-built shots of the pixel-art style (src/pixel/shots.tsx). */
+export type PixelShot = "hook" | "fair" | "trick" | "math" | "longrun" | "takeaway";
+
+/** One spoken word with its time in the scene's narration clip (seconds). */
+export type Word = { word: string; start: number; end: number };
 
 export type Storyboard = {
   id: string;
   title: string;
   voice: string;
   voiceInstructions?: string;
+  /** "explainer" (default): navy brand look. "pixel": 16-bit arcade look with music and SFX. */
+  style?: "explainer" | "pixel";
+  /** Caption words or phrases to colour as key terms. */
+  highlight?: string[];
   scenes: Scene[];
 };
 
@@ -46,11 +57,16 @@ export type Timing = {
   sceneFrames: number[];
   /** Narration length per scene in seconds, or null when no audio exists yet. */
   audioSeconds: (number | null)[];
+  /** Spoken word timings per scene, when narration was transcribed. */
+  words: (Word[] | null)[];
 };
 
-export const TRANSITION_FRAMES = 15;
-/** Silence kept after each line. Longer than a transition so voices never overlap. */
-export const TAIL_SECONDS = 0.7;
+/**
+ * Cut length between scenes, and the silence kept after each line. The tail is longer than
+ * the transition so two voices never overlap.
+ */
+export const pacing = (style: Storyboard["style"]) =>
+  style === "pixel" ? { transitionFrames: 10, tailSeconds: 0.45 } : { transitionFrames: 15, tailSeconds: 0.7 };
 
 /** Break-even probability of an American price, vig included. */
 export const impliedProbability = (american: number): number =>
@@ -65,15 +81,17 @@ export const sceneTiming = (
   scenes: Scene[],
   fps: number,
   manifest: Record<string, number> | null,
+  words: (Word[] | null)[] = [],
+  tailSeconds = 0.7,
 ): Timing => {
   const audioSeconds = scenes.map((s) => manifest?.[s.id] ?? null);
   const sceneFrames = scenes.map((s, i) => {
     const audio = audioSeconds[i];
-    const seconds = audio === null ? (s.seconds ?? 5) : audio + TAIL_SECONDS;
+    const seconds = audio === null ? (s.seconds ?? 5) : audio + tailSeconds;
     return Math.ceil(seconds * fps);
   });
-  return { sceneFrames, audioSeconds };
+  return { sceneFrames, audioSeconds, words: scenes.map((_, i) => words[i] ?? null) };
 };
 
-export const totalFrames = (sceneFrames: number[]): number =>
-  sceneFrames.reduce((a, b) => a + b, 0) - TRANSITION_FRAMES * Math.max(0, sceneFrames.length - 1);
+export const totalFrames = (sceneFrames: number[], transitionFrames: number): number =>
+  sceneFrames.reduce((a, b) => a + b, 0) - transitionFrames * Math.max(0, sceneFrames.length - 1);

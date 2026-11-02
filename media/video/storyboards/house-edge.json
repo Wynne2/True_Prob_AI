@@ -1,0 +1,66 @@
+{
+  "id": "house-edge",
+  "title": "How the house edge works",
+  "style": "pixel",
+  "voice": "ash",
+  "voiceInstructions": "Upbeat, natural American English, like a fun explainer creator talking to a friend. Brisk and lively pace with clear numbers. No long pauses.",
+  "highlight": [
+    "house edge",
+    "hidden price",
+    "-110",
+    "52.4%",
+    "$90.91",
+    "$455",
+    "break even"
+  ],
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "pixel",
+      "shot": "hook",
+      "say": "Ever wonder why sportsbooks keep making money, even when bettors win?",
+      "caption": "Ever wonder why sportsbooks keep making money, even when bettors win?",
+      "seconds": 5
+    },
+    {
+      "id": "fair",
+      "type": "pixel",
+      "shot": "fair",
+      "say": "Imagine a game that's exactly fifty-fifty. A fair bet pays one hundred dollars profit on a hundred-dollar wager.",
+      "caption": "Imagine a game that’s exactly 50/50. A fair bet pays $100 profit on a $100 wager.",
+      "seconds": 8
+    },
+    {
+      "id": "trick",
+      "type": "pixel",
+      "shot": "trick",
+      "say": "But sportsbooks often charge a hidden price through the odds. Instead of winning a hundred, you might only profit ninety dollars and ninety-one cents.",
+      "caption": "But sportsbooks often charge a hidden price through the odds. Instead of winning $100, you might only profit $90.91.",
+      "seconds": 10
+    },
+    {
+      "id": "math",
+      "type": "pixel",
+      "shot": "math",
+      "say": "At minus one-ten on both sides, each side has to win about fifty-two point four percent of the time just to break even. In a true fifty-fifty game, neither side can.",
+      "caption": "At -110 on both sides, each side has to win about 52.4% of the time just to break even. In a true 50/50 game, neither side can.",
+      "seconds": 11
+    },
+    {
+      "id": "longrun",
+      "type": "pixel",
+      "shot": "longrun",
+      "say": "Over a hundred fifty-fifty bets of a hundred dollars each, you'd lose about four hundred fifty-five dollars on average.",
+      "caption": "Over 100 fifty-fifty bets of $100 each, you’d lose about $455 on average.",
+      "seconds": 7
+    },
+    {
+      "id": "takeaway",
+      "type": "pixel",
+      "shot": "takeaway",
+      "say": "That's the house edge. The odds can favor the sportsbook before the game even starts.",
+      "caption": "That’s the house edge. The odds can favor the sportsbook before the game even starts.",
+      "seconds": 5
+    }
+  ]
+}

@@ -47,6 +47,28 @@ export const wavSeconds = (buf) => {
   throw new Error("WAV has no data chunk");
 };
 
+/** Seconds until the last audible sample, so trailing silence does not pad the scene. */
+export const speechEnd = (buf) => {
+  let off = 12;
+  let fmt = null;
+  while (off + 8 <= buf.length) {
+    const id = buf.toString("ascii", off, off + 4);
+    const size = buf.readUInt32LE(off + 4);
+    if (id === "fmt ") fmt = { channels: buf.readUInt16LE(off + 10), rate: buf.readUInt32LE(off + 12), bits: buf.readUInt16LE(off + 22) };
+    if (id === "data") {
+      if (!fmt || fmt.bits !== 16) return wavSeconds(buf);
+      const end = size === 0 || size === 0xffffffff || off + 8 + size > buf.length ? buf.length : off + 8 + size;
+      const frame = 2 * fmt.channels;
+      for (let p = end - frame; p >= off + 8; p -= frame) {
+        if (Math.abs(buf.readInt16LE(p)) > 900) return Math.min(wavSeconds(buf), (p - off - 8) / frame / fmt.rate + 0.12);
+      }
+      return 0;
+    }
+    off += 8 + size + (size % 2);
+  }
+  return wavSeconds(buf);
+};
+
 const openaiSpeech = async (key, text, voice, instructions) => {
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
@@ -55,6 +77,23 @@ const openaiSpeech = async (key, text, voice, instructions) => {
   });
   if (!res.ok) throw new Error(`OpenAI speech failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
   return Buffer.from(await res.arrayBuffer());
+};
+
+/** Word-level timestamps for a clip, so captions follow the real speech. */
+const transcribeWords = async (key, wavBuf) => {
+  const form = new FormData();
+  form.append("file", new Blob([wavBuf], { type: "audio/wav" }), "clip.wav");
+  form.append("model", "whisper-1");
+  form.append("response_format", "verbose_json");
+  form.append("timestamp_granularities[]", "word");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`OpenAI transcription failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  const json = await res.json();
+  return (json.words ?? []).map((w) => ({ word: w.word, start: w.start, end: w.end }));
 };
 
 const windowsSpeech = (text, outPath) => {
@@ -87,7 +126,12 @@ const narrate = async (file) => {
       writeFileSync(out, buf);
       hashes[scene.id] = hash;
     }
-    manifest[scene.id] = Math.round(wavSeconds(buf) * 1000) / 1000;
+    manifest[scene.id] = Math.round(speechEnd(buf) * 1000) / 1000;
+    const wordsPath = join(outDir, `${scene.id}.words.json`);
+    if (key && (hashes[`${scene.id}:words`] !== hash || !existsSync(wordsPath))) {
+      writeFileSync(wordsPath, JSON.stringify(await transcribeWords(key, buf)) + "\n");
+      hashes[`${scene.id}:words`] = hash;
+    }
     console.log(`${sb.id}/${scene.id}: ${manifest[scene.id].toFixed(2)}s`);
   }
 

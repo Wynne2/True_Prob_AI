@@ -40,6 +40,23 @@ optional `seconds` (used only before narration exists).
 Probabilities, percentages and edges are computed in `src/storyboard.ts` from the odds,
 so a storyboard cannot carry a wrong number. New scene types go in `src/scenes.tsx`.
 
+## Pixel-art style
+
+A storyboard with `"style": "pixel"` renders as a 16-bit arcade short (`src/pixel/`), for example
+`storyboards/house-edge.json`. Its scenes are `{ "type": "pixel", "shot": "<name>" }`, where each
+shot is a hand-built scene in `src/pixel/shots.tsx`; the dollar and percentage figures come from
+the `math` block at the top of that file. Add `"highlight": [...]` to colour key caption terms.
+
+- **Art**: `src/pixel/art.tsx` draws everything on a 270 x 480 grid scaled 4x with crisp edges:
+  `PixelCharacter` (moods: happy, shock, sad, neutral, smug), `PixelSportsbook` (a building with a
+  face), `PixelCoin`, `CoinBurst`, `CashPile`, `BettingSlip`, `ProbabilityMeter`, `PixelScoreboard`,
+  `MoneyCounter`, `AnimatedOdds`, `PixelText`, `WarningIcon`, `BlockWipe`, and the `Court` set.
+- **Cues**: shots time their beats to spoken words (`useCue(/word/, fallbackSeconds)`), using the
+  transcribed word timings, so visuals land on the narration.
+- **Audio**: `npm run sfx` synthesizes the chiptune loop and 12 arcade sound effects into
+  `public/audio/` from oscillators and seeded noise, so all audio is original.
+- **Transitions**: `src/pixel/PixelTransition.tsx` cuts with a block dissolve.
+
 ## Rules for every video
 
 - **Lead with strengths and build trust.** Show what the product does well. Never claim or imply
@@ -57,8 +74,11 @@ so a storyboard cannot carry a wrong number. New scene types go in `src/scenes.t
 ## Voice
 
 `scripts/narrate.mjs` uses OpenAI text-to-speech (`gpt-4o-mini-tts`) with `OPENAI_API_KEY`
-from the environment or the repo's `.env`. Without a key it falls back to the offline Windows
-voice. Unchanged lines are reused, so re-running only pays for edited scenes.
+from the environment or the repo's `.env`, then transcribes each clip with `whisper-1` for word
+timings (`<scene>.words.json`) that drive caption sync. Scene length is the time to the last
+spoken word, so trailing silence never pads a scene. Without a key it falls back to the offline
+Windows voice and evenly spaced captions. Unchanged lines are reused, so re-running only pays
+for edited scenes.
 Voices: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse.
 
 ## Tooling
