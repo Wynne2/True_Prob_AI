@@ -11,13 +11,14 @@ from engine.backtest.expanded import load_expanded_report
 from engine.backtest.experiment import load_interaction_report
 from engine.backtest.odds_history import estimate_sample_cost
 from engine.backtest.runner import load_latest_report, run_sample_backtest
+from app import ui
 from utils.date_utils import today_eastern
 
 
 def render_backtest_tab() -> None:
     _render_expanded_report()
     _render_interaction_report()
-    st.subheader("Backtesting and calibration")
+    ui.section("One-game historical sample", "scored against historical Odds API prices")
     st.caption(
         "Historical prices come only from The Odds API. Stats come only from BALLDONTLIE. "
         "A one-game sample is 1 credit for the events list plus 40 credits for four prop markets "
@@ -30,9 +31,12 @@ def render_backtest_tab() -> None:
     )
 
     default_day = today_eastern() - timedelta(days=2)
-    sample_day = st.date_input("Completed game date", value=default_day, max_value=today_eastern())
-    cap = st.number_input("Credit cap", min_value=1, max_value=80, value=50, step=1)
-    if st.button("Run one-game historical sample"):
+    with st.container(border=True):
+        d1, d2 = st.columns(2)
+        sample_day = d1.date_input("Completed game date", value=default_day, max_value=today_eastern())
+        cap = d2.number_input("Credit cap", min_value=1, max_value=80, value=50, step=1)
+        run_sample = st.button("Run one-game historical sample", icon=":material/play_arrow:")
+    if run_sample:
         if not isinstance(sample_day, date):
             st.error("Choose a date.")
             return
@@ -61,55 +65,56 @@ def render_backtest_tab() -> None:
     if report.get("sample_warning"):
         st.warning(report["sample_warning"])
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Games", report.get("n_games") or 0)
-    c2.metric("Over rows", report.get("n_over_rows") or 0)
     raw = report.get("brier_raw") or {}
     cal = report.get("brier_calibrated") or {}
-    c3.metric("Brier, raw", _fmt(raw.get("brier")))
-    c4.metric("Log loss, raw", _fmt(raw.get("log_loss")))
+    ui.tiles([
+        ("Games", str(report.get("n_games") or 0), ""),
+        ("Over rows", str(report.get("n_over_rows") or 0), ""),
+        ("Brier, raw", _fmt(raw.get("brier")), ""),
+        ("Log loss, raw", _fmt(raw.get("log_loss")), ""),
+    ])
     st.caption(f"Calibrated Brier {_fmt(cal.get('brier'))} on {cal.get('n') or 0} settled overs. Pushes are excluded.")
 
-    st.markdown("**Model A versus matchup variants**")
+    st.markdown("#### Model A versus matchup variants")
     variants = report.get("variants") or []
     if variants:
-        st.dataframe(pd.DataFrame(variants), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(variants), width="stretch", hide_index=True)
     else:
         st.caption("No graded rows yet.")
 
-    st.markdown("**Predicted probability versus actual hit rate**")
+    st.markdown("#### Predicted probability versus actual hit rate")
     bins = report.get("calibration_raw") or []
     if any(row.get("n") for row in bins):
         frame = pd.DataFrame(bins)
-        st.dataframe(frame, use_container_width=True, hide_index=True)
+        st.dataframe(frame, width="stretch", hide_index=True)
         chart = frame.dropna(subset=["predicted_avg", "actual_rate"])
         if not chart.empty:
             st.line_chart(chart.set_index("bin")[["predicted_avg", "actual_rate"]])
     else:
         st.caption("Calibration bins are empty.")
 
-    st.markdown("**By prop type**")
+    st.markdown("#### By prop type")
     if report.get("by_prop"):
-        st.dataframe(pd.DataFrame(report["by_prop"]), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(report["by_prop"]), width="stretch", hide_index=True)
     if report.get("by_minutes"):
-        st.markdown("**By projected minutes**")
-        st.dataframe(pd.DataFrame(report["by_minutes"]), use_container_width=True, hide_index=True)
+        st.markdown("#### By projected minutes")
+        st.dataframe(pd.DataFrame(report["by_minutes"]), width="stretch", hide_index=True)
 
-    st.markdown("**Unit ROI on the chosen side**")
+    st.markdown("#### Unit ROI on the chosen side")
     roi = report.get("roi") or {}
     if roi.get("by_odds_band"):
-        st.dataframe(pd.DataFrame(roi["by_odds_band"]), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(roi["by_odds_band"]), width="stretch", hide_index=True)
     if roi.get("by_edge_threshold"):
-        st.dataframe(pd.DataFrame(roi["by_edge_threshold"]), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(roi["by_edge_threshold"]), width="stretch", hide_index=True)
     favorites = report.get("favorite_band") or []
     st.caption(f"Chosen bets with American odds from -600 to -200: {len(favorites)}.")
 
-    st.markdown("**Parameter update**")
+    st.markdown("#### Parameter update")
     st.write(report.get("parameter_update") or {})
 
     rows = payload.get("rows") or []
     if rows:
-        st.markdown("**Prediction log**")
+        st.markdown("#### Prediction log")
         show = pd.DataFrame(rows)
         keep = [
             column for column in (
@@ -119,7 +124,7 @@ def render_backtest_tab() -> None:
             )
             if column in show.columns
         ]
-        st.dataframe(show[keep].head(200), use_container_width=True, hide_index=True)
+        st.dataframe(show[keep].head(200), width="stretch", hide_index=True)
 
 
 def _render_expanded_report() -> None:
@@ -128,7 +133,7 @@ def _render_expanded_report() -> None:
         return
     report = payload.get("report") or {}
     coverage = report.get("coverage") or {}
-    st.markdown("**30-game cohort**")
+    ui.section("30-game cohort", "leak-free backtest on games the model never saw")
     if coverage.get("reason"):
         st.warning(coverage["reason"])
     if coverage.get("model_c_reason"):
@@ -137,36 +142,37 @@ def _render_expanded_report() -> None:
         st.caption(coverage["potential_assists"])
     if coverage.get("line_rule"):
         st.caption(coverage["line_rule"])
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Games", report.get("n_games") or 0)
-    c2.metric("Dates", report.get("n_dates") or 0)
     overs = report.get("complete_input_overs") or {}
-    c3.metric("Complete-input overs", overs.get("n") or 0)
+    ui.tiles([
+        ("Games", str(report.get("n_games") or 0), ""),
+        ("Dates", str(report.get("n_dates") or 0), ""),
+        ("Complete-input overs", f"{overs.get('n') or 0:,}", "court"),
+    ])
     if report.get("variants_over"):
-        st.dataframe(pd.DataFrame(report["variants_over"]), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(report["variants_over"]), width="stretch", hide_index=True)
     effect = report.get("positional_effect") or {}
     if effect:
         st.write(
-            f"Positional Brier change (Model B minus Model A): {effect.get('mean_brier_difference')}. "
-            f"Game-cluster SE {effect.get('game_cluster_se')}. "
-            f"Date-cluster SE {effect.get('date_cluster_se')}."
+            f"Positional Brier change (Model B minus Model A): {_fmt(effect.get('mean_brier_difference'), 4)}. "
+            f"Game-cluster SE {_fmt(effect.get('game_cluster_se'), 4)}. "
+            f"Date-cluster SE {_fmt(effect.get('date_cluster_se'), 4)}."
         )
     if report.get("favorite_band"):
-        st.markdown("**Odds from -600 to -200**")
+        st.markdown("#### Odds from -600 to -200")
         st.dataframe(
             pd.DataFrame([
                 {"variant": name, **values}
                 for name, values in (report.get("favorite_band") or {}).items()
             ]),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
     features = ((coverage.get("feature_coverage") or {}).get("features") or {})
     if features:
-        st.markdown("**Advanced-feature coverage**")
+        st.markdown("#### Advanced-feature coverage")
         st.dataframe(
             pd.DataFrame([{"feature": name, **values} for name, values in features.items()]),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
@@ -177,7 +183,7 @@ def _render_interaction_report() -> None:
         return
     report = payload.get("report") or {}
     february = report.get("february") or {}
-    st.markdown("**Opportunity × matchup experiment**")
+    ui.section("Opportunity × matchup experiment")
     st.caption((report.get("production_change") or {}).get("reason") or "")
     st.caption((report.get("coverage") or {}).get("potential_assists") or "")
     rows = []
@@ -191,16 +197,16 @@ def _render_interaction_report() -> None:
             "dates": block.get("n_dates"),
         })
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     effect = february.get("e_minus_a") or {}
     if effect:
         st.write(
-            f"February Model E minus Model A Brier: {effect.get('mean_brier_difference')}. "
-            f"Date-cluster SE {effect.get('date_cluster_se')}."
+            f"February Model E minus Model A Brier: {_fmt(effect.get('mean_brier_difference'), 4)}. "
+            f"Date-cluster SE {_fmt(effect.get('date_cluster_se'), 4)}."
         )
 
 
-def _fmt(value) -> str:
+def _fmt(value, places: int = 3) -> str:
     if value is None:
         return "—"
-    return f"{float(value):.3f}"
+    return f"{float(value):.{places}f}"

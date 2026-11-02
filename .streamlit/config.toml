@@ -1,0 +1,31 @@
+# True Prob AI theme: navy "arena at night", court-orange brand, mint for positive edge.
+[theme]
+base = "dark"
+primaryColor = "#FF7A1A"
+backgroundColor = "#0E1A2B"
+secondaryBackgroundColor = "#14233A"
+textColor = "#EAF0F8"
+linkColor = "#8FB3E8"
+borderColor = "#2A3F5F"
+showWidgetBorder = true
+baseRadius = "8px"
+buttonRadius = "8px"
+font = "Barlow:https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+headingFont = "'Barlow Condensed':https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap"
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+metricValueFontWeight = 600
+greenColor = "#34D399"
+redColor = "#F87171"
+yellowColor = "#FBBF24"
+orangeColor = "#FF7A1A"
+blueColor = "#8FB3E8"
+dataframeHeaderBackgroundColor = "#1B2E4A"
+dataframeBorderColor = "#2A3F5F"
+chartCategoricalColors = ["#34D399", "#8FB3E8", "#FF7A1A", "#FBBF24", "#C4A7F5", "#F87171"]
+
+[theme.sidebar]
+backgroundColor = "#0B1524"
+secondaryBackgroundColor = "#14233A"
+
+[browser]
+gatherUsageStats = false
