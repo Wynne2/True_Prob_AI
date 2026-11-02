@@ -169,6 +169,20 @@ pytest -m "not live"  # offline only (what CI runs); live tests hit today's slat
 pytest --cov          # with coverage
 ```
 
+### CI and merging to `main`
+
+`.github/workflows/tests.yml` runs the offline suite on every pull request and every push to `main`. Once the repo owner applies `.github/rulesets/main.json` (one time, admin only), `main` accepts only PRs whose `pytest` check passed against the latest `main`:
+
+```bash
+# owner, once
+gh api -X POST repos/Wynne2/True_Prob_AI/rulesets --input .github/rulesets/main.json
+gh api -X PATCH repos/Wynne2/True_Prob_AI -F allow_auto_merge=true -F delete_branch_on_merge=true
+
+# everyone, per change
+git switch -c my-change && git push -u origin my-change
+gh pr create --fill && gh pr merge --auto --squash   # merges itself when CI is green
+```
+
 ---
 
 ## Project Structure
