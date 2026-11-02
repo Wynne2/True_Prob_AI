@@ -229,6 +229,27 @@ class OddsLine:
     book_key: str = ""             # raw Odds API bookmaker key (for display when book == OTHER)
 
 
+@dataclass
+class GameLine:
+    """
+    One priced side of a game-level market (moneyline, spread, or total).
+
+    Prediction-market prices are the fee-inclusive cost to buy the side, so
+    *american_odds* is that side's break-even price.
+    """
+    book: BookName
+    game_date: date
+    away_abbr: str
+    home_abbr: str
+    market: str                      # 'moneyline' | 'spread' | 'total'
+    selection: str                   # team abbr for moneyline/spread, 'over'/'under' for totals
+    line: Optional[float]            # spread from *selection*'s perspective, or total points
+    price: float                     # fee-inclusive cost per $1 payout (0-1)
+    american_odds: int
+    event_id: str = ""
+    data_source: DataSource = DataSource.SAMPLE
+
+
 # ---------------------------------------------------------------------------
 # Projection + Probability results
 # ---------------------------------------------------------------------------

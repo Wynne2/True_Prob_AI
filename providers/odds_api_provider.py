@@ -16,59 +16,43 @@ Endpoints used:
 from __future__ import annotations
 
 import logging
-import ssl
 import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-import urllib3
 import requests
-from requests.adapters import HTTPAdapter
-
-# Suppress the InsecureRequestWarning emitted when verify=False is used for
-# the Odds API (see _LaxSSLAdapter docstring for why this is necessary).
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from config import get_odds_api_config
-
-
-class _LaxSSLAdapter(HTTPAdapter):
-    """
-    Custom HTTPAdapter for api.the-odds-api.com.
-
-    Two TLS quirks on this host require a custom adapter:
-      1. The server advertises cipher suites that Python's default SECLEVEL=2
-         blocks. Lowering to SECLEVEL=1 allows the handshake to complete.
-      2. The server's intermediate CA certificate is not in the system or
-         certifi trust stores on some machines, causing chain verification to
-         fail even though the connection is encrypted and the hostname is
-         correct.
-
-    Both issues are resolved by injecting a SECLEVEL=1 SSL context and
-    overriding urllib3's certificate check in send().
-
-    Note: the connection is still TLS-encrypted — only chain verification is
-    bypassed.  This is acceptable for a research/data-analysis tool.
-    """
-
-    def init_poolmanager(self, *args, **kwargs):
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.set_ciphers("DEFAULT@SECLEVEL=1")
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        kwargs["ssl_context"] = ctx
-        super().init_poolmanager(*args, **kwargs)
-
-    def send(self, *args, **kwargs):
-        # Force urllib3 to skip certificate verification for this host
-        kwargs["verify"] = False
-        return super().send(*args, **kwargs)
 from domain.constants import PROP_ALIAS_MAP
 from domain.entities import Game, OddsLine, Player, TeamDefense
 from domain.enums import BookName, DataSource, PropType
 from providers.base_provider import BaseProvider
+from utils.api_debug import redact_sensitive_text
+from utils.names import player_key
 
 logger = logging.getLogger(__name__)
+
+
+class _RedactSensitiveQueryFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        redacted = redact_sensitive_text(message)
+        if redacted != message:
+            record.msg = redacted
+            record.args = ()
+        if record.exc_info:
+            exception_text = logging.Formatter().formatException(record.exc_info)
+            redacted_exception = redact_sensitive_text(exception_text)
+            if redacted_exception != exception_text:
+                record.exc_text = redacted_exception
+        return True
+
+
+_redaction_filter_name = "nba_prop_api_key_redactor"
+for _logger_name in ("urllib3.connectionpool", "urllib3.connection", "urllib3.util.retry"):
+    _urllib3_logger = logging.getLogger(_logger_name)
+    if not any(getattr(item, "name", None) == _redaction_filter_name for item in _urllib3_logger.filters):
+        _urllib3_logger.addFilter(_RedactSensitiveQueryFilter(_redaction_filter_name))
 
 # Map Odds API bookmaker keys to internal BookName enum.
 # Keys: https://the-odds-api.com/sports-odds-data/bookmaker-apis.html
@@ -128,13 +112,9 @@ class OddsAPIProvider(BaseProvider):
     def __init__(self, api_key: str) -> None:
         self._key = api_key
         self._cfg = get_odds_api_config()
-        # Use a persistent session with a custom SSL adapter to work around
-        # the TLS handshake failure on api.the-odds-api.com, which requires
-        # SECLEVEL=1 cipher negotiation (Python default is SECLEVEL=2).
         self._session = requests.Session()
-        adapter = _LaxSSLAdapter()
-        self._session.mount("https://", adapter)
         self.last_quota: dict[str, str] = {}
+        self.last_errors: list[str] = []
 
     def is_available(self) -> bool:
         return bool(self._key)
@@ -164,19 +144,21 @@ class OddsAPIProvider(BaseProvider):
                     try:
                         body = resp.json()
                         detail = body.get("message") or body.get("error") or resp.text[:200]
-                    except Exception:
+                    except (AttributeError, ValueError):
                         detail = resp.text[:200]
                     logger.error(
                         "The Odds API: 401 Unauthorized — %s "
                         "(check https://the-odds-api.com/account to verify key & remaining credits)",
-                        detail,
+                        redact_sensitive_text(str(detail), (self._key,)),
                     )
+                    self.last_errors.append("The Odds API: 401 Unauthorized")
                     return None
                 if resp.status_code == 402:
                     logger.error(
                         "The Odds API: 402 Payment Required — monthly credits exhausted. "
                         "Upgrade your plan or wait for the next billing cycle."
                     )
+                    self.last_errors.append("The Odds API: 402 credits exhausted")
                     return None
                 if resp.status_code == 429:
                     logger.warning("The Odds API: rate limit exceeded (too many requests per minute)")
@@ -196,15 +178,17 @@ class OddsAPIProvider(BaseProvider):
                     )
                 return resp.json()
             except requests.RequestException as exc:
+                safe_error = redact_sensitive_text(str(exc), (self._key,))
                 if attempt < max_attempts - 1:
                     wait = 1.5 * (2 ** attempt)
                     logger.warning(
                         "The Odds API: request failed (%s) — retry in %.1fs (%d/%d)",
-                        exc, wait, attempt + 1, max_attempts,
+                        safe_error, wait, attempt + 1, max_attempts,
                     )
                     time.sleep(wait)
                     continue
-                logger.error("The Odds API request error: %s", exc)
+                logger.error("The Odds API request error: %s", safe_error)
+                self.last_errors.append(f"The Odds API: {safe_error[:200]}")
                 return None
         return None
 
@@ -291,6 +275,7 @@ class OddsAPIProvider(BaseProvider):
 
         For each event, fetches player_points, player_rebounds, etc.
         """
+        self.last_errors = []
         events = self._get_events(game_date)
         all_lines: list[OddsLine] = []
 
@@ -350,7 +335,7 @@ class OddsAPIProvider(BaseProvider):
                                 continue
                             line = OddsLine(
                                 book=book,
-                                player_id=player_name.lower().replace(" ", "_"),
+                                player_id=player_key(player_name),
                                 player_name=player_name,
                                 prop_type=prop_type,
                                 line=float(odds["point"]),

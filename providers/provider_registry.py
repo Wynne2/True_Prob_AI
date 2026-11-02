@@ -10,8 +10,10 @@ source-of-truth assignments from the architecture spec:
   Player-prop modeling data:
       BALLDONTLIE (stats, injuries, pace, tracking)
 
-  Odds / implied probability:
-      The Odds API (ONLY source for sportsbook pricing)
+  Odds / implied probability (merged across every source):
+      Kalshi       (public, keyless prediction market)
+      Polymarket   (public, keyless prediction market)
+      The Odds API (sportsbooks, when THE_ODDS_API_KEY is set)
 
   Cache fallback:
       Derived cache -> graceful empty if all live sources fail
@@ -34,11 +36,12 @@ Usage:
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import Optional
 
-from config import get_credentials
-from domain.entities import Game, OddsLine, Player, TeamDefense
+from config import get_credentials, get_prediction_market_config
+from domain.entities import Game, GameLine, OddsLine, Player, TeamDefense
 from domain.enums import DataSource, PropType
 from providers.base_provider import BaseProvider
 
@@ -88,8 +91,24 @@ def _build_providers() -> dict[str, list[BaseProvider]]:
         logger.warning("Failed to load stats facade: %s", exc)
 
     # ------------------------------------------------------------------
-    # ODDS: The Odds API ONLY
+    # ODDS: Kalshi + Polymarket (keyless) + The Odds API (keyed) — merged
     # ------------------------------------------------------------------
+    pm_cfg = get_prediction_market_config()
+    if pm_cfg.kalshi_enabled:
+        try:
+            from providers.kalshi_provider import KalshiProvider
+            groups["odds"].append(KalshiProvider())
+            logger.info("Kalshi provider registered (public NBA props + game lines)")
+        except Exception as exc:
+            logger.warning("Failed to load Kalshi provider: %s", exc)
+    if pm_cfg.polymarket_enabled:
+        try:
+            from providers.polymarket_provider import PolymarketProvider
+            groups["odds"].append(PolymarketProvider())
+            logger.info("Polymarket provider registered (public NBA props + game lines)")
+        except Exception as exc:
+            logger.warning("Failed to load Polymarket provider: %s", exc)
+
     if creds.odds_api_key:
         try:
             from providers.odds_api_provider import OddsAPIProvider
@@ -101,8 +120,8 @@ def _build_providers() -> dict[str, list[BaseProvider]]:
             logger.warning("Failed to load Odds API provider: %s", exc)
     else:
         logger.warning(
-            "No THE_ODDS_API_KEY found - prop odds will be unavailable. "
-            "Add your key to .env to enable sportsbook data."
+            "No THE_ODDS_API_KEY found - sportsbook odds unavailable "
+            "(Kalshi/Polymarket prediction-market odds still load)."
         )
 
     # ------------------------------------------------------------------
@@ -127,14 +146,19 @@ class ProviderRegistry:
     that returns a non-empty result wins.  If every provider fails or
     returns empty, an empty list / None is returned and a warning is logged.
 
+    Odds are the exception: every odds provider is queried and the results
+    are merged, so each exchange/sportsbook contributes its own book.
+
     Provider assignments (per architecture spec):
-      Slate:     Sportradar -> SportsDataIO
-      Modeling:  nba_api + SportsDataIO (complementary, not exclusive)
-      Odds:      The Odds API only
+      Slate:     BALLDONTLIE
+      Modeling:  BALLDONTLIE
+      Odds:      Kalshi + Polymarket + The Odds API (merged)
     """
 
     def __init__(self, groups: dict[str, list[BaseProvider]]) -> None:
         self._groups = groups
+        self.last_odds_counts: dict[str, int] = {}
+        self.last_odds_errors: dict[str, str] = {}
 
     @classmethod
     def build(cls) -> "ProviderRegistry":
@@ -162,6 +186,42 @@ class ProviderRegistry:
                 logger.warning("%s failed on %s: %s", method_name, provider.source_name, exc)
         logger.warning("%s [%s]: all providers returned empty or failed", method_name, group)
         return []
+
+    def _merge_list(self, group: str, method_name: str, *args, **kwargs) -> list:
+        """Call *method_name* on every provider in *group* in parallel and concatenate results."""
+        providers = [p for p in self._groups.get(group, []) if hasattr(p, method_name)]
+        counts: dict[str, int] = {}
+        errors: dict[str, str] = {}
+
+        def call(provider: BaseProvider):
+            try:
+                return provider, getattr(provider, method_name)(*args, **kwargs) or [], None
+            except NotImplementedError:
+                return provider, [], None
+            except Exception as exc:
+                return provider, [], exc
+
+        merged: list = []
+        if not providers:
+            logger.warning("%s [%s]: no providers registered", method_name, group)
+        else:
+            with ThreadPoolExecutor(max_workers=len(providers)) as pool:
+                outcomes = list(pool.map(call, providers))
+            for provider, result, exc in outcomes:
+                name = provider.source_name.value
+                if exc is not None:
+                    logger.warning("%s failed on %s: %s", method_name, name, exc)
+                    errors[name] = str(exc)
+                elif not result and getattr(provider, "last_errors", None):
+                    errors[name] = "; ".join(provider.last_errors[:2])
+                counts[name] = len(result)
+                merged.extend(result)
+            if not merged:
+                logger.warning("%s [%s]: all providers returned empty or failed", method_name, group)
+        if method_name == "get_player_props":
+            self.last_odds_counts = counts
+            self.last_odds_errors = errors
+        return merged
 
     def _try_optional(self, group: str, method_name: str, *args, **kwargs):
         """Call *method_name* on each provider in *group*, return first non-None result."""
@@ -266,19 +326,24 @@ class ProviderRegistry:
         return self._try_list("modeling", "get_depth_charts", team_id)
 
     # ------------------------------------------------------------------
-    # Odds / props  (SOURCE: The Odds API ONLY)
+    # Odds / props  (SOURCE: Kalshi + Polymarket + The Odds API, merged)
     # ------------------------------------------------------------------
 
     def get_player_props(self, game_date: date) -> list[OddsLine]:
         """
-        Return all player prop lines for *game_date*.
+        Return all player prop lines for *game_date* from every odds source.
 
-        SOURCE: The Odds API (ONLY source for sportsbook pricing).
+        Per-source counts and errors are kept on ``last_odds_counts`` /
+        ``last_odds_errors`` for the UI.
         """
-        return self._try_list("odds", "get_player_props", game_date)
+        return self._merge_list("odds", "get_player_props", game_date)
 
     def get_live_odds(self, game_date: date) -> list[OddsLine]:
-        return self._try_list("odds", "get_live_odds", game_date)
+        return self._merge_list("odds", "get_live_odds", game_date)
+
+    def get_game_lines(self, game_date: date) -> list[GameLine]:
+        """Moneyline / spread / total sides for *game_date* from prediction markets."""
+        return self._merge_list("odds", "get_game_lines", game_date)
 
     def get_historical_odds(
         self, prop_type: PropType, days_back: int = 7
@@ -311,18 +376,18 @@ class ProviderRegistry:
     def summary(self) -> str:
         lines = [
             "Provider Registry",
-            "  Slate  (Sportradar -> SportsDataIO fallback):",
+            "  Slate  (BALLDONTLIE):",
         ]
         for p in self._groups.get("slate", []):
             status = "live" if p.is_available() else "unavailable"
             lines.append(f"    - {p.__class__.__name__} [{status}]")
 
-        lines.append("  Modeling (nba_api + SportsDataIO):")
+        lines.append("  Modeling (BALLDONTLIE):")
         for p in self._groups.get("modeling", []):
             status = "live" if p.is_available() else "unavailable"
             lines.append(f"    - {p.__class__.__name__} [{status}]")
 
-        lines.append("  Odds (The Odds API only):")
+        lines.append("  Odds (Kalshi + Polymarket + The Odds API, merged):")
         for p in self._groups.get("odds", []):
             status = "live" if p.is_available() else "unavailable"
             lines.append(f"    - {p.__class__.__name__} [{status}]")

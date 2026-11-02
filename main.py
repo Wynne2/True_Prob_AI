@@ -110,7 +110,56 @@ def install_api_debug_logger() -> None:
 # Argument parsing
 # ---------------------------------------------------------------------------
 
-def parse_args() -> argparse.Namespace:
+def build_advisor_parser() -> argparse.ArgumentParser:
+    """Dedicated parser for `python main.py advisor ...` (its own defaults and --help)."""
+    parser = argparse.ArgumentParser(
+        prog="main.py advisor",
+        description=(
+            "AI Advisor: run the model, keep positive-edge props priced inside the odds band "
+            "(Kalshi / Polymarket lines), build correlation-checked 2- and 3-leg parlays in Python, "
+            "then ask OpenAI to reason over the top picks. All math is done in Python."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py advisor
+  python main.py advisor --stake 100 --top 5
+  python main.py advisor --date 2026-11-02 --no-llm
+  python main.py advisor --min-odds -400 --max-odds -150 --prompt "Only 2-leg parlays please"
+
+Requires OPENAI_API_KEY in .env unless --no-llm is used.
+        """,
+    )
+    parser.add_argument("--date", help="Game date YYYY-MM-DD, or 'today' (default: today, US/Eastern)")
+    parser.add_argument("--min-odds", type=int, default=-600, help="Most negative leg odds allowed (default -600, inclusive)")
+    parser.add_argument("--max-odds", type=int, default=-200, help="Least negative leg odds allowed (default -200, inclusive)")
+    parser.add_argument("--min-edge", type=float, default=0.0,
+                        help="Edge must be strictly greater than this (default 0.0 = positive edge)")
+    parser.add_argument("--top", type=int, default=5, help="Number of picks to keep (default 5)")
+    parser.add_argument("--stake", type=float, default=100.0, help="Stake in $ for payout math (default 100)")
+    parser.add_argument("--min-confidence", choices=["high", "medium", "low", "very_low"],
+                        help="Minimum confidence tier per pick")
+    prompt = parser.add_mutually_exclusive_group()
+    prompt.add_argument("--prompt", help="Custom question for the AI (default: the standard top-5 / parlay question)")
+    prompt.add_argument("--prompt-file", help="Read the custom question from a text file")
+    parser.add_argument("--no-llm", action="store_true",
+                        help="Skip OpenAI; print the deterministic recommendation only")
+    parser.add_argument("--playoff", action="store_true", help="Treat slate as NBA playoffs")
+    parser.add_argument("--no-save", action="store_true", help="Do not write data/advisor/*.json|.md")
+    parser.add_argument("--verbose", action="store_true", help="Verbose logging")
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "advisor" in argv:
+        idx = argv.index("advisor")
+        if idx == 0 or argv[idx - 1] not in ("--prompt", "--prompt-file", "--date"):
+            args = build_advisor_parser().parse_args(argv[:idx] + argv[idx + 1:])
+            args.command = "advisor"
+            args.debug_api = False
+            return args
+
     parser = argparse.ArgumentParser(
         description="NBA Prop AI – True Probability Parlay Builder",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -120,13 +169,14 @@ Examples:
   python main.py --min-edge 0.07 --max-legs 2 --stake 200
   python main.py --date 2025-04-14 --prop-types points assists
   python main.py --min-odds -150 --max-parlay-odds +500 --top 20
+  python main.py advisor --stake 100        (AI Advisor; see `python main.py advisor --help`)
         """,
     )
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["scan", "backtest"],
-        help="Daily scan, or `backtest` for a one-game historical sample.",
+        choices=["scan", "backtest", "advisor"],
+        help="Daily scan, `backtest` for a one-game historical sample, or `advisor` for the AI Advisor.",
     )
     parser.add_argument("--date", help="Game date YYYY-MM-DD, or 'today'")
     parser.add_argument("--min-edge", type=float, default=0.05, help="Min edge per leg (default 0.05 = 5%%)")
@@ -181,7 +231,7 @@ Examples:
         choices=["interaction"],
         help="Fit the opportunity-matchup interaction on January and validate it on February. March is not opened.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 # ---------------------------------------------------------------------------
@@ -313,6 +363,63 @@ def print_parlays(parlays: list, top_n: int = 10) -> None:
 
 
 # ---------------------------------------------------------------------------
+# AI Advisor
+# ---------------------------------------------------------------------------
+
+def run_advisor_command(args: argparse.Namespace, game_date: date) -> None:
+    """`python main.py advisor` — deterministic picks/parlays + OpenAI reasoning."""
+    from pathlib import Path
+
+    from config import get_openai_config
+    from engine.advisor.report import render_console
+    from engine.advisor.run import AdvisorOptions, run_advisor
+
+    prompt = args.prompt
+    if args.prompt_file:
+        try:
+            prompt = Path(args.prompt_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            console.print(f"[red]Could not read --prompt-file:[/red] {exc}")
+            sys.exit(1)
+    if args.top < 1 or args.stake <= 0:
+        console.print("[red]--top must be ≥ 1 and --stake must be > 0.[/red]")
+        sys.exit(1)
+
+    cfg = get_openai_config()
+    if not args.no_llm and not cfg.is_configured:
+        console.print(
+            "[yellow]OPENAI_API_KEY is not set — the AI reasoning step will be skipped and the "
+            "deterministic recommendation shown instead. Add it to .env or pass --no-llm.[/yellow]"
+        )
+
+    print_header(game_date)
+    console.print(
+        "[cyan]Scanning slate (odds from Kalshi / Polymarket; pregame games only)...[/cyan]"
+    )
+    options = AdvisorOptions(
+        min_odds=args.min_odds,
+        max_odds=args.max_odds,
+        min_edge=args.min_edge,
+        top_n=args.top,
+        stake=args.stake,
+        min_confidence=args.min_confidence,
+        prompt=prompt,
+        use_llm=not args.no_llm,
+        save=not args.no_save,
+        is_playoff=args.playoff,
+    )
+    if options.use_llm and cfg.is_configured:
+        console.print(f"[dim]AI model: {cfg.model} (reasoning effort {cfg.reasoning_effort})[/dim]")
+    result = run_advisor(game_date, options)
+    if result.pregame_games == 0:
+        console.print(
+            f"[yellow]No pregame games on {game_date} (all started/final or none scheduled). "
+            "Try --date with the next game day.[/yellow]"
+        )
+    render_console(result, console)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -340,6 +447,10 @@ def main() -> None:
             f"[yellow]Future date selected ({game_date}).[/yellow] "
             f"Data may be incomplete or unavailable for upcoming games."
         )
+
+    if args.command == "advisor":
+        run_advisor_command(args, game_date)
+        return
 
     if args.command == "backtest" and getattr(args, "experiment", None) == "interaction":
         from engine.backtest.experiment import estimate_february_cost, run_interaction_experiment
@@ -439,6 +550,16 @@ def main() -> None:
     console.print(f"\n[cyan]Scanning NBA slate for {game_date}...[/cyan]")
     scanner = SlateScanner()
     all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    if scanner.last_odds_source_counts or scanner.last_odds_source_errors:
+        parts = [
+            f"{name}={count}" for name, count in sorted(scanner.last_odds_source_counts.items())
+        ]
+        console.print(
+            f"[dim]Prop lines by source: {', '.join(parts) or 'none'}; "
+            f"game-line sides: {len(scanner.last_game_lines)}[/dim]"
+        )
+        for name, err in sorted(scanner.last_odds_source_errors.items()):
+            console.print(f"[yellow]{name} odds error: {err}[/yellow]")
     n = len(all_props)
     console.print(
         f"[green]Evaluated {n} prop line{'s' if n != 1 else ''}.[/green]"

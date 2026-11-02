@@ -252,7 +252,73 @@ def render_games_slate(games: list) -> None:
 
             st.markdown(f"**{matchup}**")
             st.caption(f"🕐 {tip_str}" + (f"  |  📍 {venue_str}" if venue_str else ""))
+            if game.game_total or game.home_spread:
+                spread = f"{game.home_team_abbr} {game.home_spread:+g}" if game.home_spread else "PK"
+                st.caption(
+                    f"📈 Total {game.game_total:g} · Spread {spread}"
+                    + (
+                        f" · Implied {game.away_team_abbr} {game.away_implied_total:g}"
+                        f" / {game.home_team_abbr} {game.home_implied_total:g}"
+                        if game.home_implied_total else ""
+                    )
+                )
     st.divider()
+
+
+_SOURCE_LABELS = {"kalshi": "Kalshi", "polymarket": "Polymarket", "odds_api": "The Odds API"}
+
+
+def render_odds_sources(counts: dict, errors: dict) -> None:
+    """Show how many prop lines each odds source contributed this scan."""
+    if not counts and not errors:
+        return
+    names = sorted(set(counts) | set(errors))
+    cols = st.columns(len(names))
+    for col, name in zip(cols, names):
+        with col:
+            st.metric(f"{_SOURCE_LABELS.get(name, name)} prop lines", counts.get(name, 0))
+            if errors.get(name):
+                st.caption(f"⚠️ {errors[name][:120]}")
+
+
+def render_game_lines(game_lines: list) -> None:
+    """Moneyline / spread / total sides from the prediction markets."""
+    if not game_lines:
+        st.info("No prediction-market game lines for this date.")
+        return
+    from odds.game_lines import consensus_game_lines
+
+    consensus = consensus_game_lines(game_lines)
+    if consensus:
+        st.markdown("**Consensus main lines** (strike nearest 50/50, median across exchanges)")
+        st.dataframe(
+            pd.DataFrame([
+                {
+                    "Matchup": f"{away} @ {home}",
+                    "Total": entry.get("total"),
+                    "Home spread": entry.get("home_spread"),
+                }
+                for (away, home), entry in sorted(consensus.items())
+            ]),
+            width="stretch",
+            hide_index=True,
+        )
+
+    st.markdown("**All priced sides** (fee-inclusive cost → American odds)")
+    rows = [
+        {
+            "Matchup": f"{gl.away_abbr} @ {gl.home_abbr}",
+            "Book": book_display_name(gl.book),
+            "Market": gl.market,
+            "Selection": gl.selection.upper(),
+            "Line": gl.line,
+            "Cost": round(gl.price, 3),
+            "Odds": format_american(gl.american_odds),
+        }
+        for gl in game_lines
+    ]
+    df = pd.DataFrame(rows).sort_values(["Matchup", "Market", "Selection", "Line", "Book"])
+    st.dataframe(df, width="stretch", hide_index=True)
 
 
 def render_props_table(props: list) -> None:
@@ -576,8 +642,9 @@ def render_line_shopping(props: list) -> None:
     for (player, prop_type, line), book_lines in lines_by_player_prop.items():
         row = {"Player": player, "Prop": prop_type, "Line": line}
         for ol in book_lines:
-            row[f"{ol.book.value}_over"] = format_american(ol.over_odds)
-            row[f"{ol.book.value}_under"] = format_american(ol.under_odds)
+            label = book_display_name(ol.book, getattr(ol, "book_key", "") or "")
+            row[f"{label} Over"] = format_american(ol.over_odds)
+            row[f"{label} Under"] = format_american(ol.under_odds)
         rows.append(row)
 
     if rows:
@@ -603,17 +670,18 @@ def render_api_debug_tab(game_date: date) -> None:
     if not creds.available_providers:
         st.warning(
             "No live API providers are configured. "
-            "Add your `BALLDONTLIE_API_KEY` to `.env` to enable data fetching."
+            "Add your `BALLDONTLIE_API_KEY` to `.env`, or enable Kalshi/Polymarket "
+            "(`KALSHI_ENABLED` / `POLYMARKET_ENABLED`)."
         )
         return
 
     st.markdown("**Active providers:** " + "  •  ".join(f"`{p}`" for p in creds.available_providers))
-    st.markdown("**Endpoints probed:** games for date, player props / odds")
+    st.markdown("**Endpoints probed:** games for date, player props / odds, game lines")
     st.divider()
 
     if st.button("▶ Run API Diagnostics", type="primary", key="run_debug"):
         # Reset registry AND bypass disk cache so we always see live HTTP calls.
-        from data.loaders import reset_registry, load_games, load_odds
+        from data.loaders import reset_registry, load_games, load_game_lines, load_odds
         reset_registry()
 
         # Temporarily disable disk cache so SportsDataIO / Sportradar don't
@@ -630,6 +698,10 @@ def render_api_debug_tab(game_date: date) -> None:
                     pass
                 try:
                     load_odds(game_date)
+                except Exception:
+                    pass
+                try:
+                    load_game_lines(game_date)
                 except Exception:
                     pass
 
@@ -706,6 +778,129 @@ def render_api_debug_tab(game_date: date) -> None:
 # App main
 # ---------------------------------------------------------------------------
 
+def render_ai_advisor_tab(all_props: list, params: dict) -> None:
+    """🤖 AI Advisor — deterministic picks/parlays + OpenAI reasoning over the scanned props."""
+    from config import get_openai_config
+    from engine.advisor.report import to_markdown
+    from engine.advisor.run import AI_OK, AdvisorOptions, run_advisor
+    from engine.advisor.prompts import default_user_prompt
+
+    st.subheader("🤖 AI Advisor")
+    st.caption(
+        "Python filters the scanned props (positive edge, odds band), computes every payout and EV, "
+        "then OpenAI reasons over the top picks by ID only. Odds come from Kalshi / Polymarket."
+    )
+    cfg = get_openai_config()
+    if not cfg.is_configured:
+        st.warning(
+            "OPENAI_API_KEY is not set in `.env`. The advisor will still run, but only the "
+            "deterministic recommendation is shown (no AI reasoning)."
+        )
+    else:
+        st.caption(f"Model: `{cfg.model}` · reasoning effort `{cfg.reasoning_effort}`")
+
+    if not all_props:
+        st.info("Click 'Scan & Build' in the sidebar first; the advisor reuses that scan.")
+        return
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    stake = c1.number_input("Stake ($)", min_value=1.0, value=100.0, step=10.0, key="adv_stake")
+    min_odds = c2.number_input("Min odds", value=-600, step=10, key="adv_min_odds")
+    max_odds = c3.number_input("Max odds", value=-200, step=10, key="adv_max_odds")
+    min_edge_pct = c4.number_input("Edge > (%)", value=0.0, step=0.5, key="adv_min_edge")
+    top_n = c5.number_input("Top N", min_value=1, max_value=10, value=5, step=1, key="adv_top")
+    min_conf = st.selectbox(
+        "Minimum confidence", ["(none)", "very_low", "low", "medium", "high"], key="adv_min_conf"
+    )
+    prompt = st.text_area(
+        "Question for the AI",
+        value=default_user_prompt(min_odds=int(min_odds), max_odds=int(max_odds), top_n=int(top_n), stake=stake),
+        height=100,
+        key="adv_prompt",
+    )
+    use_llm = st.checkbox("Use OpenAI reasoning", value=cfg.is_configured, key="adv_use_llm")
+
+    if st.button("Run AI Advisor", type="primary", key="adv_run"):
+        options = AdvisorOptions(
+            min_odds=int(min_odds),
+            max_odds=int(max_odds),
+            min_edge=float(min_edge_pct) / 100.0,
+            top_n=int(top_n),
+            stake=float(stake),
+            min_confidence=None if min_conf == "(none)" else min_conf,
+            prompt=prompt,
+            use_llm=use_llm,
+        )
+        counts = (st.session_state.get("odds_source_counts") or ({}, {}))[0]
+        with st.spinner("Running AI Advisor..."):
+            st.session_state.advisor_result = run_advisor(
+                params["date"], options, props=all_props, odds_source_counts=counts
+            )
+
+    result = st.session_state.get("advisor_result")
+    if result is None:
+        return
+    if result.game_date != params["date"]:
+        st.caption(f"Showing the last advisor run for {result.game_date}.")
+
+    s = result.stats
+    st.markdown(
+        f"**Filter funnel:** {s.total_props} props → {s.positive_edge} positive edge → "
+        f"{s.in_odds_band} in odds band → {s.confidence_ok} after confidence → "
+        f"{s.deduped} unique → **{s.selected} selected**"
+    )
+    if not result.picks:
+        st.warning("No props qualified with these settings, so the AI was not called.")
+        return
+
+    st.dataframe(pd.DataFrame([{
+        "ID": r.id,
+        "Player": r.prop.player_name,
+        "Prop": f"{r.prop.prop_type.value.upper()} {r.prop.side.value} {r.prop.line:g}",
+        "Odds": format_american(r.prop.sportsbook_odds),
+        "Venue": book_display_name(r.prop.best_book, getattr(r.prop, "best_book_key", "") or ""),
+        "True": format_prob(r.prop.true_probability),
+        "Implied": format_prob(r.prop.implied_probability),
+        "Edge": format_edge(r.prop.edge),
+        "Conf": r.prop.confidence.value,
+        f"Return on {format_currency(result.options.stake)}": format_currency(r.total_return),
+        "EV": f"{r.expected_value:+.2f}",
+    } for r in result.picks]), width="stretch", hide_index=True)
+
+    if result.parlays:
+        st.dataframe(pd.DataFrame([{
+            "ID": p.id,
+            "Legs": " + ".join(f"{i} {result.pick_by_id[i].prop.player_name}" for i in p.leg_ids),
+            "Odds": format_american(p.combined_american_odds),
+            "Implied": format_prob(p.implied_probability),
+            "Model true": format_prob(p.true_probability),
+            "Edge": format_edge(p.edge),
+            "Return": format_currency(p.total_return),
+            "Profit": format_currency(p.profit),
+            "EV": f"{p.expected_value:+.2f}",
+            "Venue": "single" if p.single_venue else "mixed",
+        } for p in result.parlays[:10]]), width="stretch", hide_index=True)
+
+    if result.ai_status == AI_OK:
+        meta = result.llm_meta
+        usage = meta.get("usage") or {}
+        st.success(
+            f"AI reasoning by {meta.get('model')} · {meta.get('latency_s', 0):.1f}s · "
+            f"tokens in/out {usage.get('input_tokens', 0)}/{usage.get('output_tokens', 0)}"
+        )
+    elif result.ai_error:
+        reason = result.ai_error.rstrip(". ")
+        st.error(f"AI layer failed: {reason}. Showing the deterministic recommendation.")
+
+    md = to_markdown(result)
+    section = md.split("## AI reasoning", 1)[-1] if "## AI reasoning" in md else md.split(
+        "## Deterministic recommendation", 1)[-1]
+    # Streamlit renders $...$ as LaTeX; escape currency signs.
+    st.markdown(section.replace("$", "\\$"))
+    if result.json_path:
+        st.caption(f"Saved: `{result.json_path}` and `{result.md_path}`")
+
+
 def main() -> None:
     params = render_sidebar()
 
@@ -728,20 +923,32 @@ def main() -> None:
         st.session_state.debug_responses = None
     if "debug_date" not in st.session_state:
         st.session_state.debug_date = None
+    if "game_lines" not in st.session_state:
+        st.session_state.game_lines = []
+    if "odds_source_counts" not in st.session_state:
+        st.session_state.odds_source_counts = ({}, {})
 
     if params["run"]:
-        with st.spinner("Scanning slate and evaluating props..."):
+        with st.spinner("Scanning slate and pulling Kalshi / Polymarket / sportsbook odds..."):
             from data.loaders import load_games, reset_registry
+            from odds.game_lines import apply_game_lines
             reset_registry()
             games = load_games(params["date"])
-            st.session_state.games = games
             scanner = SlateScanner()
             all_props = scanner.scan(
                 params["date"],
                 prop_types=params["prop_types"],
                 is_playoff=params.get("is_playoff", False),
             )
+            if games and scanner.last_game_lines:
+                apply_game_lines(games, scanner.last_game_lines)
+            st.session_state.games = games
             st.session_state.all_props = all_props
+            st.session_state.game_lines = scanner.last_game_lines
+            st.session_state.odds_source_counts = (
+                scanner.last_odds_source_counts,
+                scanner.last_odds_source_errors,
+            )
 
         if not all_props:
             if params["date"] > today_eastern():
@@ -785,12 +992,13 @@ def main() -> None:
     # Games slate (shown whenever games are available)
     if st.session_state.games:
         render_games_slate(st.session_state.games)
+    render_odds_sources(*st.session_state.odds_source_counts)
 
     # Tab layout
-    tab_straight, tab_parlays, tab_props, tab_lines, tab_debug, tab_backtest = st.tabs([
+    tab_straight, tab_parlays, tab_props, tab_lines, tab_game_lines, tab_advisor, tab_debug, tab_backtest = st.tabs([
         "🎲 Straight Bets", "🎯 Parlays", "📊 Props Analysis", "🛒 Line Shopping",
-        "🔬 API Debug", "📏 Backtesting",
-    ])
+        "🏟️ Game Lines", "🤖 AI Advisor", "🔬 API Debug", "📏 Backtesting",
+    ], key="main_tabs")
 
     all_props = st.session_state.all_props
     parlays = st.session_state.parlays
@@ -828,6 +1036,15 @@ def main() -> None:
             render_line_shopping(qualifying[:50])
         else:
             st.info("Run the scan to see line shopping data.")
+
+    with tab_game_lines:
+        if params["run"] or st.session_state.game_lines:
+            render_game_lines(st.session_state.game_lines)
+        else:
+            st.info("Run the scan to see Kalshi / Polymarket game lines.")
+
+    with tab_advisor:
+        render_ai_advisor_tab(all_props, params)
 
     with tab_debug:
         render_api_debug_tab(params["date"])

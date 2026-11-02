@@ -10,6 +10,10 @@ Active provider credentials (as of re-architecture):
   - SPORTRADAR_API_KEY    →  game slate (primary)
   - THE_ODDS_API_KEY      →  sportsbook odds, prop lines, implied probability
 
+Keyless public sources (enabled by default):
+  - Kalshi        →  NBA player props + game lines (public market data API)
+  - Polymarket    →  NBA player props + game lines (public Gamma API)
+  Disable with KALSHI_ENABLED=false / POLYMARKET_ENABLED=false.
 NBA.com / nba_api is no longer the stats source.
 
 Retired provider credentials (no longer used in the engine):
@@ -34,6 +38,13 @@ load_dotenv(dotenv_path=_ENV_PATH, override=False)
 
 def _key(name: str) -> str | None:
     return os.environ.get(name) or None
+
+
+def _flag(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +80,11 @@ class ProviderCredentials:
             providers.append("balldontlie")
         if self.odds_api_key:
             providers.append("odds_api")
+        pm = get_prediction_market_config()
+        if pm.kalshi_enabled:
+            providers.append("kalshi")
+        if pm.polymarket_enabled:
+            providers.append("polymarket")
         return providers
 
     @property
@@ -129,6 +145,75 @@ class OddsAPIConfig:
     )
     odds_format: str = "american"
     timeout: int = 20
+
+
+# ---------------------------------------------------------------------------
+# Prediction markets (Kalshi / Polymarket) — public, no API key
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class PredictionMarketConfig:
+    kalshi_enabled: bool = field(default_factory=lambda: _flag("KALSHI_ENABLED"))
+    polymarket_enabled: bool = field(default_factory=lambda: _flag("POLYMARKET_ENABLED"))
+    kalshi_base_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "KALSHI_BASE_URL", "https://api.elections.kalshi.com/trade-api/v2"
+        )
+    )
+    polymarket_base_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "POLYMARKET_BASE_URL", "https://gamma-api.polymarket.com"
+        )
+    )
+    # Polymarket Gamma series id for NBA (from GET /sports).
+    polymarket_nba_series_id: str = field(
+        default_factory=lambda: os.environ.get("POLYMARKET_NBA_SERIES_ID", "10345")
+    )
+    timeout: int = field(default_factory=lambda: int(os.environ.get("PREDICTION_MARKET_TIMEOUT", "20")))
+    # Skip books whose Yes ask + No ask exceeds $1 by more than this (stale/empty books).
+    max_spread: float = field(
+        default_factory=lambda: float(os.environ.get("PREDICTION_MARKET_MAX_SPREAD", "0.15"))
+    )
+    # Ignore asks outside this band (near-certain / lottery-ticket quotes).
+    min_price: float = field(
+        default_factory=lambda: float(os.environ.get("PREDICTION_MARKET_MIN_PRICE", "0.02"))
+    )
+    max_price: float = field(
+        default_factory=lambda: float(os.environ.get("PREDICTION_MARKET_MAX_PRICE", "0.98"))
+    )
+    kalshi_fee_rate: float = field(
+        default_factory=lambda: float(os.environ.get("KALSHI_FEE_RATE", "0.07"))
+    )
+
+
+# ---------------------------------------------------------------------------
+# OpenAI (AI Advisor reasoning layer — optional; only `main.py advisor` needs it)
+# ---------------------------------------------------------------------------
+
+def _int_env(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, "") or default)
+    except ValueError:
+        return default
+
+
+@dataclass(frozen=True)
+class OpenAIConfig:
+    """Settings for the AI Advisor. The key is only required when the LLM layer runs."""
+    api_key: str | None = field(default_factory=lambda: _key("OPENAI_API_KEY"))
+    model: str = field(default_factory=lambda: (os.environ.get("OPENAI_MODEL") or "gpt-6.1-sol").strip())
+    reasoning_effort: str = field(
+        default_factory=lambda: (os.environ.get("OPENAI_REASONING_EFFORT") or "medium").strip().lower()
+    )
+    timeout: int = field(default_factory=lambda: _int_env("OPENAI_TIMEOUT", 120))
+    max_output_tokens: int = field(default_factory=lambda: _int_env("OPENAI_MAX_OUTPUT_TOKENS", 8000))
+    base_url: str = field(
+        default_factory=lambda: (os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+    )
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.api_key)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +284,22 @@ _sr_config: SportradarConfig | None = None
 _odds_config: OddsAPIConfig | None = None
 _nba_config: NBAApiConfig | None = None
 _bdl_config: BallDontLieConfig | None = None
+_pm_config: PredictionMarketConfig | None = None
+_openai_config: OpenAIConfig | None = None
+
+
+def get_openai_config() -> OpenAIConfig:
+    global _openai_config
+    if _openai_config is None:
+        _openai_config = OpenAIConfig()
+    return _openai_config
+
+
+def get_prediction_market_config() -> PredictionMarketConfig:
+    global _pm_config
+    if _pm_config is None:
+        _pm_config = PredictionMarketConfig()
+    return _pm_config
 
 
 def get_credentials() -> ProviderCredentials:
@@ -252,9 +353,11 @@ def get_bdl_config() -> BallDontLieConfig:
 
 def reload_config() -> None:
     """Force re-read of env vars (useful in tests)."""
-    global _credentials, _app_settings, _sdio_config, _sr_config, _odds_config, _nba_config, _bdl_config
+    global _credentials, _app_settings, _sdio_config, _sr_config, _odds_config, _nba_config, _bdl_config, _pm_config, _openai_config
     load_dotenv(dotenv_path=_ENV_PATH, override=True)
     _credentials = None
+    _pm_config = None
+    _openai_config = None
     _app_settings = None
     _sdio_config = None
     _sr_config = None

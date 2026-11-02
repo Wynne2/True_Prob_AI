@@ -9,23 +9,55 @@ every configured data provider.
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from typing import Generator
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, quote, quote_plus, urlencode, urlparse, urlunparse
 
 # ---------------------------------------------------------------------------
 # URL sanitisation
 # ---------------------------------------------------------------------------
 
 _SENSITIVE_PARAMS = ("apiKey", "api_key", "key")
+_SENSITIVE_PARAM_NAMES = frozenset(param.lower() for param in _SENSITIVE_PARAMS)
+_SENSITIVE_QUERY = re.compile(r"""(?i)(\b(?:api_?key|key)=)[^&;\s'\"<>\])]+""")
+_BEARER_TOKEN = re.compile(r"(?i)(\bBearer\s+)[A-Za-z0-9._\-~+/=]+")
+_OPENAI_KEY = re.compile(r"\bsk-[A-Za-z0-9_\-]{8,}")
+
+
+def redact_sensitive_text(text: str, sensitive_values: Iterable[str] = ()) -> str:
+    """Redact API-key query parameters, bearer tokens, OpenAI keys and known key values."""
+    redacted = _SENSITIVE_QUERY.sub(r"\1***", text)
+    redacted = _BEARER_TOKEN.sub(r"\1***", redacted)
+    redacted = _OPENAI_KEY.sub("sk-***", redacted)
+    for value in sensitive_values:
+        if value:
+            for encoded in {value, quote(value, safe=""), quote_plus(value)}:
+                redacted = redacted.replace(encoded, "***")
+    return redacted
+
+
+def _redact_data(data: object, sensitive_values: list[str]) -> object:
+    if isinstance(data, str):
+        return redact_sensitive_text(data, sensitive_values)
+    if isinstance(data, list):
+        return [_redact_data(item, sensitive_values) for item in data]
+    if isinstance(data, dict):
+        return {
+            redact_sensitive_text(key, sensitive_values) if isinstance(key, str) else key:
+            _redact_data(value, sensitive_values)
+            for key, value in data.items()
+        }
+    return data
 
 
 def redact_url(url: str) -> str:
     """Return *url* with known API-key query params replaced by '***'."""
     parsed = urlparse(url)
     qs = parse_qs(parsed.query, keep_blank_values=True)
-    for param in _SENSITIVE_PARAMS:
-        if param in qs:
+    for param in qs:
+        if param.lower() in _SENSITIVE_PARAM_NAMES:
             qs[param] = ["***"]
     redacted_query = urlencode(
         {k: v[0] if len(v) == 1 else v for k, v in qs.items()}, doseq=True
@@ -38,6 +70,8 @@ def provider_label_from_url(url: str) -> str:
     host = urlparse(url).hostname or url
     mapping = {
         "api.the-odds-api.com": "The Odds API",
+        "kalshi.com": "Kalshi",
+        "polymarket.com": "Polymarket",
         "api.sportsdata.io": "SportsDataIO",
         "api.sportradar.com": "Sportradar",
         "api.fantasypros.com": "FantasyPros",
@@ -110,26 +144,58 @@ def capture_api_responses(max_list: int = 5) -> Generator[list[dict], None, None
             "error": None,
         }
 
-    def _fill_record(record: dict, response) -> None:
+    def _sensitive_values(url: str, kwargs: dict) -> list[str]:
+        values = [
+            value
+            for name, entries in parse_qs(urlparse(url).query).items()
+            if name.lower() in _SENSITIVE_PARAM_NAMES
+            for value in entries
+        ]
+        params = kwargs.get("params")
+        if isinstance(params, Mapping):
+            values.extend(
+                value
+                for name, value in params.items()
+                if isinstance(name, str)
+                and name.lower() in _SENSITIVE_PARAM_NAMES
+                and isinstance(value, str)
+            )
+        headers = kwargs.get("headers")
+        if isinstance(headers, Mapping):
+            values.extend(
+                value
+                for name, value in headers.items()
+                if isinstance(name, str)
+                and name.lower() in {"authorization", "x-api-key"}
+                and isinstance(value, str)
+            )
+        return values
+
+    def _fill_record(record: dict, response, sensitive_values: list[str]) -> None:
         record["status"] = response.status_code
         record["ok"] = response.ok
         try:
             data = response.json()
-            record["raw"] = data
-            record["preview"] = _preview(data, max_list)
-            if isinstance(data, list):
-                record["item_count"] = len(data)
-        except Exception:
-            record["raw"] = response.text[:3000]
+        except ValueError:
+            record["raw"] = redact_sensitive_text(response.text[:3000], sensitive_values)
             record["error"] = "Response is not valid JSON"
+            return
+        data = _redact_data(data, sensitive_values)
+        record["raw"] = data
+        record["preview"] = _preview(data, max_list)
+        if isinstance(data, list):
+            record["item_count"] = len(data)
+
+    def _redact_error(exc: Exception, url: str, kwargs: dict) -> str:
+        return redact_sensitive_text(str(exc), _sensitive_values(url, kwargs))
 
     def _capturing_get(url, **kwargs):
         record = _make_record(url)
         try:
             response = _original_get(url, **kwargs)
-            _fill_record(record, response)
+            _fill_record(record, response, _sensitive_values(url, kwargs))
         except Exception as exc:
-            record["error"] = str(exc)
+            record["error"] = _redact_error(exc, url, kwargs)
             captured.append(record)
             raise
         captured.append(record)
@@ -139,9 +205,9 @@ def capture_api_responses(max_list: int = 5) -> Generator[list[dict], None, None
         record = _make_record(url)
         try:
             response = _original_session_get(self, url, **kwargs)
-            _fill_record(record, response)
+            _fill_record(record, response, _sensitive_values(url, kwargs))
         except Exception as exc:
-            record["error"] = str(exc)
+            record["error"] = _redact_error(exc, url, kwargs)
             captured.append(record)
             raise
         captured.append(record)

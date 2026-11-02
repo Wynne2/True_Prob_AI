@@ -43,7 +43,7 @@ THE_ODDS_API_KEY=       # sportsbook odds and prop lines (required for pricing)
 SPORTRADAR_API_KEY=     # game schedule / slate (primary source)
 ```
 
-Player usage, tracking, pace, and season averages come from **BALLDONTLIE GOAT** (`BALLDONTLIE_API_KEY` or `BDL_API_KEY`). Sportsbook prices still come only from **The Odds API**. Set `BDL_REQUESTS_PER_MINUTE=5` on the trial tier and `600` on paid GOAT.
+Player usage, tracking, pace, and season averages come from **BALLDONTLIE GOAT** (`BALLDONTLIE_API_KEY` or `BDL_API_KEY`). Prop and game prices come from the **Kalshi** and **Polymarket** public market-data APIs (no key, enabled by default) plus **The Odds API** when its key is set. Set `BDL_REQUESTS_PER_MINUTE=5` on the trial tier and `600` on paid GOAT.
 
 ### 3. Verify provider status
 
@@ -90,13 +90,50 @@ python main.py --verbose                    # DEBUG-level log output
 | `--debug-api` | off | Print redacted raw API responses |
 | `--verbose` | off | Enable DEBUG logging |
 
+### AI Advisor (`python main.py advisor`)
+
+Runs the model, keeps **positive-edge** props priced between **-200 and -600** (Kalshi / Polymarket lines),
+dedupes to one line per player/prop/side, takes the top 5, builds correlation-checked 2- and 3-leg parlays,
+and asks OpenAI (`gpt-6.1-sol` by default, Responses API with a strict JSON schema) to reason over them.
+
+- Python computes every probability, price, payout and EV; the model may only reference IDs (`P1…`, `PL1…`).
+- Numbers the model states are overwritten with the computed values; unknown IDs are rejected.
+- One validation retry; after a second failure (or no key / API error) a deterministic recommendation
+  (top picks + best 2-leg and 3-leg parlays by EV) is shown and the failure is stated.
+- If nothing qualifies, OpenAI is not called and the filter-stage counts are printed.
+- Every run is saved to `data/advisor/<date>_<HHMMSS>.json` (inputs, request metadata, raw response,
+  validated output) and a matching `.md` report.
+
+```bash
+python main.py advisor                    # today, -600..-200, edge > 0, top 5, $100
+python main.py advisor --stake 100 --date 2026-11-02
+python main.py advisor --no-llm           # deterministic report only (no OpenAI call)
+python main.py advisor --prompt "Only consider 2-leg parlays"
+python main.py advisor --help
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--date` | today (ET) | Slate date |
+| `--min-odds` / `--max-odds` | `-600` / `-200` | Inclusive per-leg odds band |
+| `--min-edge` | `0.0` | Edge must be strictly greater |
+| `--top` | `5` | Picks kept |
+| `--stake` | `100` | Stake for payout math |
+| `--min-confidence` | none | Confidence floor |
+| `--prompt` / `--prompt-file` | standard question | Custom question for the AI |
+| `--no-llm` | off | Skip OpenAI |
+| `--no-save` | off | Don't write `data/advisor/` files |
+
+Requires `OPENAI_API_KEY` in `.env` (see Configuration). The official `openai` SDK is used when installed;
+otherwise the same Responses API endpoint is called with `requests`.
+
 ### Streamlit UI
 
 ```bash
 streamlit run app/streamlit_app.py
 ```
 
-Opens at `http://localhost:8501`. The sidebar exposes the same constraint controls as the CLI. The main area is split into five tabs:
+Opens at `http://localhost:8501`. The sidebar exposes the same constraint controls as the CLI. The main area is split into these tabs:
 
 | Tab | Content |
 |---|---|
@@ -104,7 +141,10 @@ Opens at `http://localhost:8501`. The sidebar exposes the same constraint contro
 | **Parlays** | Ranked parlays with leg detail and payout breakdown |
 | **Props Analysis** | Sortable DataFrame of all qualifying props |
 | **Line Shopping** | Multi-book odds comparison table |
+| **Game Lines** | Kalshi / Polymarket moneyline, spread and total markets |
+| **🤖 AI Advisor** | Runs the AI Advisor on the current scan (stake, odds band, top N, custom question) |
 | **API Debug** | Live diagnostic tool — fetches raw API responses and previews them in-browser |
+| **Backtesting** | Historical calibration sample |
 
 ### Tests
 
@@ -186,6 +226,8 @@ True_Prob_AI/
 │
 ├── providers/                  # Raw API client wrappers
 │   ├── odds_api_provider.py
+│   ├── kalshi_provider.py      # Kalshi public NBA props + game lines (no key)
+│   ├── polymarket_provider.py  # Polymarket Gamma NBA props + game lines (no key)
 │   ├── sportradar_provider.py
 │   ├── sportsdataio_provider.py
 │   ├── nba_api_provider.py
@@ -197,7 +239,9 @@ True_Prob_AI/
 │   ├── fair_odds.py            # Fair odds and Kelly fraction
 │   ├── normalizer.py           # American ↔ decimal conversion
 │   ├── parlay_math.py          # Combined parlay odds, edge, true prob
-│   └── line_shopping.py        # Multi-book best-odds selection
+│   ├── line_shopping.py        # Multi-book best-odds selection
+│   ├── prediction_market.py    # Exchange ask + taker fee → American odds
+│   └── game_lines.py           # Consensus total/spread → Game enrichment
 │
 ├── utils/
 │   ├── date_utils.py           # Eastern-timezone date helpers, pregame filter
@@ -220,7 +264,7 @@ True_Prob_AI/
 The `SlateScanner` runs this sequence once per daily scan — no per-prop API calls:
 
 1. **Slate** — fetch today's games from BALLDONTLIE. Only pregame games are evaluated; in-progress and final games are excluded.
-2. **Odds** — pull all prop markets from The Odds API (only source for sportsbook pricing).
+2. **Odds** — on every scan, pull every NBA player prop for the selected date from Kalshi and Polymarket (public, keyless) and The Odds API (if keyed), in parallel. Each source fails independently. Moneyline/spread/total markets from both exchanges fill each game's total, home spread, and implied team totals.
 3. **Cache warm** — batch-fetch all service data: season stats, depth charts, injury lists, usage/tracking dashboards, split dashboards, team defense.
 4. **Player build** — construct `Player` entities from `PlayerContextService`.
 5. **Feature vectors** — `PlayerFeatureBuilder` assembles a `FeatureVector` per player × prop type from all service outputs.
@@ -262,7 +306,9 @@ A probability shrinkage factor and floor/ceiling clamps prevent extreme outputs.
 
 Tracks over/under odds across all available sportsbooks for every prop. `best_book` and `best_book_key` on each evaluated prop identify where the best number was found.
 
-**Supported books:** FanDuel, DraftKings, BetMGM, Caesars, PointsBet, BetRivers, Bovada, Bet365, Pinnacle, MyBookie, LowVig, BetOnline
+**Supported books:** Kalshi, Polymarket, FanDuel, DraftKings, BetMGM, Caesars, PointsBet, BetRivers, Bovada, Bet365, Pinnacle, MyBookie, LowVig, BetOnline
+
+**Prediction-market pricing:** Each Yes/No contract is priced at its best ask (Polymarket No = 1 − best bid) plus the taker fee (`rate × p × (1 − p)`; Kalshi 7%, Polymarket per-market `feeSchedule`). That fee-inclusive cost is converted to American odds, so the implied probability is the true break-even. Markets with a wide bid/ask spread or price outside 2–98¢ are skipped as untradeable. The **Game Lines** tab in the UI lists every priced moneyline, spread, and total side.
 
 ### Confidence Tiers
 
@@ -289,8 +335,11 @@ All configuration is loaded from `.env` (or environment variables). Copy `.env.t
 |---|---|---|
 | `BALLDONTLIE_API_KEY` | Required for advanced stats | [docs.balldontlie.io](https://docs.balldontlie.io/) |
 | `SPORTSDATAIO_API_KEY` | Recommended | [sportsdata.io](https://sportsdata.io/) |
-| `THE_ODDS_API_KEY` | Required for odds | [the-odds-api.com](https://the-odds-api.com/) |
+| `THE_ODDS_API_KEY` | Optional (adds sportsbooks) | [the-odds-api.com](https://the-odds-api.com/) |
 | `SPORTRADAR_API_KEY` | Recommended | [developer.sportradar.com](https://developer.sportradar.com/) |
+| `OPENAI_API_KEY` | Only for `main.py advisor` AI reasoning | [platform.openai.com](https://platform.openai.com/api-keys) |
+
+Kalshi and Polymarket need no key.
 
 ### Optional Settings
 
@@ -304,6 +353,21 @@ BDL_TTL_GAMELOGS=43200
 
 # Odds API
 ODDS_API_REGIONS=us,us2     # book regions to query (comma-separated)
+
+# Kalshi / Polymarket (public, no key)
+KALSHI_ENABLED=true
+POLYMARKET_ENABLED=true
+PREDICTION_MARKET_TIMEOUT=20      # seconds per request
+PREDICTION_MARKET_MAX_SPREAD=0.15 # skip markets with a wider bid/ask spread
+PREDICTION_MARKET_MIN_PRICE=0.02  # skip near-certain contracts
+PREDICTION_MARKET_MAX_PRICE=0.98
+KALSHI_FEE_RATE=0.07              # taker fee coefficient
+
+# OpenAI (AI Advisor only)
+OPENAI_MODEL=gpt-6.1-sol          # verified with GET /v1/models/{id}; never silently switched
+OPENAI_REASONING_EFFORT=medium    # low | medium | high | xhigh | max
+OPENAI_TIMEOUT=120                # seconds
+OPENAI_MAX_OUTPUT_TOKENS=8000
 
 # Application
 LOG_LEVEL=INFO              # DEBUG | INFO | WARNING | ERROR
@@ -326,10 +390,17 @@ CSV_DEFENSE_PATH=data/import/defense.csv
 | SportsDataIO | No | Not used on the live scan. Injuries and season stats come from BALLDONTLIE. |
 | Sportradar | Yes | Game slate (primary schedule source) |
 | The Odds API | Yes | Prop lines, over/under pricing, multi-book odds |
+| Kalshi | No | NBA player props, moneylines, spreads, totals (public market data) |
+| Polymarket | No | NBA player props, moneylines, spreads, totals (Gamma API) |
 
 ---
 
 ## Troubleshooting
+
+**The Odds API TLS or connection errors**
+- Test the connection without sending your key: `curl.exe --head --max-time 10 https://api.the-odds-api.com/v4/sports`. Any HTTP response means the TLS connection was established; a missing-key response is expected.
+- If the TLS handshake fails before an HTTP response, try another approved network or contact your network administrator or The Odds API. The failure can be on the network path or at the provider.
+- The client verifies server certificates. If your network requires a trusted custom CA, set `REQUESTS_CA_BUNDLE` to its PEM bundle; do not disable certificate verification.
 
 **No props found for today**
 - Check provider status in the startup table. Missing keys reduce data coverage.

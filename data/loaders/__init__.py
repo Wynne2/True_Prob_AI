@@ -16,7 +16,7 @@ import logging
 from datetime import date
 from typing import Optional
 
-from domain.entities import Game, OddsLine, Player, TeamDefense
+from domain.entities import Game, GameLine, OddsLine, Player, TeamDefense
 from domain.enums import PropType
 
 logger = logging.getLogger(__name__)
@@ -102,8 +102,20 @@ def load_defense_by_abbr(team_abbr: str) -> Optional[TeamDefense]:
 # ---------------------------------------------------------------------------
 
 def load_odds(game_date: date) -> list[OddsLine]:
-    """Load all player prop lines for *game_date* across all books."""
+    """Load all player prop lines for *game_date* across all books (fetched live each call)."""
     return _get_registry().get_player_props(game_date)
+
+
+def load_game_lines(game_date: date) -> list[GameLine]:
+    """Load moneyline / spread / total sides for *game_date* from prediction markets."""
+    return _get_registry().get_game_lines(game_date)
+
+
+def last_odds_source_counts() -> tuple[dict[str, int], dict[str, str]]:
+    """Per-source prop-line counts and errors from the most recent load_odds call."""
+    registry = _get_registry()
+    return dict(registry.last_odds_counts), dict(registry.last_odds_errors)
+
 
 
 def load_odds_for_player(

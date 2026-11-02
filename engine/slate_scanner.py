@@ -6,8 +6,8 @@ Orchestrates the full daily scan:
 STEP 1: Pull today's slate (game IDs, team matchups)
         SOURCE: Sportradar (primary) → SportsDataIO (fallback)
 
-STEP 2: Pull live prop markets and odds
-        SOURCE: The Odds API (ONLY source for sportsbook pricing)
+STEP 2: Pull live prop markets and odds (fresh every scan)
+        SOURCE: Kalshi + Polymarket (keyless) + The Odds API (keyed), merged
 
 STEP 3: Warm all service-layer caches (batch, not per-prop)
         - PlayerContextService  → SportsDataIO season stats + depth charts
@@ -33,7 +33,7 @@ import logging
 from datetime import date
 from typing import Optional
 
-from domain.entities import Game, OddsLine, Player, PropProbability
+from domain.entities import Game, GameLine, OddsLine, Player, PropProbability
 from utils.date_utils import filter_pregame_games
 from domain.enums import PropType
 from engine.prop_evaluator import PropEvaluator
@@ -49,6 +49,9 @@ class SlateScanner:
         # Populated by scan() for CLI/UI messaging (pregame filter vs empty slate).
         self.last_raw_slate_game_count: int = 0
         self.last_pregame_slate_game_count: int = 0
+        self.last_odds_source_counts: dict[str, int] = {}
+        self.last_odds_source_errors: dict[str, str] = {}
+        self.last_game_lines: list[GameLine] = []
 
     def scan(
         self,
@@ -149,12 +152,24 @@ class SlateScanner:
         """
         Load games and odds lines.
 
-        Games:  Sportradar → SportsDataIO (via registry).
-        Odds:   The Odds API (via registry).
+        Games:      BALLDONTLIE (via registry).
+        Odds:       Kalshi + Polymarket + The Odds API, merged (via registry).
+        Game lines: Kalshi + Polymarket consensus total/spread fill empty
+                    Game betting fields.
         """
-        from data.loaders import load_games, load_odds
+        from data.loaders import last_odds_source_counts, load_game_lines, load_games, load_odds
+        from odds.game_lines import apply_game_lines
+
         games = load_games(game_date)
         all_odds = load_odds(game_date)
+        self.last_odds_source_counts, self.last_odds_source_errors = last_odds_source_counts()
+        try:
+            self.last_game_lines = load_game_lines(game_date)
+        except Exception as exc:
+            logger.warning("SlateScanner: game lines unavailable: %s", exc)
+            self.last_game_lines = []
+        if games and self.last_game_lines:
+            apply_game_lines(games, self.last_game_lines)
         return games, all_odds
 
     def _warm_services(self, game_date: date) -> None:

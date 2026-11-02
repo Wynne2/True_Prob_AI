@@ -90,3 +90,5 @@ def test_registry_does_not_register_other_sports_apis():
     assert "SportsDataIOProvider" not in source
     assert "BallDontLieProvider" in source
     assert "OddsAPIProvider" in source
+    assert "KalshiProvider" in source
+    assert "PolymarketProvider" in source

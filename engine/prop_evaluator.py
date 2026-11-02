@@ -9,7 +9,8 @@ For each (player, prop_type, line, side) combination, the evaluator:
    **Never** replace season MPG on Player with tonight's projected minutes.
 3. Runs the appropriate stat model to get a projection.
 4. Converts the projection to a true probability using the correct distribution.
-5. Retrieves the best available sportsbook odds (SOURCE: The Odds API).
+5. Retrieves the best available price across books (Kalshi, Polymarket,
+   The Odds API sportsbooks).
 6. Computes raw (vig-included) implied probability for the priced side.
 7. Calculates edge (true probability minus that raw implied).
 8. Attaches confidence tier and explanation.
@@ -42,6 +43,7 @@ from domain.constants import (
     REBOUNDS_OVER_PROB_SHRINK_MINUTES,
 )
 from domain.entities import Game, OddsLine, Player, PropProbability, StatProjection, TeamDefense
+from utils.names import compact_name
 from domain.enums import (
     BookName,
     ConfidenceTier,
@@ -139,11 +141,10 @@ def _normalize_name(name: str) -> str:
     """
     Normalize a player name for fuzzy cross-source matching.
 
-    Handles the case where The Odds API uses slugs like 'nikola_jokic' while
-    SportsDataIO / nba_api use 'Nikola Jokic'.  Both normalize to 'nikolajokic'.
+    'nikola_jokic', 'Nikola Jokić' and 'Nikola Jokic' all become 'nikolajokic';
+    generational suffixes are dropped ('Jaren Jackson Jr.' -> 'jarenjackson').
     """
-    import re
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    return compact_name(name)
 
 
 # Model registry: PropType → model instance
@@ -395,11 +396,11 @@ class PropEvaluator:
         if projection.projected_value <= 0 and prop_type not in (PropType.BLOCKS, PropType.STEALS):
             return []
 
-        # Find all lines for this player + prop from the odds feed.
-        # SOURCE: The Odds API (via all_odds list)
+        # Find all lines for this player + prop from the merged odds feed
+        # (Kalshi, Polymarket, The Odds API).
         # Primary match: exact player_id (works when both sources share the same ID format).
-        # Fallback: normalized name match (needed when Odds API uses name-slugs like
-        # "nikola_jokic" while SportsDataIO uses integer IDs).
+        # Fallback: normalized name match (odds sources key players by name slug,
+        # e.g. "nikola_jokic", while the stats source uses integer IDs).
         player_lines = [
             ol for ol in all_odds
             if ol.player_id == player.player_id and ol.prop_type == prop_type

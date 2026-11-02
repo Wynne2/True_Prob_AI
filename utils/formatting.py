@@ -20,6 +20,8 @@ _BOOK_LABELS: dict[str, str] = {
     "mybookie": "MyBookie",
     "lowvig": "LowVig",
     "betonline": "BetOnline",
+    "kalshi": "Kalshi",
+    "polymarket": "Polymarket",
     "sample": "Sample",
     "other": "Other",
 }

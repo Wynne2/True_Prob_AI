@@ -76,7 +76,9 @@ class BookName(str, Enum):
     MYBOOKIE = "mybookie"
     LOWVIG = "lowvig"
     BETONLINE = "betonline"
-    OTHER = "other"            # mapped book not in enum; use OddsLine.book_key for display
+    KALSHI = "kalshi"          # prediction-market exchange (public, keyless)
+    POLYMARKET = "polymarket"  # prediction-market exchange (public, keyless)
+    OTHER = "other"             # mapped book not in enum; use OddsLine.book_key for display
     SAMPLE = "sample"          # internal sample data book
 
 
@@ -131,6 +133,8 @@ class DataSource(str, Enum):
     SPORTSDATAIO = "sportsdataio"
     SPORTRADAR = "sportradar"
     ODDS_API = "odds_api"
+    KALSHI = "kalshi"
+    POLYMARKET = "polymarket"
     CSV_IMPORT = "csv_import"
     SAMPLE = "sample"
     # Retired sources — kept for enum compatibility with existing data records
