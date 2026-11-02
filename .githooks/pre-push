@@ -1,0 +1,12 @@
+#!/bin/sh
+# Runs the offline suite before every push; a failure blocks the push.
+# Enable once per clone: git config core.hooksPath .githooks
+# Skip in an emergency: git push --no-verify
+py=.venv/Scripts/python.exe
+[ -x "$py" ] || py=.venv/bin/python
+[ -x "$py" ] || py=python
+echo "pre-push: running offline tests..."
+"$py" -m pytest -q -p no:cacheprovider -m "not live" || {
+  echo "pre-push: tests failed, push blocked." >&2
+  exit 1
+}

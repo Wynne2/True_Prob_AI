@@ -171,7 +171,13 @@ pytest --cov          # with coverage
 
 ### CI and merging to `main`
 
-`.github/workflows/tests.yml` runs the offline suite on every pull request and every push to `main`. Once the repo owner applies `.github/rulesets/main.json` (one time, admin only), `main` accepts only PRs whose `pytest` check passed against the latest `main`:
+Every `git push` runs the offline suite first and is blocked if it fails. Turn it on once per clone:
+
+```bash
+git config core.hooksPath .githooks   # skip in an emergency: git push --no-verify
+```
+
+`.github/workflows/tests.yml` also runs the suite on every pull request and push to `main`. The hook is local and can be skipped, so for a hard gate the repo owner can apply `.github/rulesets/main.json` (one time, admin only), after which `main` accepts only PRs whose `pytest` check passed against the latest `main`:
 
 ```bash
 # owner, once
