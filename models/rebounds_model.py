@@ -173,7 +173,7 @@ class ReboundsModel(BaseStatModel):
                     f"Opponent rebounds allowed by position factor {pos_only:.3f} "
                     f"(55% of that gap applied to the secure rate)."
                 ),
-                pace_label(pace, pace_fallback),
+                pace_label(pace, pace_fallback, getattr(defense, "pace_source", "") or ""),
                 f"Role stability ×{role_s:.2f}. Teammate competition ×{team_c:.2f}.",
                 "Fantasy points allowed is not applied.",
                 ("Missing: " + ", ".join(missing) + ".") if missing else "Rebound chances and secure rate were both used.",

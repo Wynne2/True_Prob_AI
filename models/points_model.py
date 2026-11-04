@@ -186,7 +186,7 @@ class PointsModel(BaseStatModel):
                 f"Minutes projected {exp_minutes:.1f} (season {mpg:.1f}).",
                 fga_line,
                 ppp_line,
-                pace_label(pace, pace_fallback),
+                pace_label(pace, pace_fallback, getattr(defense, "pace_source", "") or ""),
                 (
                     f"Positional points allowed factor {pos_factor:.3f} "
                     f"(applied to volume at 55%: ×{volume_matchup:.3f})."

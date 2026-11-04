@@ -73,7 +73,17 @@ def widen_std_for_pace_fallback(projection, is_fallback: bool) -> None:
         flags.append("pace_fallback_uncertainty")
 
 
-def pace_label(pace: float, is_fallback: bool) -> str:
+# pace_source set when matchup adjustments are off and pace is deliberately held
+# at the league average (Model A). It is not a measured opponent pace.
+NEUTRAL_PACE_SOURCE = "neutral_for_model_a"
+
+
+def pace_label(pace: float, is_fallback: bool, source: str = "") -> str:
+    if source == NEUTRAL_PACE_SOURCE:
+        return (
+            f"Opponent pace: held at the league average {pace:.1f}. "
+            "Matchup adjustments are off (Model A), so this opponent's measured pace is not used."
+        )
     if is_fallback:
         return (
             f"Opponent pace: {pace:.1f} (league-average fallback; "

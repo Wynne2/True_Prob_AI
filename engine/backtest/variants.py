@@ -11,6 +11,7 @@ from dataclasses import replace
 
 from domain.constants import LEAGUE_AVG_DEF_EFF, LEAGUE_AVG_PACE
 from domain.entities import Player, TeamDefense
+from models.opportunity import NEUTRAL_PACE_SOURCE
 
 VARIANT_A = "A_opportunity"
 VARIANT_B = "B_matchup"
@@ -27,7 +28,7 @@ def neutral_defense(defense: TeamDefense) -> TeamDefense:
         team_abbr=defense.team_abbr,
         pace=LEAGUE_AVG_PACE,
         pace_is_fallback=False,
-        pace_source="neutral_for_model_a",
+        pace_source=NEUTRAL_PACE_SOURCE,
         defensive_efficiency=LEAGUE_AVG_DEF_EFF,
         data_source=defense.data_source,
     )

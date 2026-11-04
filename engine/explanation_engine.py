@@ -77,7 +77,12 @@ def build_explanation(
 
     # Pace context. Opportunity lines already name the source when the model wrote them.
     if defense and defense.pace > 0 and not opportunity_lines:
-        if getattr(defense, "pace_is_fallback", False):
+        if getattr(defense, "pace_source", "") == "neutral_for_model_a":
+            parts.append(
+                f"Opponent pace: held at the league average {defense.pace:.1f} "
+                "(matchup adjustments off, Model A)."
+            )
+        elif getattr(defense, "pace_is_fallback", False):
             parts.append(
                 f"Opponent pace: {defense.pace:.1f} "
                 "(league-average fallback; team pace missing)."

@@ -176,7 +176,7 @@ class ThreesModel(BaseStatModel):
                     else "Positional threes allowed missing or league-average. "
                     f"Defensive rating instead moves make rate (factor {def_eff_factor:.3f})."
                 ),
-                pace_label(pace, pace_fallback),
+                pace_label(pace, pace_fallback, getattr(defense, "pace_source", "") or ""),
                 "Fantasy points allowed is not applied. It repeats scoring, including threes.",
                 ("Missing: " + ", ".join(missing) + ".") if missing else "Attempt volume and make rate were both used.",
             ],

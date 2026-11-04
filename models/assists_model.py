@@ -156,7 +156,7 @@ class AssistsModel(BaseStatModel):
                     f"Opponent assists allowed by position factor {pos_factor:.3f} "
                     f"(60% of that gap applied to conversion)."
                 ),
-                pace_label(pace, pace_fallback),
+                pace_label(pace, pace_fallback, getattr(defense, "pace_source", "") or ""),
                 "Fantasy points allowed is not applied. It repeats assists along with points and rebounds.",
                 ("Missing: " + ", ".join(missing) + ".") if missing else "Potential assists and conversion were both used.",
             ],

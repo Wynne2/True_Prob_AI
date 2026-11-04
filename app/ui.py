@@ -314,6 +314,7 @@ _CSS = """
 .tp-price small { font-family: var(--tp-body); font-size: 0.9rem; color: var(--tp-muted); font-weight: 400; margin-left: 0.35rem; }
 .tp-market-line { margin: 0.2rem 0 0.75rem; color: var(--tp-muted); }
 .tp-market-line strong { color: var(--tp-text); font-weight: 600; }
+.tp-prob-note { margin: 0.45rem 0 0; color: var(--tp-muted); font-size: 0.84rem; }
 
 .tp-meter { margin: 0.2rem 0 0.7rem; }
 .tp-meter-track {
@@ -612,7 +613,42 @@ def game_cards(games: list) -> None:
     html(f'<div class="tp-slate">{"".join(cards)}</div>')
 
 
-def prob_meter(true_p: float, implied_p: float, true_label: str = "Model", implied_label: str = "Market") -> str:
+def is_market_blend(prop) -> bool:
+    return getattr(prop, "probability_method", "") == "market_blend"
+
+
+def probability_label(prop) -> str:
+    """Name for the probability used for edge: the model's own, or the market blend."""
+    return "Blended" if is_market_blend(prop) else "Model"
+
+
+def edge_basis(prop) -> str:
+    """With zero model weight the edge is the best price against the market consensus."""
+    if is_market_blend(prop) and float(getattr(prop, "model_weight", 0.0) or 0.0) <= 0.0:
+        return "vs consensus"
+    return "edge"
+
+
+def probability_note(prop) -> str:
+    """One plain sentence saying where the shown probability came from. Empty for legacy props."""
+    if not is_market_blend(prop):
+        return ""
+    model_alone = float(getattr(prop, "raw_model_probability", 0.0) or 0.0) * 100
+    consensus = getattr(prop, "market_probability", None)
+    weight = float(getattr(prop, "model_weight", 0.0) or 0.0)
+    consensus_text = f"{consensus * 100:.1f}%" if consensus is not None else "unavailable"
+    if weight <= 0.0:
+        return (
+            f"Model weight is 0 here, so this is the market consensus ({consensus_text}, no vig). "
+            f"Model alone: {model_alone:.1f}%. The edge is this price against the consensus."
+        )
+    return (
+        f"Blend of the market consensus {consensus_text} and the model alone {model_alone:.1f}% "
+        f"(model weight {weight:.2f})."
+    )
+
+
+def prob_meter(true_p: float, implied_p: float, true_label: str = "Model", implied_label: str = "Price") -> str:
     """Bar filled to the model probability, a tick at the market's, the gap shaded as edge."""
     t = max(0.0, min(1.0, true_p)) * 100
     m = max(0.0, min(1.0, implied_p)) * 100
@@ -632,9 +668,9 @@ def prob_meter(true_p: float, implied_p: float, true_label: str = "Model", impli
     )
 
 
-def edge_chip(edge: float) -> str:
+def edge_chip(edge: float, basis: str = "edge") -> str:
     cls = "pos" if edge > 0 else ("neg" if edge < 0 else "neutral")
-    return f'<span class="tp-chip {cls}">{edge * 100:+.1f}% edge</span>'
+    return f'<span class="tp-chip {cls}">{edge * 100:+.1f}% {escape(basis)}</span>'
 
 
 _CONF_LEVEL = {"very_low": 1, "low": 2, "medium": 3, "high": 4}
@@ -663,9 +699,10 @@ def pick_card(rank: int, prop, stake: float) -> None:
         f'<p class="tp-market-line"><strong>{escape(prop_label(prop.prop_type))} {side.lower()} {prop.line:g}</strong>'
         f" &nbsp;{escape(prop.team_abbr)} vs {escape(prop.opponent_abbr)}"
         f" &nbsp;Projected {prop.projected_value:.1f}</p>"
-        + prob_meter(prop.true_probability, prop.implied_probability)
+        + prob_meter(prop.true_probability, prop.implied_probability, true_label=probability_label(prop))
+        + (f'<p class="tp-prob-note">{escape(probability_note(prop))}</p>' if probability_note(prop) else "")
         + '<div class="tp-pick-foot">'
-        + edge_chip(prop.edge)
+        + edge_chip(prop.edge, edge_basis(prop))
         + f"<span>{escape(format_currency(stake))} returns <b>{escape(format_currency(stake + profit))}</b></span>"
         + f"<span>{confidence_bars(prop.confidence)}</span>"
         + "</div></div></article>"
@@ -682,13 +719,13 @@ def parlay_ticket(parlay, rank: Optional[int] = None) -> None:
             f'<p class="tp-leg-sub">{escape(prop_label(leg.prop_type))} {leg.side.value} {leg.line:g}'
             f" &nbsp;{escape(leg.team_abbr)} vs {escape(leg.opponent_abbr)}</p></div>"
             f'<div class="tp-leg-odds"><b>{escape(format_american(leg.sportsbook_odds))}</b>'
-            f'<p class="tp-leg-sub">{escape(book)}, model {leg.true_probability * 100:.1f}%</p></div></li>'
+            f'<p class="tp-leg-sub">{escape(book)}, chance {leg.true_probability * 100:.1f}%</p></div></li>'
         )
     tags = "".join(
         f'<span class="tp-chip neutral">{escape(str(t).replace("_", " ").capitalize())}</span>' for t in (parlay.risk_profile_tags or [])
     )
     foot = [
-        ("Model chance", f"{parlay.combined_true_probability * 100:.1f}%", ""),
+        ("Combined chance", f"{parlay.combined_true_probability * 100:.1f}%", ""),
         ("Market implied", f"{parlay.combined_implied_probability * 100:.1f}%", ""),
         ("Correlation risk", f"{parlay.correlation_risk_score:.2f}", ""),
     ]

@@ -287,7 +287,13 @@ def render_props_table(props: list) -> None:
             "Baseline": round(getattr(p, "baseline_projection", 0) or p.projected_value, 1),
             "Projected": round(p.projected_value, 1),
             "Exp Min": round(getattr(p, "expected_minutes", 0), 1),
-            "True %": round(p.true_probability * 100, 1),
+            "Used %": round(p.true_probability * 100, 1),
+            "Model %": round((getattr(p, "raw_model_probability", 0.0) or 0.0) * 100, 1),
+            "Consensus %": (
+                round(p.market_probability * 100, 1)
+                if getattr(p, "market_probability", None) is not None else None
+            ),
+            "Model wt": round(float(getattr(p, "model_weight", 0.0) or 0.0), 2),
             "Implied %": round(p.implied_probability * 100, 1),
             "Edge %": round(p.edge * 100, 1),
             "Odds": format_american(p.sportsbook_odds),
@@ -312,12 +318,21 @@ def render_props_table(props: list) -> None:
         width="stretch",
         hide_index=True,
         column_config={
-            "True %": st.column_config.ProgressColumn(
-                "True %", min_value=0, max_value=100, format="%.1f%%",
-                help="Model probability that this side hits.",
+            "Used %": st.column_config.ProgressColumn(
+                "Used %", min_value=0, max_value=100, format="%.1f%%",
+                help="Probability used for edge. When market-anchored, a blend of Consensus % and Model % by Model wt.",
+            ),
+            "Model %": st.column_config.NumberColumn(
+                format="%.1f%%", help="The model's own distribution probability, before any market blend.",
+            ),
+            "Consensus %": st.column_config.NumberColumn(
+                format="%.1f%%", help="No-vig market consensus for this side across venues.",
+            ),
+            "Model wt": st.column_config.NumberColumn(
+                format="%.2f", help="Weight the model had against the consensus. 0 means Used % is the consensus.",
             ),
             "Implied %": _PCT,
-            "Edge %": st.column_config.NumberColumn(format="%+.1f%%", help="True % minus implied %."),
+            "Edge %": st.column_config.NumberColumn(format="%+.1f%%", help="Used % minus implied %."),
             "Line": st.column_config.NumberColumn(format="%g"),
         },
     )
@@ -386,11 +401,20 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
         ("Qualifying props", f"{len(props):,}", ""),
         ("Best edge", f"{best_edge * 100:+.1f}%", "edge"),
         ("Average edge", f"{avg_edge * 100:+.1f}%", "edge"),
-        ("Average model chance", f"{avg_true * 100:.1f}%", ""),
+        ("Average chance", f"{avg_true * 100:.1f}%", ""),
     ])
+    n_blend = sum(1 for p in sorted_props if ui.is_market_blend(p))
+    n_market_only = sum(1 for p in sorted_props if ui.edge_basis(p) == "vs consensus")
     ui.note(
-        "The green bar is the model's chance the bet hits. The blue tick is the chance the price "
-        "implies. The bright segment between them is the edge."
+        "The green bar is the chance used for edge. The blue tick is the chance the price implies. "
+        "The bright segment between them is the edge. "
+        + (
+            f"Probabilities are market-anchored. Of these {len(sorted_props)}, {n_blend - n_market_only} blend "
+            f"the no-vig consensus with the model and {n_market_only} give the model zero weight, so their edge "
+            "is line shopping against the consensus. "
+            "Each card says which."
+            if n_blend else ""
+        )
     )
 
     for rank, prop in enumerate(sorted_props, 1):
@@ -511,7 +535,7 @@ def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
                     "Line": leg.line,
                     "Side": leg.side.value.upper(),
                     "Projected": round(leg.projected_value, 1),
-                    "True %": round(leg.true_probability * 100, 1),
+                    "Used %": round(leg.true_probability * 100, 1),
                     "Edge %": round(leg.edge * 100, 1),
                     "Odds": format_american(leg.sportsbook_odds),
                     "Book": book_display_name(leg.sportsbook, getattr(leg, "best_book_key", "") or ""),
@@ -519,7 +543,7 @@ def render_parlay_cards(parlays: list, stake: float, top_n: int) -> None:
                 })
             st.dataframe(
                 pd.DataFrame(leg_rows), width="stretch", hide_index=True,
-                column_config={"True %": _PCT, "Edge %": st.column_config.NumberColumn(format="%+.1f%%")},
+                column_config={"Used %": _PCT, "Edge %": st.column_config.NumberColumn(format="%+.1f%%")},
             )
             for leg in parlay.legs:
                 if leg.explanation:
