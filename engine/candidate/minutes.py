@@ -56,6 +56,8 @@ CLEAN_FEATURES = (
     "has_last_season", "inv_games", "b2b", "rest_days", "missed_recent", "just_returned",
 )
 ABSENCE_FEATURES = ("absent_minutes", "absent_share", "absent_share_starter")
+# Pregame spread (engine/candidate/spreads.py). Zero with has_spread = 0 when unknown.
+SPREAD_FEATURES = ("has_spread", "abs_spread", "abs_spread_x_starter", "abs_spread_sq_x_starter")
 
 
 def _num(value) -> float:
@@ -78,7 +80,7 @@ def ewm(values: list[float], half_life: float) -> float:
 # Walk-forward rows
 # ---------------------------------------------------------------------------
 
-def build_rows(logs: list[dict], target_end: str = TARGET_END, emit_from: str = "") -> list[dict]:
+def build_rows(logs: list[dict], target_end: str = TARGET_END, emit_from: str = "", spreads: dict | None = None) -> list[dict]:
     """
     One row per player-game with pregame minutes features.
 
@@ -107,6 +109,7 @@ def build_rows(logs: list[dict], target_end: str = TARGET_END, emit_from: str = 
                 for (team, game_id), members in by_team_game.items():
                     out.extend(_emit(
                         season, game_day, team, members, played, appearances,
+                        (spreads or {}).get((team, game_day)),
                         team_games, player_team, last_season_minutes,
                     ))
             for (team, game_id), members in by_team_game.items():
@@ -126,7 +129,7 @@ def build_rows(logs: list[dict], target_end: str = TARGET_END, emit_from: str = 
     return out
 
 
-def _emit(season, game_day, team, members, played, appearances, team_games, player_team, last_season_minutes):
+def _emit(season, game_day, team, members, played, appearances, spread, team_games, player_team, last_season_minutes):
     history = team_games.get(team) or []
     recent_games = [gid for _, gid in history[-ROTATION_LOOKBACK:]]
     present = {str(r.get("player_id")) for r in members if _num(r.get("min")) > 0}
@@ -182,6 +185,10 @@ def _emit(season, game_day, team, members, played, appearances, team_games, play
             "absent_minutes": absent_minutes,
             "absent_share": absent_minutes * share,
             "absent_share_starter": absent_minutes * share * starter,
+            "has_spread": 0.0 if spread is None else 1.0,
+            "abs_spread": 0.0 if spread is None else abs(spread),
+            "abs_spread_x_starter": 0.0 if spread is None else abs(spread) * starter,
+            "abs_spread_sq_x_starter": 0.0 if spread is None else spread * spread * starter / 10.0,
         }
         rows.append({
             "season": season,

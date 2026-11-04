@@ -85,9 +85,12 @@ def ridge_from_dict(data: dict, cls):
 # Items: one per player-game-stat, joining the three walk-forward builders
 # ---------------------------------------------------------------------------
 
-def build_items(logs: list[dict], target_end: str, emit_from: str = "") -> list[dict]:
+def build_items(logs: list[dict], target_end: str, emit_from: str = "", spreads: dict | None = None) -> list[dict]:
     chain = dec.build_rows(logs, target_end=target_end, emit_from=emit_from)
-    minutes = {(r["player_id"], r["game_id"]): r for r in cm.build_rows(logs, target_end=target_end, emit_from=emit_from)}
+    minutes = {
+        (r["player_id"], r["game_id"]): r
+        for r in cm.build_rows(logs, target_end=target_end, emit_from=emit_from, spreads=spreads)
+    }
     volume = {(r["player_id"], r["game_id"], r["stat"]): r for r in cv.build_rows(logs, target_end=target_end, emit_from=emit_from)}
     items = []
     for c in chain:
@@ -138,6 +141,7 @@ def predict(items: list[dict], params: dict) -> list[dict]:
         out.append({
             "minutes": float(minutes[i]), "volume": float(volume[i]), "conversion": float(conversion),
             "mean": mean, "variance": var, "family": spread["family"],
+            "calibration": (params.get("calibration") or {}).get(it["stat"]),
         })
     return out
 
@@ -173,11 +177,16 @@ def _variance(item, mean, minutes, names, coef) -> float:
 
 
 def over_probability(pred: dict, line: float) -> float:
-    """P(stat > line). Half-point lines have no push."""
+    """P(stat > line). Half-point lines have no push. Applies the stat's calibration when present."""
     if pred["family"] == "normal":
         p = vf.over_normal(pred["mean"], pred["variance"], line)
     else:
         p = vf.over_count(pred["mean"], pred["variance"], line)
+    p = min(0.999, max(0.001, p))
+    cal = pred.get("calibration")
+    if cal:
+        z = cal["a"] + cal["b"] * math.log(p / (1.0 - p))
+        p = 1.0 / (1.0 + math.exp(-z))
     return min(0.999, max(0.001, p))
 
 
@@ -224,17 +233,19 @@ def fit_params(fit_items: list[dict], settings: dict | None = None, select_items
     With ``select_items`` the settings (penalties, feature groups, volume choice)
     are chosen on them. With ``settings`` they are reused as given (freeze).
     """
-    choosing = settings is None
+    choosing = settings is None or "minutes_lambda" not in settings
     settings = dict(settings or {})
     minute_rows_fit = _unique_minutes(fit_items)
 
+    minute_features = tuple(settings.get("minutes_features") or cm.CLEAN_FEATURES)
     if choosing:
         minute_rows_sel = _unique_minutes(select_items)
-        fitted = [cm.Ridge(cm.CLEAN_FEATURES, lam).fit(minute_rows_fit) for lam in cm.LAMBDAS]
+        fitted = [cm.Ridge(minute_features, lam).fit(minute_rows_fit) for lam in cm.LAMBDAS]
         minutes_model = min(fitted, key=lambda m: cm._mae(m.predict(minute_rows_sel), minute_rows_sel))
         settings["minutes_lambda"] = minutes_model.lam
+        settings["minutes_features"] = list(minute_features)
     else:
-        minutes_model = cm.Ridge(cm.CLEAN_FEATURES, settings["minutes_lambda"]).fit(minute_rows_fit)
+        minutes_model = cm.Ridge(minute_features, settings["minutes_lambda"]).fit(minute_rows_fit)
 
     params = {"version": VERSION, "minutes": ridge_to_dict(minutes_model), "volume": {}, "spread": _placeholder_spread()}
     fit_by, sel_by = _by_stat(fit_items), _by_stat(select_items or [])
