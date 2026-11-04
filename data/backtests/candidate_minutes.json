@@ -1,0 +1,201 @@
+{
+ "generated_at": "2026-11-04T04:47:30+00:00",
+ "splits": {
+  "fit": "2024-25 and 2025-10 (n=20121)",
+  "select": "2025-11 (n=3575)",
+  "check": "2025-12 (n=3603)"
+ },
+ "caveats": [
+  "ridge_absence infers teammate absences from who is missing in the box score. Late scratches and coach's decisions leak in, so treat it as an upper bound.",
+  "Eligibility matches the error breakdown: 5+ prior games and a last-10 average of 12+ minutes. Players who jump from a small role into big minutes are not in the sample.",
+  "No pregame point spreads are used yet; blowout risk is not modeled here.",
+  "Only games a player actually played are targets. A player rested on a back-to-back drops out of the sample, so the b2b coefficient measures minutes given that he plays, not rest risk."
+ ],
+ "settings": {
+  "ewm_half_life": 3.0,
+  "early_blend_strength": 2.0,
+  "ridge_clean_lambda": 0.1,
+  "ridge_absence_lambda": 1.0
+ },
+ "coefficients_minutes_per_unit": {
+  "ridge_clean": {
+   "ewm3": 1.4871725156221138,
+   "ewm5": -0.5599727234592159,
+   "ewm12": 0.047493335390298354,
+   "last3": -0.009331487120228877,
+   "last10": -0.36213535918305634,
+   "season_mean": 0.21546536632872598,
+   "last_season": 0.11139426152087432,
+   "has_last_season": -0.16790492813975394,
+   "inv_games": -0.4844803405611706,
+   "b2b": 0.3782744802659611,
+   "rest_days": -0.16137069372791046,
+   "missed_recent": -0.10011726786105132,
+   "just_returned": -1.3661654198357982
+  },
+  "ridge_absence": {
+   "ewm3": 1.2490135883938127,
+   "ewm5": -0.35441010331105033,
+   "ewm12": -0.022859351056337854,
+   "last3": 0.012979158559376237,
+   "last10": -0.33086669729981777,
+   "season_mean": 0.28800767206692696,
+   "last_season": 0.15855155307388014,
+   "has_last_season": -0.42098597692741796,
+   "inv_games": 1.8152798827910195,
+   "b2b": 0.26502618698519975,
+   "rest_days": -0.026622087434057688,
+   "missed_recent": -0.3083998937725268,
+   "just_returned": -1.3628163402971967,
+   "absent_minutes": 0.06897764140016478,
+   "absent_share": -0.03956598841416568,
+   "absent_share_starter": -0.16750264657852065
+  }
+ },
+ "select_scores": {
+  "last10": {
+   "mae": 4.736108003108003,
+   "rmse": 6.202603339605637,
+   "bias": 0.3541954711954712,
+   "mae_starter": 4.109669832352417,
+   "mae_bench": 5.15082113893132
+  },
+  "ewm": {
+   "mae": 4.614225313444501,
+   "rmse": 6.037733436390046,
+   "bias": 0.19094676889820228,
+   "mae_starter": 4.078130920337141,
+   "mae_bench": 4.969129272433287
+  },
+  "early_blend": {
+   "mae": 4.600653864672523,
+   "rmse": 6.011149318760892,
+   "bias": 0.31390891566387874,
+   "mae_starter": 4.046731723503417,
+   "mae_bench": 4.967360107826781
+  },
+  "ridge_clean": {
+   "mae": 4.587035214471842,
+   "rmse": 5.963040051929625,
+   "bias": 0.22560522363357768,
+   "mae_starter": 4.0922247675570524,
+   "mae_bench": 4.914608471750626
+  },
+  "ridge_absence": {
+   "mae": 4.567315603438871,
+   "rmse": 5.88919234266901,
+   "bias": 0.5600322169049431,
+   "mae_starter": 4.121287321696157,
+   "mae_bench": 4.8625942055781675
+  }
+ },
+ "check_scores": {
+  "last10": {
+   "mae": 4.909232495847817,
+   "rmse": 6.383198677298047,
+   "bias": -0.3759592975871078,
+   "mae_starter": 4.167808784206633,
+   "mae_bench": 5.3776591614906835
+  },
+  "ewm": {
+   "mae": 4.712328631196018,
+   "rmse": 6.153559282269886,
+   "bias": -0.31902304539840526,
+   "mae_starter": 4.031084928067546,
+   "mae_bench": 5.14273395993887
+  },
+  "early_blend": {
+   "mae": 4.697989063177008,
+   "rmse": 6.1410217388265105,
+   "bias": -0.2456508573768928,
+   "mae_starter": 4.002733448287069,
+   "mae_bench": 5.1372470263887235
+  },
+  "ridge_clean": {
+   "mae": 4.67684682813698,
+   "rmse": 6.096962565916292,
+   "bias": -0.06673514729660407,
+   "mae_starter": 4.006885415824719,
+   "mae_bench": 5.100124079122309
+  },
+  "ridge_absence": {
+   "mae": 4.6284626949625265,
+   "rmse": 5.997906267684454,
+   "bias": 0.3351977679977293,
+   "mae_starter": 4.062179507291071,
+   "mae_bench": 4.986236719782127
+  }
+ },
+ "check_vs_last10": {
+  "ewm": {
+   "mae_diff": -0.1969038646517983,
+   "ci95": [
+    -0.2338860812289973,
+    -0.15842855007752105
+   ],
+   "n_dates": 30
+  },
+  "early_blend": {
+   "mae_diff": -0.21124343267080806,
+   "ci95": [
+    -0.2515440521805656,
+    -0.16554426145801682
+   ],
+   "n_dates": 30
+  },
+  "ridge_clean": {
+   "mae_diff": -0.23238566771083585,
+   "ci95": [
+    -0.2972809371764939,
+    -0.16291561449995046
+   ],
+   "n_dates": 30
+  },
+  "ridge_absence": {
+   "mae_diff": -0.28076980088529024,
+   "ci95": [
+    -0.35602746481854264,
+    -0.20785844033370215
+   ],
+   "n_dates": 30
+  }
+ },
+ "check_stat_mae_by_minutes_model": {
+  "assists": {
+   "n": 3585,
+   "last10": 1.4312872425540406,
+   "ewm": 1.4245898045057563,
+   "early_blend": 1.4239269753906099,
+   "ridge_clean": 1.4241183744244372,
+   "ridge_absence": 1.4146059633053334,
+   "actual_minutes": 1.2960497600631344
+  },
+  "points": {
+   "n": 3603,
+   "last10": 4.934394655192992,
+   "ewm": 4.904321464852484,
+   "early_blend": 4.895455992231098,
+   "ridge_clean": 4.889630092093215,
+   "ridge_absence": 4.850987813651288,
+   "actual_minutes": 4.081641411991637
+  },
+  "rebounds": {
+   "n": 3586,
+   "last10": 1.9709076123066906,
+   "ewm": 1.957323415760027,
+   "early_blend": 1.9534145246312453,
+   "ridge_clean": 1.9489249611161292,
+   "ridge_absence": 1.9332004776830998,
+   "actual_minutes": 1.7043023367358419
+  },
+  "threes": {
+   "n": 3438,
+   "last10": 1.0172744378349623,
+   "ewm": 1.016096992406663,
+   "early_blend": 1.0149118253111253,
+   "ridge_clean": 1.0137156883018157,
+   "ridge_absence": 1.0058704191783387,
+   "actual_minutes": 0.9388516049825765
+  }
+ }
+}
