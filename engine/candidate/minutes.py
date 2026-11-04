@@ -78,7 +78,7 @@ def ewm(values: list[float], half_life: float) -> float:
 # Walk-forward rows
 # ---------------------------------------------------------------------------
 
-def build_rows(logs: list[dict], target_end: str = TARGET_END) -> list[dict]:
+def build_rows(logs: list[dict], target_end: str = TARGET_END, emit_from: str = "") -> list[dict]:
     """
     One row per player-game with pregame minutes features.
 
@@ -103,7 +103,7 @@ def build_rows(logs: list[dict], target_end: str = TARGET_END) -> list[dict]:
             by_team_game: dict[tuple[str, str], list[dict]] = defaultdict(list)
             for row in todays:
                 by_team_game[(str(row["team_id"]), str(row["game_id"]))].append(row)
-            if game_day < target_end:
+            if emit_from <= game_day < target_end:
                 for (team, game_id), members in by_team_game.items():
                     out.extend(_emit(
                         season, game_day, team, members, played, appearances,

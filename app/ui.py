@@ -648,6 +648,16 @@ def probability_note(prop) -> str:
     )
 
 
+def candidate_note(prop) -> str:
+    """The frozen candidate's chance for this side, for comparison only."""
+    p = getattr(prop, "candidate_probability", None)
+    if p is None:
+        return ""
+    proj = getattr(prop, "candidate_projection", None)
+    proj_text = f", projected {proj:.1f}" if proj is not None else ""
+    return f"Candidate v1: {p * 100:.1f}%{proj_text}. Experimental, not used for edge."
+
+
 def prob_meter(true_p: float, implied_p: float, true_label: str = "Model", implied_label: str = "Price") -> str:
     """Bar filled to the model probability, a tick at the market's, the gap shaded as edge."""
     t = max(0.0, min(1.0, true_p)) * 100
@@ -701,6 +711,7 @@ def pick_card(rank: int, prop, stake: float) -> None:
         f" &nbsp;Projected {prop.projected_value:.1f}</p>"
         + prob_meter(prop.true_probability, prop.implied_probability, true_label=probability_label(prop))
         + (f'<p class="tp-prob-note">{escape(probability_note(prop))}</p>' if probability_note(prop) else "")
+        + (f'<p class="tp-prob-note">{escape(candidate_note(prop))}</p>' if candidate_note(prop) else "")
         + '<div class="tp-pick-foot">'
         + edge_chip(prop.edge, edge_basis(prop))
         + f"<span>{escape(format_currency(stake))} returns <b>{escape(format_currency(stake + profit))}</b></span>"

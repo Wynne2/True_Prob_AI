@@ -109,7 +109,7 @@ def _gap(values: list[float], league: list[float]) -> float:
 # Walk-forward rows
 # ---------------------------------------------------------------------------
 
-def build_rows(logs: list[dict], target_end: str = cm.TARGET_END) -> list[dict]:
+def build_rows(logs: list[dict], target_end: str = cm.TARGET_END, emit_from: str = "") -> list[dict]:
     """One row per player-game-stat. Same eligibility as the minutes experiment."""
     by_season: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
     for row in logs:
@@ -134,7 +134,7 @@ def build_rows(logs: list[dict], target_end: str = cm.TARGET_END) -> list[dict]:
             by_team_game: dict[tuple[str, str], list[dict]] = defaultdict(list)
             for row in days[game_day]:
                 by_team_game[(str(row["team_id"]), str(row["game_id"]))].append(row)
-            if game_day < target_end:
+            if emit_from <= game_day < target_end:
                 for (team, game_id), members in by_team_game.items():
                     out.extend(_emit(season, game_day, team, members, state, last_season_rate))
             _update(by_team_game, game_day, state)

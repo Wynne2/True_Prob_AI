@@ -289,6 +289,14 @@ def render_props_table(props: list) -> None:
             "Exp Min": round(getattr(p, "expected_minutes", 0), 1),
             "Used %": round(p.true_probability * 100, 1),
             "Model %": round((getattr(p, "raw_model_probability", 0.0) or 0.0) * 100, 1),
+            "Candidate %": (
+                round(p.candidate_probability * 100, 1)
+                if getattr(p, "candidate_probability", None) is not None else None
+            ),
+            "Cand proj": (
+                round(p.candidate_projection, 1)
+                if getattr(p, "candidate_projection", None) is not None else None
+            ),
             "Consensus %": (
                 round(p.market_probability * 100, 1)
                 if getattr(p, "market_probability", None) is not None else None
@@ -325,6 +333,11 @@ def render_props_table(props: list) -> None:
             "Model %": st.column_config.NumberColumn(
                 format="%.1f%%", help="The model's own distribution probability, before any market blend.",
             ),
+            "Candidate %": st.column_config.NumberColumn(
+                format="%.1f%%",
+                help="Frozen candidate v1 (engine/candidate). Shown for comparison; not used for edge.",
+            ),
+            "Cand proj": st.column_config.NumberColumn(format="%.1f", help="Candidate v1 projected stat."),
             "Consensus %": st.column_config.NumberColumn(
                 format="%.1f%%", help="No-vig market consensus for this side across venues.",
             ),
@@ -912,6 +925,14 @@ def main() -> None:
                 scanner.last_odds_source_counts,
                 scanner.last_odds_source_errors,
             )
+        st.session_state.candidate_status = None
+        if all_props:
+            with st.spinner("Scoring props with the frozen candidate model..."):
+                from engine.candidate.live import attach_candidate
+                try:
+                    st.session_state.candidate_status = attach_candidate(all_props, params["date"])
+                except Exception as exc:  # the board works without the candidate
+                    st.session_state.candidate_status = {"status": "error", "reason": str(exc)}
 
         if not all_props:
             if params["date"] > today_eastern():
@@ -965,6 +986,15 @@ def main() -> None:
             ("Pass your filters", f"{qualifying_count:,}", "court"),
             ("Parlays built", f"{len(parlays):,}", ""),
         ])
+        cand = st.session_state.get("candidate_status") or {}
+        if cand.get("status") == "ok":
+            st.caption(
+                f"Candidate v1 scored {cand['attached']:,} of {cand['props']:,} prop lines "
+                f"({cand['players_scored']} players with 5+ games this season). "
+                "It is shown for comparison and does not change edges or rankings."
+            )
+        elif cand:
+            st.caption(f"Candidate v1 not shown: {cand.get('status')}. {cand.get('reason', '')}")
     elif not params["run"]:
         ui.empty_state()
 

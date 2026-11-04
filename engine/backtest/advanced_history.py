@@ -153,13 +153,13 @@ def load_march_2026_logs() -> list[dict]:
     return _load_windows(((date(2026, 3, 1), date(2026, 3, 31), "2025-26"),))[0]
 
 
-def _load_windows(windows) -> tuple[list[dict], dict]:
+def _load_windows(windows, cache=None, ttl_seconds: int = 0) -> tuple[list[dict], dict]:
     advanced: list[dict] = []
     boxes: list[dict] = []
     windows_loaded = []
     for start, end, season in windows:
-        advanced.extend(_cached_window("advanced", start, end, season))
-        boxes.extend(_cached_window("box", start, end, season))
+        advanced.extend(_cached_window("advanced", start, end, season, cache, ttl_seconds))
+        boxes.extend(_cached_window("box", start, end, season, cache, ttl_seconds))
         windows_loaded.append(f"{start.isoformat()}_{end.isoformat()}")
 
     box_index = {
@@ -195,9 +195,10 @@ def _load_windows(windows) -> tuple[list[dict], dict]:
     return joined, coverage
 
 
-def _cached_window(kind: str, start: date, end: date, season: str) -> list[dict]:
+def _cached_window(kind: str, start: date, end: date, season: str, cache=None, ttl_seconds: int = 0) -> list[dict]:
+    store = cache or _CACHE
     key = f"{kind}_{start.isoformat()}_{end.isoformat()}"
-    cached = _CACHE.get(key)
+    cached = store.get(key)
     if isinstance(cached, list):
         return cached
     print(f"Fetching {kind} {start.isoformat()} to {end.isoformat()}", flush=True)
@@ -207,7 +208,7 @@ def _cached_window(kind: str, start: date, end: date, season: str) -> list[dict]
     else:
         raw = _paginate("v1/stats", start, end)
         slim = [flatten_box_row(row, season) for row in raw]
-    _CACHE.set(key, slim, ttl_seconds=0)
+    store.set(key, slim, ttl_seconds=ttl_seconds)
     return slim
 
 

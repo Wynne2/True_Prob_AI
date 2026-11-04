@@ -120,7 +120,7 @@ def opportunities(row: dict, stat: str) -> float | None:
 # Walk-forward rows
 # ---------------------------------------------------------------------------
 
-def build_rows(logs: list[dict], target_end: str = TARGET_END) -> list[dict]:
+def build_rows(logs: list[dict], target_end: str = TARGET_END, emit_from: str = "") -> list[dict]:
     """
     One row per player-game-stat with a pregame forecast of each link.
 
@@ -140,7 +140,7 @@ def build_rows(logs: list[dict], target_end: str = TARGET_END) -> list[dict]:
         history: dict[str, list[dict]] = defaultdict(list)
         league = {stat: [0.0, 0.0] for stat in CHAINS}  # made, opportunities
         for game_day in sorted(days):
-            if game_day < target_end:
+            if emit_from <= game_day < target_end:
                 for row in days[game_day]:
                     out.extend(_emit(row, history, league, season, game_day))
             for row in days[game_day]:

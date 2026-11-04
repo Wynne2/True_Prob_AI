@@ -358,6 +358,9 @@ class PropProbability:
     model_weight: float = 0.0
     # "market_blend" or "legacy".
     probability_method: str = "legacy"
+    # Frozen candidate model (engine/candidate), shown beside production. Not used for edge.
+    candidate_probability: Optional[float] = None
+    candidate_projection: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------

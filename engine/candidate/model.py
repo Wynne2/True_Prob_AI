@@ -85,10 +85,10 @@ def ridge_from_dict(data: dict, cls):
 # Items: one per player-game-stat, joining the three walk-forward builders
 # ---------------------------------------------------------------------------
 
-def build_items(logs: list[dict], target_end: str) -> list[dict]:
-    chain = dec.build_rows(logs, target_end=target_end)
-    minutes = {(r["player_id"], r["game_id"]): r for r in cm.build_rows(logs, target_end=target_end)}
-    volume = {(r["player_id"], r["game_id"], r["stat"]): r for r in cv.build_rows(logs, target_end=target_end)}
+def build_items(logs: list[dict], target_end: str, emit_from: str = "") -> list[dict]:
+    chain = dec.build_rows(logs, target_end=target_end, emit_from=emit_from)
+    minutes = {(r["player_id"], r["game_id"]): r for r in cm.build_rows(logs, target_end=target_end, emit_from=emit_from)}
+    volume = {(r["player_id"], r["game_id"], r["stat"]): r for r in cv.build_rows(logs, target_end=target_end, emit_from=emit_from)}
     items = []
     for c in chain:
         m = minutes.get((c["player_id"], c["game_id"]))
