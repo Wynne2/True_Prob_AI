@@ -141,11 +141,23 @@ def _paginate(path: str, start: date, end: date, extra: dict | None = None) -> l
 def load_historical_logs() -> tuple[list[dict], dict]:
     """
     Joined player-game logs. Cached per month. A second run does not refetch.
+
+    March 2026 is not part of this default load. The accuracy test fetches it
+    only after its weights are frozen.
     """
+    return _load_windows(HISTORY_WINDOWS)
+
+
+def load_march_2026_logs() -> list[dict]:
+    """Box scores for the untouched March test. Not used to choose weights."""
+    return _load_windows(((date(2026, 3, 1), date(2026, 3, 31), "2025-26"),))[0]
+
+
+def _load_windows(windows) -> tuple[list[dict], dict]:
     advanced: list[dict] = []
     boxes: list[dict] = []
     windows_loaded = []
-    for start, end, season in HISTORY_WINDOWS:
+    for start, end, season in windows:
         advanced.extend(_cached_window("advanced", start, end, season))
         boxes.extend(_cached_window("box", start, end, season))
         windows_loaded.append(f"{start.isoformat()}_{end.isoformat()}")

@@ -237,8 +237,11 @@ Examples:
     )
     parser.add_argument(
         "--experiment",
-        choices=["interaction"],
-        help="Fit the opportunity-matchup interaction on January and validate it on February. March is not opened.",
+        choices=["interaction", "accuracy"],
+        help=(
+            "interaction: January fit, February check, March closed. "
+            "accuracy: fit projection weights before 2026, then score March once."
+        ),
     )
     parser.add_argument("--min-profit", type=float, default=5.0, help="`arb`: min locked $ profit (default 5)")
     parser.add_argument("--min-annual", type=float, default=0.10,
@@ -609,6 +612,33 @@ def main() -> None:
                 f"{effect.get('mean_brier_difference')}  date SE {effect.get('date_cluster_se')}"
             )
         console.print("[dim]Wrote data/backtests/interaction_experiment.json[/dim]")
+        return
+
+    if args.command == "backtest" and getattr(args, "experiment", None) == "accuracy":
+        from engine.accuracy.run import estimate_march_cost, run_accuracy_experiment
+
+        print_header(game_date)
+        planned = estimate_march_cost()
+        console.print(
+            f"[cyan]Accuracy experiment.[/cyan] Weights are chosen on 2025 games before January. "
+            f"March cold estimate {planned['total_credits']} credits "
+            f"for {planned['n_games']} games. Production weights are not changed."
+        )
+        report = run_accuracy_experiment()
+        console.print((report.get("production_change") or {}).get("reason", ""))
+        march = report.get("march_probability") or {}
+        console.print(f"March status: {march.get('status')}  rows: {march.get('n')}")
+        for name, block in (march.get("models") or {}).items():
+            console.print(
+                f"  {name}: n={block.get('n')} brier={block.get('brier')} log_loss={block.get('log_loss')}"
+            )
+        effect = march.get("c_minus_a") or {}
+        if effect:
+            console.print(
+                "C minus A Brier: "
+                f"{effect.get('mean_brier_difference')}  date SE {effect.get('date_cluster_se')}"
+            )
+        console.print("[dim]Wrote data/backtests/accuracy_experiment.json[/dim]")
         return
 
     if args.command == "backtest" and int(getattr(args, "games", 1) or 1) > 1:

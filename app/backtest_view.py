@@ -7,6 +7,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+from engine.accuracy.run import load_accuracy_report
 from engine.backtest.expanded import load_expanded_report
 from engine.backtest.experiment import load_interaction_report
 from engine.backtest.odds_history import estimate_sample_cost
@@ -18,6 +19,7 @@ from utils.date_utils import today_eastern
 def render_backtest_tab() -> None:
     _render_expanded_report()
     _render_interaction_report()
+    _render_accuracy_report()
     ui.section("One-game historical sample", "scored against historical Odds API prices")
     st.caption(
         "Historical prices come only from The Odds API. Stats come only from BALLDONTLIE. "
@@ -204,6 +206,78 @@ def _render_interaction_report() -> None:
             f"February Model E minus Model A Brier: {_fmt(effect.get('mean_brier_difference'), 4)}. "
             f"Date-cluster SE {_fmt(effect.get('date_cluster_se'), 4)}."
         )
+
+
+def _render_accuracy_report() -> None:
+    payload = load_accuracy_report()
+    ui.section("Prediction accuracy", "projection error and calibration, separate from betting edges")
+    if not payload:
+        st.caption(
+            "No accuracy report yet. Run `python main.py backtest --experiment accuracy`. "
+            "That fits weights on 2025 games before January, then scores March once. "
+            "It does not change the production model."
+        )
+        return
+    report = payload.get("report") or {}
+    st.caption((report.get("production_change") or {}).get("reason") or "")
+    for note in report.get("missing") or []:
+        st.warning(note)
+    freeze = report.get("freeze") or {}
+    weights = []
+    for stat, fit in (freeze.get("fits") or {}).items():
+        coef = fit.get("coefficients") or {}
+        weights.append({
+            "stat": stat,
+            "channel": fit.get("defense_channel"),
+            "december_mae": fit.get("december_mae"),
+            "prior_mae": fit.get("baseline_mae"),
+            **coef,
+        })
+    if weights:
+        st.markdown("Learned factor weights")
+        st.dataframe(pd.DataFrame(weights), width="stretch", hide_index=True)
+    projection = (report.get("march_projection") or {}).get("by_stat") or {}
+    if projection:
+        st.markdown("March projection error")
+        rows = []
+        for stat, block in projection.items():
+            rows.append({
+                "stat": stat,
+                "n": block.get("n"),
+                "prior_mae": block.get("prior_mae"),
+                "context_mae": block.get("context_mae"),
+            })
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+    probability = report.get("march_probability") or {}
+    models = probability.get("models") or {}
+    if models:
+        st.markdown("March probability comparison")
+        st.dataframe(
+            pd.DataFrame([
+                {
+                    "model": name,
+                    "n": block.get("n"),
+                    "brier": block.get("brier"),
+                    "log_loss": block.get("log_loss"),
+                    "date_se": block.get("date_cluster_se"),
+                }
+                for name, block in models.items()
+            ]),
+            width="stretch",
+            hide_index=True,
+        )
+        effect = probability.get("c_minus_a") or {}
+        st.write(
+            f"Context model minus Model A Brier: {_fmt(effect.get('mean_brier_difference'), 4)}. "
+            f"Date-cluster SE {_fmt(effect.get('date_cluster_se'), 4)}."
+        )
+        high = probability.get("high_probability_70_90") or {}
+        if high:
+            st.dataframe(
+                pd.DataFrame([{"model": name, **block} for name, block in high.items()]),
+                width="stretch",
+                hide_index=True,
+            )
 
 
 def _fmt(value, places: int = 3) -> str:
