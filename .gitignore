@@ -208,3 +208,9 @@ __marimo__/
 
 # Arbitrage scan log (python main.py arb)
 data/arbs/
+
+# Live API caches: regenerated on every scan, expire within a day.
+# Historical backtest inputs stay tracked so experiments reproduce offline.
+data/cache/*
+!data/cache/balldontlie_history/
+!data/cache/odds_history/
