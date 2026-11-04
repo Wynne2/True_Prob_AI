@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-04T06:03:57+00:00",
+ "generated_at": "2026-11-04T06:08:19+00:00",
  "version": "candidate-v2",
  "splits": {
   "fit": "2024-25 + Oct-Dec 2025 (n=106126)",
@@ -28,6 +28,139 @@
   }
  },
  "chosen_minutes": "plus_spread_absence",
+ "settings": {
+  "minutes_features": [
+   "ewm3",
+   "ewm5",
+   "ewm12",
+   "last3",
+   "last10",
+   "season_mean",
+   "last_season",
+   "has_last_season",
+   "inv_games",
+   "b2b",
+   "rest_days",
+   "missed_recent",
+   "just_returned",
+   "has_spread",
+   "abs_spread",
+   "abs_spread_x_starter",
+   "abs_spread_sq_x_starter",
+   "absent_minutes",
+   "absent_share",
+   "absent_share_starter"
+  ],
+  "minutes_lambda": 100.0,
+  "volume": {
+   "points": {
+    "lambda": 100.0,
+    "dropped_groups": [
+     "last_season"
+    ],
+    "features": [
+     "base_rate",
+     "ewm_rate",
+     "last5_rate",
+     "season_rate",
+     "usage_delta_x_rate",
+     "touches_delta_x_rate",
+     "pace_gap_x_rate",
+     "allowed_gap_x_rate",
+     "b2b"
+    ],
+    "choice": "ratio20",
+    "november_stat_mae": {
+     "ridge": 4.549527546991096,
+     "ratio20": 4.539873967713032
+    }
+   },
+   "threes": {
+    "lambda": 1000.0,
+    "dropped_groups": [
+     "last_season",
+     "pace",
+     "rest",
+     "touches"
+    ],
+    "features": [
+     "base_rate",
+     "ewm_rate",
+     "last5_rate",
+     "season_rate",
+     "usage_delta_x_rate",
+     "allowed_gap_x_rate"
+    ],
+    "choice": "ratio20",
+    "november_stat_mae": {
+     "ridge": 0.981737222277054,
+     "ratio20": 0.9798965634727829
+    }
+   },
+   "rebounds": {
+    "lambda": 1000.0,
+    "dropped_groups": [],
+    "features": [
+     "base_rate",
+     "ewm_rate",
+     "last5_rate",
+     "season_rate",
+     "last_season_rate",
+     "has_last_season",
+     "usage_delta_x_rate",
+     "touches_delta_x_rate",
+     "pace_gap_x_rate",
+     "allowed_gap_x_rate",
+     "b2b"
+    ],
+    "choice": "ridge",
+    "november_stat_mae": {
+     "ridge": 1.9278940591806488,
+     "ratio20": 1.9325439431471472
+    }
+   },
+   "assists": {
+    "lambda": 0.1,
+    "dropped_groups": [
+     "last_season",
+     "usage",
+     "rest",
+     "pace"
+    ],
+    "features": [
+     "base_rate",
+     "ewm_rate",
+     "last5_rate",
+     "season_rate",
+     "touches_delta_x_rate",
+     "allowed_gap_x_rate"
+    ],
+    "choice": "ridge",
+    "november_stat_mae": {
+     "ridge": 1.39056411793569,
+     "ratio20": 1.392119979969019
+    }
+   }
+  },
+  "calibration": {
+   "points": {
+    "a": -0.05,
+    "b": 0.65
+   },
+   "rebounds": {
+    "a": 0.05,
+    "b": 0.7
+   },
+   "assists": {
+    "a": 0.0,
+    "b": 0.6
+   },
+   "threes": {
+    "a": 0.1,
+    "b": 0.6
+   }
+  }
+ },
  "minutes_coefficients": {
   "ewm3": 0.5569802910222734,
   "ewm5": 0.15184219542969743,
