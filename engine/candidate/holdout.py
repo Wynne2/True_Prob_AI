@@ -176,22 +176,38 @@ def score_priced(items: list[dict], params: dict, logs: list[dict], credit_cap: 
     }
 
 
-def run(credit_cap: int = DEFAULT_CREDIT_CAP, through: date | None = None) -> dict:
-    params = cmodel.load_params()
+def run(credit_cap: int = DEFAULT_CREDIT_CAP, through: date | None = None, version: str = "v1") -> dict:
+    global REPORT_PATH
+    path = cmodel.PARAMS_PATH if version == "v1" else cmodel.ROOT / "data" / "models" / f"candidate_{version}.json"
+    params = cmodel.load_params(path)
     if params is None:
-        raise SystemExit("No frozen parameters. Run python -m engine.candidate.model first.")
+        raise SystemExit(f"No frozen parameters for {version}.")
+    start = date.fromisoformat(params.get("holdout_start") or HOLDOUT_START.isoformat())
+    REPORT_PATH = cmodel.ROOT / "data" / "backtests" / f"candidate_{version}_holdout.json"
     through = through or (date.today() - timedelta(days=1))
+    if through < start:
+        raise SystemExit(f"{version} holdout starts {start}; no completed games yet.")
     logs = load_all_logs(through)
+    spreads = None
+    if "abs_spread" in (params.get("settings") or {}).get("minutes_features", []):
+        from engine.candidate import spreads as csp
+        days = csp.game_dates(logs, start, through)
+        cold = [d for d in days if csp.cached(d) is None]
+        if len(cold) * csp.CREDITS_PER_DATE <= credit_cap:
+            for d in cold:
+                csp.fetch(d)
+            credit_cap -= len(cold) * csp.CREDITS_PER_DATE
+        spreads = csp.spread_by_team_date(days, logs)
     items = [
-        it for it in cmodel.build_items(logs, target_end=(through + timedelta(days=1)).isoformat())
-        if it["season"] == "2026-27"
+        it for it in cmodel.build_items(logs, target_end=(through + timedelta(days=1)).isoformat(), spreads=spreads)
+        if it["season"] == "2026-27" and it["game_date"] >= start.isoformat()
     ]
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "version": params.get("version"),
         "frozen_at": params.get("frozen_at"),
         "frozen_code_commit": params.get("frozen_code_commit"),
-        "holdout_window": f"{HOLDOUT_START.isoformat()} .. {through.isoformat()}",
+        "holdout_window": f"{start.isoformat()} .. {through.isoformat()}",
         "eligible_rows": len(items),
         "eligible_dates": sorted({it["game_date"] for it in items}),
         "rule": "Parameters frozen before this window was scored. Do not refit on these results.",
@@ -224,8 +240,9 @@ def _print(report: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--credit-cap", type=int, default=DEFAULT_CREDIT_CAP)
+    parser.add_argument("--version", default="v2", choices=("v1", "v2"))
     args = parser.parse_args()
-    _print(run(credit_cap=args.credit_cap))
+    _print(run(credit_cap=args.credit_cap, version=args.version))
 
 
 if __name__ == "__main__":

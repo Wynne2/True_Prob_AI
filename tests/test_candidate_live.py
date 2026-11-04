@@ -47,6 +47,7 @@ def _prop(pid, team, opp, prop_type=PropType.POINTS, line=19.5, side=PropSide.OV
 
 def test_attach_scores_known_players_and_skips_unknown(monkeypatch):
     monkeypatch.setattr(live, "season_logs", lambda slate, season="2026-27": _logs())
+    monkeypatch.setattr(live, "injured_out", lambda: set())
     monkeypatch.setattr(cmodel, "load_params", lambda path=None: _params())
     over = _prop("a", "AAA", "BBB")
     under = _prop("a", "AAA", "BBB", side=PropSide.UNDER)
@@ -61,6 +62,7 @@ def test_attach_scores_known_players_and_skips_unknown(monkeypatch):
 
 def test_attach_without_params_leaves_props_alone(monkeypatch):
     monkeypatch.setattr(cmodel, "load_params", lambda path=None: None)
+    monkeypatch.setattr(live, "injured_out", lambda: set())
     prop = _prop("a", "AAA", "BBB")
     assert live.attach_candidate([prop], date(2026, 11, 5))["status"] == "no_params"
     assert getattr(prop, "candidate_probability", None) is None
@@ -80,3 +82,28 @@ def test_candidate_note_on_card():
     assert ui.candidate_note(NS(candidate_probability=None)) == ""
     note = ui.candidate_note(NS(candidate_probability=0.523, candidate_projection=8.14))
     assert "52.3%" in note and "8.1" in note and "not used for edge" in note
+
+
+def test_injured_player_is_not_scored_but_teammates_are(monkeypatch):
+    logs = _logs()
+    for r in list(logs):
+        if r["player_id"] == "a":
+            logs.append(dict(r, player_id="b", min=24.0))
+    monkeypatch.setattr(live, "season_logs", lambda slate, season="2026-27": logs)
+    monkeypatch.setattr(live, "injured_out", lambda: {"b"})
+    monkeypatch.setattr(cmodel, "load_params", lambda path=None: _params())
+    a, b = _prop("a", "AAA", "BBB"), _prop("b", "AAA", "BBB")
+    status = live.attach_candidate([a, b], date(2026, 11, 5), season="2026-27")
+    assert a.candidate_probability is not None
+    assert getattr(b, "candidate_probability", None) is None
+    assert status["injured_out_on_slate"] == 1
+
+
+def test_recent_rotation_and_spreads():
+    rot = live.recent_rotation(_logs(), "2026-27")
+    assert rot["1"] == {"a"} and rot["2"] == {"x"}
+    teams = {"AAA": "1", "BBB": "2"}
+    games = [NS(home_team_abbr="AAA", away_team_abbr="BBB", home_spread=-6.5),
+             NS(home_team_abbr="BBB", away_team_abbr="AAA", home_spread=0.0)]
+    s = live._spreads(games, teams, date(2026, 11, 5))
+    assert s[("1", "2026-11-05")] == -6.5 and s[("2", "2026-11-05")] == 6.5

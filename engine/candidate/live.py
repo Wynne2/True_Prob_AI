@@ -5,9 +5,15 @@ Production probabilities, edges and rankings are not changed. Each prop gets
 ``candidate_probability`` (chance its side hits) and ``candidate_projection``
 when the candidate can score it, else they stay None.
 
-Data: BALLDONTLIE box + advanced logs for the current season through the day
-before the slate (cached in data/cache/candidate_live, not tracked), plus last
-season for the early-season features.
+Inputs for tonight:
+    history   BALLDONTLIE box + advanced logs for the current season through the
+              day before the slate (cached in data/cache/candidate_live, untracked),
+              plus last season for the early-season features.
+    absences  BALLDONTLIE /v1/player_injuries: Out or Doubtful counts as absent.
+              Every other recent rotation player on a team is treated as playing.
+    spread    the board's game lines (Game.home_spread), when present.
+
+The newest frozen version is used (v2, else v1).
 """
 
 from __future__ import annotations
@@ -21,7 +27,15 @@ from engine.candidate import model as cmodel
 logger = logging.getLogger(__name__)
 
 STAT_OF_PROP = {"points": "points", "rebounds": "rebounds", "assists": "assists", "threes": "threes"}
+OUT_STATUSES = ("out", "doubtful")
+ROTATION_LOOKBACK_GAMES = 5
 _CURRENT_MONTH_TTL = 6 * 3600
+
+
+def frozen_params() -> dict | None:
+    """Newest frozen candidate: v2 if present, else v1."""
+    v2 = cmodel.ROOT / "data" / "models" / "candidate_v2.json"
+    return cmodel.load_params(v2) or cmodel.load_params()
 
 
 def _month_windows(start: date, end: date, season: str):
@@ -64,6 +78,21 @@ def season_logs(slate: date, season: str = NBA_SEASON) -> list[dict]:
     return prior_logs + current
 
 
+def injured_out() -> set[str]:
+    """Player ids listed Out or Doubtful on BALLDONTLIE's current injury report."""
+    from data.loaders.nba_api_loader import fetch_balldontlie_injuries
+
+    try:
+        rows = fetch_balldontlie_injuries()
+    except Exception as exc:
+        logger.warning("Injury report unavailable: %s", exc)
+        return set()
+    return {
+        str(r["player_id"]) for r in rows
+        if str(r.get("status") or "").strip().lower().startswith(OUT_STATUSES)
+    }
+
+
 def _team_ids(logs: list[dict]) -> dict[str, str]:
     by_abbr: dict[str, str] = {}
     for row in logs:
@@ -71,6 +100,29 @@ def _team_ids(logs: list[dict]) -> dict[str, str]:
         if abbr and row.get("team_id"):
             by_abbr[abbr] = str(row["team_id"])
     return by_abbr
+
+
+def recent_rotation(logs: list[dict], season: str) -> dict[str, set[str]]:
+    """team id -> players who appeared for that team in its last few games this season."""
+    games_by_team: dict[str, list[tuple[str, str]]] = {}
+    played: dict[tuple[str, str], set[str]] = {}
+    last_team: dict[str, tuple[str, str]] = {}
+    for r in logs:
+        if r.get("season") != season or float(r.get("min") or 0) <= 0:
+            continue
+        team, gid, day, pid = str(r.get("team_id")), str(r.get("game_id")), r.get("game_date"), str(r.get("player_id"))
+        games_by_team.setdefault(team, [])
+        if (day, gid) not in games_by_team[team]:
+            games_by_team[team].append((day, gid))
+        played.setdefault((team, gid), set()).add(pid)
+        if pid not in last_team or day >= last_team[pid][0]:
+            last_team[pid] = (day, team)
+    out: dict[str, set[str]] = {}
+    for team, games in games_by_team.items():
+        recent = sorted(games)[-ROTATION_LOOKBACK_GAMES:]
+        members = set().union(*(played.get((team, gid), set()) for _, gid in recent))
+        out[team] = {pid for pid in members if last_team.get(pid, ("", ""))[1] == team}
+    return out
 
 
 def _placeholder(pid: str, team: str, opp: str, slate: date, season: str) -> dict:
@@ -82,9 +134,22 @@ def _placeholder(pid: str, team: str, opp: str, slate: date, season: str) -> dic
     }
 
 
-def attach_candidate(props: list, slate: date, season: str = NBA_SEASON) -> dict:
+def _spreads(games: list | None, teams: dict[str, str], slate: date) -> dict[tuple[str, str], float]:
+    out = {}
+    for g in games or []:
+        spread = getattr(g, "home_spread", None)
+        if spread in (None, 0, 0.0):
+            continue  # 0.0 is the entity default for "no line"
+        home, away = teams.get(str(g.home_team_abbr).upper()), teams.get(str(g.away_team_abbr).upper())
+        if home and away:
+            out[(home, slate.isoformat())] = float(spread)
+            out[(away, slate.isoformat())] = -float(spread)
+    return out
+
+
+def attach_candidate(props: list, slate: date, season: str = NBA_SEASON, games: list | None = None) -> dict:
     """Set candidate_probability / candidate_projection on each prop the candidate can score."""
-    params = cmodel.load_params()
+    params = frozen_params()
     if params is None:
         return {"status": "no_params"}
     try:
@@ -94,19 +159,36 @@ def attach_candidate(props: list, slate: date, season: str = NBA_SEASON) -> dict
         return {"status": "no_data", "reason": str(exc)}
 
     teams = _team_ids(logs)
-    placeholders, seen = [], set()
+    rotation = recent_rotation(logs, season)
+    out_ids = injured_out()
+    matchups: dict[str, str] = {}
     for prop in props:
+        team, opp = teams.get(str(prop.team_abbr).upper()), teams.get(str(prop.opponent_abbr).upper())
+        if team and opp:
+            matchups[team] = opp
+            matchups[opp] = team
+
+    placeholders, seen = [], set()
+    for team, opp in matchups.items():
+        for pid in sorted(rotation.get(team, set())):
+            if pid in out_ids or pid in seen:
+                continue
+            seen.add(pid)
+            placeholders.append(_placeholder(pid, team, opp, slate, season))
+    for prop in props:  # players with a prop but outside the recent rotation
         pid = str(prop.player_id)
         team, opp = teams.get(str(prop.team_abbr).upper()), teams.get(str(prop.opponent_abbr).upper())
-        if not team or not opp or pid in seen:
-            continue
-        seen.add(pid)
-        placeholders.append(_placeholder(pid, team, opp, slate, season))
+        if team and opp and pid not in seen and pid not in out_ids:
+            seen.add(pid)
+            placeholders.append(_placeholder(pid, team, opp, slate, season))
     if not placeholders:
         return {"status": "no_players"}
 
     target_end = (slate + timedelta(days=1)).isoformat()
-    items = cmodel.build_items(logs + placeholders, target_end=target_end, emit_from=slate.isoformat())
+    items = cmodel.build_items(
+        logs + placeholders, target_end=target_end, emit_from=slate.isoformat(),
+        spreads=_spreads(games, teams, slate),
+    )
     preds = cmodel.predict(items, params)
     by_key = {(it["player_id"], it["stat"]): p for it, p in zip(items, preds)}
 
@@ -125,4 +207,6 @@ def attach_candidate(props: list, slate: date, season: str = NBA_SEASON) -> dict
     return {
         "status": "ok", "version": params.get("version"), "attached": attached, "props": len(props),
         "players_scored": len({k[0] for k in by_key}),
+        "injured_out_on_slate": len([p for t in matchups for p in rotation.get(t, set()) if p in out_ids]),
+        "games_with_spread": len(_spreads(games, teams, slate)) // 2,
     }

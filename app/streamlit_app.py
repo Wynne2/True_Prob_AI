@@ -335,9 +335,9 @@ def render_props_table(props: list) -> None:
             ),
             "Candidate %": st.column_config.NumberColumn(
                 format="%.1f%%",
-                help="Frozen candidate v1 (engine/candidate). Shown for comparison; not used for edge.",
+                help="Frozen candidate model (engine/candidate). Shown for comparison; not used for edge.",
             ),
-            "Cand proj": st.column_config.NumberColumn(format="%.1f", help="Candidate v1 projected stat."),
+            "Cand proj": st.column_config.NumberColumn(format="%.1f", help="Candidate model projected stat."),
             "Consensus %": st.column_config.NumberColumn(
                 format="%.1f%%", help="No-vig market consensus for this side across venues.",
             ),
@@ -930,7 +930,7 @@ def main() -> None:
             with st.spinner("Scoring props with the frozen candidate model..."):
                 from engine.candidate.live import attach_candidate
                 try:
-                    st.session_state.candidate_status = attach_candidate(all_props, params["date"])
+                    st.session_state.candidate_status = attach_candidate(all_props, params["date"], games=games)
                 except Exception as exc:  # the board works without the candidate
                     st.session_state.candidate_status = {"status": "error", "reason": str(exc)}
 
@@ -989,12 +989,14 @@ def main() -> None:
         cand = st.session_state.get("candidate_status") or {}
         if cand.get("status") == "ok":
             st.caption(
-                f"Candidate v1 scored {cand['attached']:,} of {cand['props']:,} prop lines "
-                f"({cand['players_scored']} players with 5+ games this season). "
+                f"Candidate model ({cand.get('version')}) scored {cand['attached']:,} of {cand['props']:,} prop lines "
+                f"({cand['players_scored']} players with 5+ games this season; "
+                f"{cand.get('injured_out_on_slate', 0)} rotation players listed out; "
+                f"{cand.get('games_with_spread', 0)} games with a spread). "
                 "It is shown for comparison and does not change edges or rankings."
             )
         elif cand:
-            st.caption(f"Candidate v1 not shown: {cand.get('status')}. {cand.get('reason', '')}")
+            st.caption(f"Candidate model not shown: {cand.get('status')}. {cand.get('reason', '')}")
     elif not params["run"]:
         ui.empty_state()
 

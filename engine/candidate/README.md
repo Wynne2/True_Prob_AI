@@ -58,3 +58,27 @@ python -m engine.candidate.holdout    # score the frozen version on 2026-27 game
 Do not refit v1 on holdout results. Changes go into a new version with a new
 holdout window. The holdout scorer spends Odds API credits for sportsbook lines
 (capped by `--credit-cap`, default 1,250).
+
+# Candidate model v2 (current on the board)
+
+v1 plus three fixes, each kept only because it helped on data it was not fit on
+(fit 2024-25 + Oct-Dec 2025, chosen on Jan 2026, checked on Feb 2026):
+
+| Fix | What changed | February check |
+|---|---|---|
+| Blowout risk | Pregame consensus spread in the minutes model (`spreads.py`; 10 Odds API credits per date) | Minutes MAE 4.739 -> 4.723. Starters lose about a minute once the spread nears 15 |
+| Teammate absences | Rotation players out tonight in the minutes model. History infers them from the box score (upper bound); live uses BALLDONTLIE injury reports (Out / Doubtful) | Minutes MAE 4.723 -> 4.622; points MAE 4.82 -> 4.77 |
+| Overconfidence | Per-stat calibration of P(over), fitted on saved Jan-Feb sportsbook lines (outcomes only), leave-one-date-out | Points overs predicted 66.5% hit 60.1%; calibrated 59.9%. Brier better on all four stats on sportsbook lines |
+
+Calibration is for sportsbook lines (the only lines the board shows). On every
+possible threshold the uncalibrated model is already well calibrated; the
+overconfidence is specific to posted lines, where disagreeing with the book is
+usually being wrong.
+
+Frozen at code `cfb6cc4` (`data/models/candidate_v2.json`). Its holdout is 2026-27
+games from 2026-11-04 on; v1's Oct 29 - Nov 2 window is not reused.
+
+```
+python -m engine.candidate.v2                       # develop + freeze (new versions only)
+python -m engine.candidate.holdout --version v2     # score v2 once enough new games are complete
+```

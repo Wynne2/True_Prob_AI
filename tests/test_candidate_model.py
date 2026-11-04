@@ -86,3 +86,19 @@ def test_frozen_params_file_is_complete_when_present():
     assert set(params["volume"]) == {"points", "rebounds", "assists", "threes"}
     assert set(params["spread"]) == {"points", "rebounds", "assists", "threes"}
     assert params["holdout"].startswith("2026-27")
+
+
+def test_calibration_shrinks_toward_half():
+    pred = {"mean": 9.0, "variance": 9.0, "family": "count"}
+    raw = m.over_probability(pred, 6.5)
+    cal = m.over_probability(dict(pred, calibration={"a": 0.0, "b": 0.6}), 6.5)
+    assert 0.5 < cal < raw
+
+
+def test_v2_params_present_and_calibrated():
+    params = m.load_params(m.ROOT / "data" / "models" / "candidate_v2.json")
+    if params is None:
+        pytest.skip("candidate_v2.json not generated")
+    assert params["version"] == "candidate-v2"
+    assert "abs_spread" in params["settings"]["minutes_features"]
+    assert set(params["calibration"]) <= {"points", "rebounds", "assists", "threes"}

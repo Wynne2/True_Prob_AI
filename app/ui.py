@@ -655,7 +655,7 @@ def candidate_note(prop) -> str:
         return ""
     proj = getattr(prop, "candidate_projection", None)
     proj_text = f", projected {proj:.1f}" if proj is not None else ""
-    return f"Candidate v1: {p * 100:.1f}%{proj_text}. Experimental, not used for edge."
+    return f"Candidate model: {p * 100:.1f}%{proj_text}. Experimental, not used for edge."
 
 
 def prob_meter(true_p: float, implied_p: float, true_label: str = "Model", implied_label: str = "Price") -> str:
