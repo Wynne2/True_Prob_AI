@@ -241,7 +241,9 @@ def main() -> None:
     report, settings = develop()
     DEV_REPORT_PATH.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
     _print(report)
-    print(f"\nSaved {DEV_REPORT_PATH}")
+    params = freeze(settings)
+    print(f"\nFrozen {VERSION} on {params['train_rows']} rows at commit {params['frozen_code_commit']}")
+    print(f"Saved {DEV_REPORT_PATH}\nSaved {PARAMS_PATH}")
 
 
 if __name__ == "__main__":
