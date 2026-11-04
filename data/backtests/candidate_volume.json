@@ -1,0 +1,507 @@
+{
+ "generated_at": "2026-11-04T04:56:32+00:00",
+ "splits": {
+  "fit": "2024-25 and 2025-10",
+  "select": "2025-11",
+  "check": "2025-12"
+ },
+ "caveats": [
+  "Volume is scored with actual minutes held fixed, so minutes error does not count against it.",
+  "ridge_absence uses who was missing from the box score; it is an upper bound.",
+  "Opponent features use only that opponent's earlier 2025-26 (or 2024-25) games, shrunk toward the league.",
+  "Assist volume uses passes; potential assists are not available per game."
+ ],
+ "stats": {
+  "points": {
+   "n": {
+    "fit": 20121,
+    "select": 3575,
+    "check": 3603
+   },
+   "ewm_half_life": 8.0,
+   "ridge_lambda": {
+    "clean": 0.1,
+    "absence": 0.1
+   },
+   "selected_dropped_groups_on_november": [
+    "opponent_allowed",
+    "usage"
+   ],
+   "scores": {
+    "ratio20": {
+     "select_opp_mae": 2.441236419626693,
+     "check_opp_mae": 2.345026566182595,
+     "check_vs_ratio20": null
+    },
+    "ewm": {
+     "select_opp_mae": 2.442442471210073,
+     "check_opp_mae": 2.351684794735333,
+     "check_vs_ratio20": {
+      "mae_diff": 0.0066582285527387805,
+      "ci95": [
+       -0.006159884475321155,
+       0.020154926014207653
+      ]
+     }
+    },
+    "ridge_clean": {
+     "select_opp_mae": 2.3870989370909586,
+     "check_opp_mae": 2.332395275564768,
+     "check_vs_ratio20": {
+      "mae_diff": -0.01263129061782688,
+      "ci95": [
+       -0.03300540118165278,
+       0.0058865730716714465
+      ]
+     }
+    },
+    "ridge_selected": {
+     "select_opp_mae": 2.384666213087496,
+     "check_opp_mae": 2.3338236564302215,
+     "check_vs_ratio20": {
+      "mae_diff": -0.011202909752373326,
+      "ci95": [
+       -0.030004263667850174,
+       0.006656954782881849
+      ]
+     }
+    },
+    "ridge_absence": {
+     "select_opp_mae": 2.375239734662013,
+     "check_opp_mae": 2.323035707027754,
+     "check_vs_ratio20": {
+      "mae_diff": -0.02199085915484076,
+      "ci95": [
+       -0.040795001995202945,
+       -0.004390672908559884
+      ]
+     }
+    }
+   },
+   "ablation_mae_increase_when_removed": {
+    "recency": 0.0036669405116929177,
+    "last_season": -0.004250456722045826,
+    "usage": 0.0030378015206524722,
+    "touches": -0.00042844450182588645,
+    "pace": 0.000715166461391803,
+    "opponent_allowed": -0.0010845750145671573,
+    "rest": 0.0008466699965667956
+   },
+   "coefficients": {
+    "clean": {
+     "base_rate": -0.0629763131058557,
+     "ewm_rate": 0.09409523882590949,
+     "last5_rate": 0.034551956863351344,
+     "season_rate": 0.6237140272324683,
+     "last_season_rate": 0.2467404636655901,
+     "has_last_season": -0.005938656760617745,
+     "usage_delta_x_rate": 0.21759483136946925,
+     "touches_delta_x_rate": 0.03556174519417077,
+     "pace_gap_x_rate": 0.24773684103072363,
+     "allowed_gap_x_rate": 0.8756175482383152,
+     "b2b": 0.003614345111319702
+    },
+    "selected": {
+     "base_rate": -0.0570477078764157,
+     "ewm_rate": 0.20943469370375314,
+     "last5_rate": 0.10588286149181886,
+     "season_rate": 0.438499493501394,
+     "last_season_rate": 0.24070503102414073,
+     "has_last_season": -0.0060846716681953305,
+     "touches_delta_x_rate": 0.08460510893645475,
+     "pace_gap_x_rate": 1.2656394185096034,
+     "b2b": 0.003116777479581442
+    },
+    "absence": {
+     "base_rate": -0.061460934543075045,
+     "ewm_rate": 0.08748789613566817,
+     "last5_rate": 0.039898528384994275,
+     "season_rate": 0.6185622915523838,
+     "last_season_rate": 0.24711807593962296,
+     "has_last_season": -0.004479361652287084,
+     "usage_delta_x_rate": 0.20194131264034834,
+     "touches_delta_x_rate": 0.036840313599746904,
+     "pace_gap_x_rate": 0.26355236028505774,
+     "allowed_gap_x_rate": 0.8809244962072229,
+     "b2b": 0.002156008157078333,
+     "absent_share": 0.08203046664163154
+    }
+   },
+   "combined_stat_mae": {
+    "n": 3603,
+    "min_last10+vol_ratio20": 4.934394655192992,
+    "min_ridge_clean+vol_ratio20": 4.889630092093215,
+    "min_last10+vol_ridge_selected": 4.930981599686175,
+    "min_ridge_clean+vol_ridge_selected": 4.902430913332792
+   }
+  },
+  "threes": {
+   "n": {
+    "fit": 19214,
+    "select": 3384,
+    "check": 3438
+   },
+   "ewm_half_life": 8.0,
+   "ridge_lambda": {
+    "clean": 0.1,
+    "absence": 0.1
+   },
+   "selected_dropped_groups_on_november": [
+    "pace",
+    "touches",
+    "usage"
+   ],
+   "scores": {
+    "ratio20": {
+     "select_opp_mae": 1.4828308751384112,
+     "check_opp_mae": 1.4487441897190487,
+     "check_vs_ratio20": null
+    },
+    "ewm": {
+     "select_opp_mae": 1.4899900062502025,
+     "check_opp_mae": 1.4464283408308751,
+     "check_vs_ratio20": {
+      "mae_diff": -0.0023158488881735453,
+      "ci95": [
+       -0.01074124684925462,
+       0.004998412401540512
+      ]
+     }
+    },
+    "ridge_clean": {
+     "select_opp_mae": 1.449287115635803,
+     "check_opp_mae": 1.4304918072838073,
+     "check_vs_ratio20": {
+      "mae_diff": -0.018252382435241448,
+      "ci95": [
+       -0.030454588173190803,
+       -0.0037652387549109686
+      ]
+     }
+    },
+    "ridge_selected": {
+     "select_opp_mae": 1.4485289420588283,
+     "check_opp_mae": 1.4301440430843448,
+     "check_vs_ratio20": {
+      "mae_diff": -0.01860014663470375,
+      "ci95": [
+       -0.030845067370936778,
+       -0.0043139869390668925
+      ]
+     }
+    },
+    "ridge_absence": {
+     "select_opp_mae": 1.4488429412363348,
+     "check_opp_mae": 1.429383185541892,
+     "check_vs_ratio20": {
+      "mae_diff": -0.019361004177156815,
+      "ci95": [
+       -0.03139856016636109,
+       -0.005454163436607978
+      ]
+     }
+    }
+   },
+   "ablation_mae_increase_when_removed": {
+    "recency": 0.005269340568422987,
+    "last_season": 0.003894973485893294,
+    "usage": -9.857006555868963e-06,
+    "touches": 5.304787072057948e-05,
+    "pace": -0.00039523534633612023,
+    "opponent_allowed": 0.014171236701447043,
+    "rest": -0.0004669772200349698
+   },
+   "coefficients": {
+    "clean": {
+     "base_rate": 0.034662380199853855,
+     "ewm_rate": 0.14074171320384227,
+     "last5_rate": 0.06509467624797845,
+     "season_rate": 0.4073945955624368,
+     "last_season_rate": 0.29321767500450985,
+     "has_last_season": -0.0024435225999354204,
+     "usage_delta_x_rate": -0.0025327671618282956,
+     "touches_delta_x_rate": -0.012604344334488373,
+     "pace_gap_x_rate": -0.22419453921558252,
+     "allowed_gap_x_rate": 1.203799093129185,
+     "b2b": -0.0016409100996350985
+    },
+    "selected": {
+     "base_rate": 0.03702778893991474,
+     "ewm_rate": 0.13897831486825474,
+     "last5_rate": 0.06411294436079445,
+     "season_rate": 0.4087890004742625,
+     "last_season_rate": 0.29216541774583515,
+     "has_last_season": -0.002429811572817217,
+     "allowed_gap_x_rate": 1.1572867526165902,
+     "b2b": -0.0016832179881411551
+    },
+    "absence": {
+     "base_rate": 0.026198363113297245,
+     "ewm_rate": 0.13649182708922739,
+     "last5_rate": 0.06661697183795075,
+     "season_rate": 0.40808716709983345,
+     "last_season_rate": 0.2956238380806612,
+     "has_last_season": -0.002162540743367354,
+     "usage_delta_x_rate": -0.0070465230647491035,
+     "touches_delta_x_rate": -0.012926046091241115,
+     "pace_gap_x_rate": -0.2287104681889305,
+     "allowed_gap_x_rate": 1.2146682219806264,
+     "b2b": -0.002005275374173944,
+     "absent_share": 0.0529323042982499
+    }
+   },
+   "combined_stat_mae": {
+    "n": 3438,
+    "min_last10+vol_ratio20": 1.0172744378349623,
+    "min_ridge_clean+vol_ratio20": 1.0137156883018157,
+    "min_last10+vol_ridge_selected": 1.0103171860203102,
+    "min_ridge_clean+vol_ridge_selected": 1.0065393459661907
+   }
+  },
+  "rebounds": {
+   "n": {
+    "fit": 19345,
+    "select": 3463,
+    "check": 3586
+   },
+   "ewm_half_life": 20.0,
+   "ridge_lambda": {
+    "clean": 10.0,
+    "absence": 10.0
+   },
+   "selected_dropped_groups_on_november": [
+    "rest"
+   ],
+   "scores": {
+    "ratio20": {
+     "select_opp_mae": 2.398075989560286,
+     "check_opp_mae": 2.3338786096410726,
+     "check_vs_ratio20": null
+    },
+    "ewm": {
+     "select_opp_mae": 2.4033471962693316,
+     "check_opp_mae": 2.3561049583480207,
+     "check_vs_ratio20": {
+      "mae_diff": 0.02222634870694804,
+      "ci95": [
+       0.01259895923031948,
+       0.0327577456657375
+      ]
+     }
+    },
+    "ridge_clean": {
+     "select_opp_mae": 2.3470114437370273,
+     "check_opp_mae": 2.3146595212927306,
+     "check_vs_ratio20": {
+      "mae_diff": -0.019219088348342284,
+      "ci95": [
+       -0.039974368924045774,
+       -0.0020986991199581284
+      ]
+     }
+    },
+    "ridge_selected": {
+     "select_opp_mae": 2.346853032617751,
+     "check_opp_mae": 2.314753188486546,
+     "check_vs_ratio20": {
+      "mae_diff": -0.019125421154527065,
+      "ci95": [
+       -0.03972111648800321,
+       -0.0019531795564423303
+      ]
+     }
+    },
+    "ridge_absence": {
+     "select_opp_mae": 2.346894065887952,
+     "check_opp_mae": 2.3144824608124246,
+     "check_vs_ratio20": {
+      "mae_diff": -0.019396148828648842,
+      "ci95": [
+       -0.04009163267779548,
+       -0.0022423683779376935
+      ]
+     }
+    }
+   },
+   "ablation_mae_increase_when_removed": {
+    "recency": 0.017517635523396358,
+    "last_season": 0.002857291684763563,
+    "usage": -0.0007985924898963326,
+    "touches": 0.0026704100177883383,
+    "pace": 0.001985892292125424,
+    "opponent_allowed": 0.006593484442400932,
+    "rest": 9.366719381542765e-05
+   },
+   "coefficients": {
+    "clean": {
+     "base_rate": -0.2986523473477413,
+     "ewm_rate": 0.11687506332411189,
+     "last5_rate": 0.0419111214404966,
+     "season_rate": 0.6881060967552037,
+     "last_season_rate": 0.40485288290432,
+     "has_last_season": 0.007516302715535071,
+     "usage_delta_x_rate": 0.019665879571105223,
+     "touches_delta_x_rate": 0.11409379867475918,
+     "pace_gap_x_rate": 0.4553905796328909,
+     "allowed_gap_x_rate": 0.37147135873589066,
+     "b2b": -0.0007695284934274876
+    },
+    "selected": {
+     "base_rate": -0.2987491410286007,
+     "ewm_rate": 0.11692701343207651,
+     "last5_rate": 0.041915135166831596,
+     "season_rate": 0.6879534445746986,
+     "last_season_rate": 0.40505559087082926,
+     "has_last_season": 0.007575463728629584,
+     "usage_delta_x_rate": 0.01962879141003512,
+     "touches_delta_x_rate": 0.11401848318454476,
+     "pace_gap_x_rate": 0.4536918054029388,
+     "allowed_gap_x_rate": 0.37126464879307186
+    },
+    "absence": {
+     "base_rate": -0.29720181095713344,
+     "ewm_rate": 0.11546313555988251,
+     "last5_rate": 0.042517583999880856,
+     "season_rate": 0.6865771228199863,
+     "last_season_rate": 0.4045537755900787,
+     "has_last_season": 0.007687093152713654,
+     "usage_delta_x_rate": 0.01822504458996413,
+     "touches_delta_x_rate": 0.11423722715636908,
+     "pace_gap_x_rate": 0.4592306227917531,
+     "allowed_gap_x_rate": 0.3707525467814941,
+     "b2b": -0.0008758240841871967,
+     "absent_share": 0.007423758268162109
+    }
+   },
+   "combined_stat_mae": {
+    "n": 3586,
+    "min_last10+vol_ratio20": 1.9706747967654814,
+    "min_ridge_clean+vol_ratio20": 1.948823105446297,
+    "min_last10+vol_ridge_selected": 1.9648503092264582,
+    "min_ridge_clean+vol_ridge_selected": 1.9416117901878698
+   }
+  },
+  "assists": {
+   "n": {
+    "fit": 19347,
+    "select": 3465,
+    "check": 3585
+   },
+   "ewm_half_life": 3.0,
+   "ridge_lambda": {
+    "clean": 1000.0,
+    "absence": 1000.0
+   },
+   "selected_dropped_groups_on_november": [
+    "last_season"
+   ],
+   "scores": {
+    "ratio20": {
+     "select_opp_mae": 5.087475548309382,
+     "check_opp_mae": 4.885371008568626,
+     "check_vs_ratio20": null
+    },
+    "ewm": {
+     "select_opp_mae": 5.036475127438152,
+     "check_opp_mae": 4.829525308777899,
+     "check_vs_ratio20": {
+      "mae_diff": -0.055845699790726865,
+      "ci95": [
+       -0.11589603539609376,
+       0.005706122989248641
+      ]
+     }
+    },
+    "ridge_clean": {
+     "select_opp_mae": 5.0618292630170885,
+     "check_opp_mae": 4.917087953490973,
+     "check_vs_ratio20": {
+      "mae_diff": 0.03171694492234708,
+      "ci95": [
+       -0.016957294860992733,
+       0.08735695672592439
+      ]
+     }
+    },
+    "ridge_selected": {
+     "select_opp_mae": 4.977166298099609,
+     "check_opp_mae": 4.768547606697295,
+     "check_vs_ratio20": {
+      "mae_diff": -0.1168234018713308,
+      "ci95": [
+       -0.16465075195660792,
+       -0.07120282280888515
+      ]
+     }
+    },
+    "ridge_absence": {
+     "select_opp_mae": 5.050900447174932,
+     "check_opp_mae": 4.9200047715439625,
+     "check_vs_ratio20": {
+      "mae_diff": 0.034633762975336824,
+      "ci95": [
+       -0.01650071275434149,
+       0.09010643211202868
+      ]
+     }
+    }
+   },
+   "ablation_mae_increase_when_removed": {
+    "recency": 0.15598416472176435,
+    "last_season": -0.1485403467936779,
+    "usage": 2.71029070209039e-05,
+    "touches": 0.007395180508515509,
+    "pace": 0.01117330144068962,
+    "opponent_allowed": 0.032362216660106746,
+    "rest": -0.001007022245854472
+   },
+   "coefficients": {
+    "clean": {
+     "base_rate": 0.17134533721331874,
+     "ewm_rate": 0.19314846933441387,
+     "last5_rate": 0.19172879010962407,
+     "season_rate": 0.21640860356056307,
+     "last_season_rate": 0.16897287183901663,
+     "has_last_season": 0.04531597036940423,
+     "usage_delta_x_rate": -0.0054060227900455575,
+     "touches_delta_x_rate": 0.16513304547157248,
+     "pace_gap_x_rate": 0.8174805798142094,
+     "allowed_gap_x_rate": 0.5037942889216389,
+     "b2b": 0.0034786141763361394
+    },
+    "selected": {
+     "base_rate": 0.2342603467883885,
+     "ewm_rate": 0.23600558260365276,
+     "last5_rate": 0.21260136393121987,
+     "season_rate": 0.2566170082172222,
+     "usage_delta_x_rate": -0.00048046319536800176,
+     "touches_delta_x_rate": 0.1426577653966308,
+     "pace_gap_x_rate": 0.8160867040708875,
+     "allowed_gap_x_rate": 0.5055948643673831,
+     "b2b": 0.003318532548259046
+    },
+    "absence": {
+     "base_rate": 0.16988655849621292,
+     "ewm_rate": 0.19282636526282498,
+     "last5_rate": 0.19290150055910654,
+     "season_rate": 0.2139072423763242,
+     "last_season_rate": 0.1674476817389483,
+     "has_last_season": 0.04805037754911092,
+     "usage_delta_x_rate": -0.009183073932964156,
+     "touches_delta_x_rate": 0.16474445256813502,
+     "pace_gap_x_rate": 0.8221744032657975,
+     "allowed_gap_x_rate": 0.5061028078657469,
+     "b2b": 0.001900773772227097,
+     "absent_share": 0.03925234952871463
+    }
+   },
+   "combined_stat_mae": {
+    "n": 3585,
+    "min_last10+vol_ratio20": 1.4310687260680341,
+    "min_ridge_clean+vol_ratio20": 1.423892020254031,
+    "min_last10+vol_ridge_selected": 1.4321364072594358,
+    "min_ridge_clean+vol_ridge_selected": 1.4264905974415174
+   }
+  }
+ }
+}
