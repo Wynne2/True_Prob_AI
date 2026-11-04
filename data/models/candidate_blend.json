@@ -1,0 +1,121 @@
+{
+ "fitted_at": "2026-11-04T05:33:21+00:00",
+ "version": "candidate-v1",
+ "method": "logit(p) = logit(no-vig) + w * clip(logit(candidate) - logit(no-vig), -c, c); w in 0..1 and c chosen by Brier, leave-one-date-out; w = 0 unless CV beats the market",
+ "fit_window": "Jan-Feb 2026 saved sportsbook lines; candidate refit with frozen settings on games before 2026-01-01",
+ "n_rows": 5962,
+ "n_dates": 19,
+ "weights": {
+  "points": {
+   "weight": 0.0,
+   "clip": 0.5
+  },
+  "rebounds": {
+   "weight": 0.0,
+   "clip": 0.25
+  },
+  "assists": {
+   "weight": 0.0,
+   "clip": 0.25
+  },
+  "threes": {
+   "weight": 0.0,
+   "clip": 0.75
+  }
+ },
+ "metrics": {
+  "points": {
+   "weight": 0.0,
+   "clip": 0.5,
+   "n": 2762,
+   "n_dates": 19,
+   "market_brier": 0.239331,
+   "model_brier": 0.242615,
+   "cv_blend_brier": 0.239363,
+   "cv_delta_vs_market": 3.3e-05,
+   "cv_delta_date_se": 0.001459,
+   "dates_improved": 13,
+   "cv_beats_market": false,
+   "old_model_brier": 0.24075
+  },
+  "rebounds": {
+   "weight": 0.0,
+   "clip": 0.25,
+   "n": 1340,
+   "n_dates": 19,
+   "market_brier": 0.238778,
+   "model_brier": 0.245848,
+   "cv_blend_brier": 0.239802,
+   "cv_delta_vs_market": 0.001024,
+   "cv_delta_date_se": 0.0008,
+   "dates_improved": 12,
+   "cv_beats_market": false,
+   "old_model_brier": 0.258881
+  },
+  "assists": {
+   "weight": 0.0,
+   "clip": 0.25,
+   "n": 1006,
+   "n_dates": 19,
+   "market_brier": 0.240934,
+   "model_brier": 0.247991,
+   "cv_blend_brier": 0.242039,
+   "cv_delta_vs_market": 0.001105,
+   "cv_delta_date_se": 0.000726,
+   "dates_improved": 8,
+   "cv_beats_market": false,
+   "old_model_brier": 0.250102
+  },
+  "threes": {
+   "weight": 0.0,
+   "clip": 0.75,
+   "n": 854,
+   "n_dates": 19,
+   "market_brier": 0.241192,
+   "model_brier": 0.243288,
+   "cv_blend_brier": 0.241894,
+   "cv_delta_vs_market": 0.000702,
+   "cv_delta_date_se": 0.001225,
+   "dates_improved": 11,
+   "cv_beats_market": false,
+   "old_model_brier": 0.247516
+  }
+ },
+ "holdout_check_2026_27": {
+  "assists": {
+   "n": 269,
+   "market": 0.24536,
+   "candidate": 0.24939,
+   "candidate_blend": 0.24536,
+   "production_model_a": 0.25003
+  },
+  "points": {
+   "n": 326,
+   "market": 0.25043,
+   "candidate": 0.25759,
+   "candidate_blend": 0.25043,
+   "production_model_a": 0.25982
+  },
+  "rebounds": {
+   "n": 317,
+   "market": 0.24401,
+   "candidate": 0.24604,
+   "candidate_blend": 0.24401,
+   "production_model_a": 0.25701
+  },
+  "threes": {
+   "n": 273,
+   "market": 0.24642,
+   "candidate": 0.24076,
+   "candidate_blend": 0.24642,
+   "production_model_a": 0.24904
+  },
+  "all": {
+   "n": 1185,
+   "market": 0.24664,
+   "candidate": 0.24876,
+   "candidate_blend": 0.24664,
+   "production_model_a": 0.25436
+  }
+ }
+}
