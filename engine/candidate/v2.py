@@ -177,6 +177,7 @@ def develop() -> tuple[dict, dict]:
         "minutes_variants": {k: {"jan_minutes_mae": v["jan_minutes_mae"], "feb_minutes_mae": v["feb_minutes_mae"],
                                  "lambda": v["settings"]["minutes_lambda"]} for k, v in variants.items()},
         "chosen_minutes": chosen,
+        "settings": settings,
         "minutes_coefficients": cmodel.ridge_from_dict(params["minutes"], cm.Ridge).describe(),
         "calibration": calibration,
         "check_feb_2026": {
