@@ -1,0 +1,70 @@
+{
+ "experimental": true,
+ "read_by_production": false,
+ "generated_at": "2026-11-04T03:39:53+00:00",
+ "splits": {
+  "fit": "2024-25 season",
+  "select": "2025-10-01 .. 2025-11-30",
+  "check": "2025-12-01 .. 2025-12-31"
+ },
+ "by_stat": {
+  "assists": {
+   "terms": [
+    "mean",
+    "mean_sq",
+    "minutes_var"
+   ],
+   "coef": [
+    1.1748865901929813,
+    0.0032644342392115374,
+    0.9787622486346371
+   ],
+   "family": "count",
+   "chosen": "minutes/count"
+  },
+  "points": {
+   "terms": [
+    "mean",
+    "mean_sq",
+    "minutes_var"
+   ],
+   "coef": [
+    2.712049466159869,
+    0.0,
+    0.8302083677066767
+   ],
+   "family": "normal",
+   "chosen": "minutes/normal"
+  },
+  "rebounds": {
+   "terms": [
+    "mean",
+    "mean_sq",
+    "recent_var",
+    "minutes_var"
+   ],
+   "coef": [
+    1.2363815671027774,
+    0.0,
+    0.0008543170206306227,
+    0.7762890335274674
+   ],
+   "family": "count",
+   "chosen": "player_minutes/count"
+  },
+  "threes": {
+   "terms": [
+    "mean",
+    "mean_sq",
+    "minutes_var"
+   ],
+   "coef": [
+    1.0903922854183599,
+    0.0,
+    0.9609025003260648
+   ],
+   "family": "count",
+   "chosen": "minutes/count"
+  }
+ }
+}
