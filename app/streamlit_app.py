@@ -940,6 +940,13 @@ def main() -> None:
                     st.session_state.candidate_status["edges"] = apply_candidate_edges(all_props)
                 except Exception as exc:  # the board works without the candidate
                     st.session_state.candidate_status = {"status": "error", "reason": str(exc)}
+            # Pregame snapshot for next-day grading. The first save of a prop keeps its price.
+            if params["date"] >= today_eastern():
+                try:
+                    from engine.prediction_ledger import save_pregame_predictions
+                    st.session_state.ledger_path = str(save_pregame_predictions(params["date"], all_props))
+                except Exception as exc:
+                    st.session_state.ledger_path = f"not saved: {exc}"
 
         if not all_props:
             if params["date"] > today_eastern():

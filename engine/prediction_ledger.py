@@ -48,7 +48,27 @@ def _prop_row(prop, game_date: date, saved_at: str) -> dict:
         "projected_value": float(getattr(prop, "projected_value", 0.0) or 0.0),
         "projected_minutes": prop.expected_minutes,
         "confidence": getattr(prop.confidence, "value", str(prop.confidence)),
+        # Candidate model (engine/candidate). candidate_probability is for this side.
+        "candidate_probability": _opt(getattr(prop, "candidate_probability", None)),
+        "candidate_projection": _opt(getattr(prop, "candidate_projection", None)),
+        "production_probability": _opt(getattr(prop, "production_probability", None)),
+        "candidate_outside_range": bool(getattr(prop, "candidate_outside_range", False)),
+        "candidate_version": _candidate_version(prop),
     }
+
+
+def _opt(value):
+    return None if value is None else float(value)
+
+
+def _candidate_version(prop) -> str | None:
+    if getattr(prop, "candidate_probability", None) is None:
+        return None
+    try:
+        from engine.candidate.live import frozen_params
+        return (frozen_params() or {}).get("version")
+    except Exception:
+        return None
 
 
 def save_pregame_predictions(game_date: date, props: list, directory: str | Path = DEFAULT_DIR) -> Path:

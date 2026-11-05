@@ -17,6 +17,7 @@ from utils.date_utils import today_eastern
 
 
 def render_backtest_tab() -> None:
+    _render_live_track_record()
     _render_expanded_report()
     _render_interaction_report()
     _render_accuracy_report()
@@ -127,6 +128,44 @@ def render_backtest_tab() -> None:
             if column in show.columns
         ]
         st.dataframe(show[keep].head(200), width="stretch", hide_index=True)
+
+
+def _render_live_track_record() -> None:
+    """Nightly boards graded against box scores: candidate vs production vs market."""
+    from engine.candidate import track
+
+    ui.section("Live track record", f"every scanned board since {track.DEFAULT_START:%b %d}, graded from box scores")
+    st.caption(
+        "Each scan of today's slate saves every priced prop before tip-off (first save keeps the price). "
+        "Finished dates are graded against BALLDONTLIE box scores. No Odds API credits are used."
+    )
+    if st.button("Grade finished games", icon=":material/fact_check:"):
+        with st.spinner("Grading saved boards..."):
+            graded = track.grade_pending(today=today_eastern())
+        st.caption(f"Graded {len(graded)} date(s).")
+    card = track.scorecard()
+    if not card["decided_rows"]:
+        st.info("No graded boards yet. Scan a slate before tip-off, then grade the next day.", icon=":material/schedule:")
+        return
+    b = card["brier_same_props"]
+    ui.tiles([
+        ("Graded props", f"{card['decided_rows']:,}", ""),
+        ("Dates", f"{len(card['dates'])}", ""),
+        ("Brier candidate", _fmt(b["candidate"], 4), ""),
+        ("Brier market", _fmt(b["market_novig"], 4), ""),
+    ])
+    st.caption(f"Brier on the same {b['n']:,} props (lower is better): candidate {_fmt(b['candidate'], 4)}, "
+               f"production {_fmt(b['production'], 4)}, no-vig market {_fmt(b['market_novig'], 4)}.")
+    rows = []
+    for name, s in card["candidate_edge_bets"].items():
+        rows.append({
+            "Candidate edge": name, "Bets": s.get("n", 0), "Dates": s.get("dates"),
+            "Hit rate": s.get("hit_rate"), "Predicted": s.get("avg_candidate_probability"),
+            "Implied": s.get("avg_implied"), "Flat ROI / bet": s.get("flat_roi_per_bet"),
+            "ROI date SE": s.get("roi_date_se"),
+        })
+    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+    st.caption(card["note"])
 
 
 def _render_expanded_report() -> None:

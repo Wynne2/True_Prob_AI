@@ -268,6 +268,16 @@ def grade_predictions(
             "model_probability": float(row.get("model_probability") or 0.0),
             "market_probability": row.get("market_probability"),
             "probability_method": row.get("probability_method", "legacy"),
+            "implied_probability": row.get("implied_probability"),
+            "candidate_probability": row.get("candidate_probability"),
+            "production_probability": (
+                row.get("production_probability")
+                if row.get("production_probability") is not None
+                else (None if row.get("probability_method") == "candidate" else row.get("model_probability"))
+            ),
+            "candidate_version": row.get("candidate_version"),
+            "candidate_outside_range": row.get("candidate_outside_range", False),
+            "game_id": gid,
             "actual": actual,
             "result": result,
             "roi": realized_roi(None, int(row.get("odds") or 0), result) if result != "void" else None,
