@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-05T02:09:32+00:00",
+ "generated_at": "2026-11-05T02:17:00+00:00",
  "window": "Jan-Feb 2026 saved sportsbook lines; ranks and averages from earlier 2025-26 games only",
  "lines": 8911,
  "overs": {
@@ -112,6 +112,296 @@
    "roi_per_bet": -0.0552,
    "roi_date_se": 0.0224,
    "avg_candidate": 0.5225
+  }
+ },
+ "fade_main_lines": {
+  "all_3_screens": {
+   "overs": {
+    "n": 128,
+    "dates": 15,
+    "hit_rate": 0.5078,
+    "avg_novig": 0.4974,
+    "avg_implied": 0.5293,
+    "market_miss": 0.0104,
+    "market_miss_date_se": 0.0718,
+    "roi_per_bet": -0.0397,
+    "roi_date_se": 0.1392,
+    "avg_candidate": 0.425
+   },
+   "unders_fade": {
+    "n": 128,
+    "dates": 15,
+    "hit_rate": 0.4922,
+    "avg_novig": 0.5026,
+    "avg_implied": 0.5348,
+    "market_miss": -0.0104,
+    "market_miss_date_se": 0.0718,
+    "roi_per_bet": -0.0789,
+    "roi_date_se": 0.1348,
+    "avg_candidate": 0.575
+   },
+   "unders_fade_when_v3_agrees_3pct": {
+    "n": 75,
+    "dates": 15,
+    "hit_rate": 0.5067,
+    "avg_novig": 0.5061,
+    "avg_implied": 0.5387,
+    "market_miss": 0.0006,
+    "market_miss_date_se": 0.0782,
+    "roi_per_bet": -0.0542,
+    "roi_date_se": 0.1458,
+    "avg_candidate": 0.6287
+   },
+   "by_stat_unders": {
+    "points": {
+     "n": 39,
+     "dates": 14,
+     "hit_rate": 0.4872,
+     "avg_novig": 0.5018,
+     "avg_implied": 0.5318,
+     "market_miss": -0.0146,
+     "market_miss_date_se": 0.107,
+     "roi_per_bet": -0.0726,
+     "roi_date_se": 0.2017,
+     "avg_candidate": 0.5727
+    },
+    "rebounds": {
+     "n": 15,
+     "dates": 10,
+     "hit_rate": 0.4,
+     "avg_novig": 0.5056,
+     "avg_implied": 0.5377,
+     "market_miss": -0.1056,
+     "market_miss_date_se": 0.1245,
+     "roi_per_bet": -0.2622,
+     "roi_date_se": 0.2352,
+     "avg_candidate": 0.6026
+    },
+    "assists": {
+     "n": 27,
+     "dates": 12,
+     "hit_rate": 0.4074,
+     "avg_novig": 0.5,
+     "avg_implied": 0.5322,
+     "market_miss": -0.0926,
+     "market_miss_date_se": 0.1072,
+     "roi_per_bet": -0.249,
+     "roi_date_se": 0.2001,
+     "avg_candidate": 0.5944
+    },
+    "threes": {
+     "n": 47,
+     "dates": 14,
+     "hit_rate": 0.5745,
+     "avg_novig": 0.5037,
+     "avg_implied": 0.5378,
+     "market_miss": 0.0708,
+     "market_miss_date_se": 0.0809,
+     "roi_per_bet": 0.0721,
+     "roi_date_se": 0.1449,
+     "avg_candidate": 0.5571
+    }
+   }
+  },
+  "screens_1_and_2_no_opportunity": {
+   "overs": {
+    "n": 539,
+    "dates": 17,
+    "hit_rate": 0.4787,
+    "avg_novig": 0.4945,
+    "avg_implied": 0.5268,
+    "market_miss": -0.0158,
+    "market_miss_date_se": 0.0281,
+    "roi_per_bet": -0.1017,
+    "roi_date_se": 0.0564,
+    "avg_candidate": 0.4534
+   },
+   "unders_fade": {
+    "n": 539,
+    "dates": 17,
+    "hit_rate": 0.5213,
+    "avg_novig": 0.5055,
+    "avg_implied": 0.5385,
+    "market_miss": 0.0158,
+    "market_miss_date_se": 0.0281,
+    "roi_per_bet": -0.0391,
+    "roi_date_se": 0.0512,
+    "avg_candidate": 0.5466
+   },
+   "unders_fade_when_v3_agrees_3pct": {
+    "n": 207,
+    "dates": 17,
+    "hit_rate": 0.5411,
+    "avg_novig": 0.5049,
+    "avg_implied": 0.5377,
+    "market_miss": 0.0362,
+    "market_miss_date_se": 0.0396,
+    "roi_per_bet": 0.0046,
+    "roi_date_se": 0.0702,
+    "avg_candidate": 0.6335
+   },
+   "by_stat_unders": {
+    "points": {
+     "n": 144,
+     "dates": 17,
+     "hit_rate": 0.5486,
+     "avg_novig": 0.5007,
+     "avg_implied": 0.5311,
+     "market_miss": 0.0479,
+     "market_miss_date_se": 0.0343,
+     "roi_per_bet": 0.0314,
+     "roi_date_se": 0.0631,
+     "avg_candidate": 0.5329
+    },
+    "rebounds": {
+     "n": 137,
+     "dates": 17,
+     "hit_rate": 0.5255,
+     "avg_novig": 0.5045,
+     "avg_implied": 0.5375,
+     "market_miss": 0.021,
+     "market_miss_date_se": 0.0479,
+     "roi_per_bet": -0.0301,
+     "roi_date_se": 0.0915,
+     "avg_candidate": 0.5626
+    },
+    "assists": {
+     "n": 131,
+     "dates": 17,
+     "hit_rate": 0.4427,
+     "avg_novig": 0.5066,
+     "avg_implied": 0.5411,
+     "market_miss": -0.0639,
+     "market_miss_date_se": 0.061,
+     "roi_per_bet": -0.194,
+     "roi_date_se": 0.1135,
+     "avg_candidate": 0.551
+    },
+    "threes": {
+     "n": 127,
+     "dates": 17,
+     "hit_rate": 0.5669,
+     "avg_novig": 0.5109,
+     "avg_implied": 0.5452,
+     "market_miss": 0.056,
+     "market_miss_date_se": 0.0469,
+     "roi_per_bet": 0.0309,
+     "roi_date_se": 0.0884,
+     "avg_candidate": 0.5401
+    }
+   }
+  },
+  "bottom10_defense_only": {
+   "overs": {
+    "n": 911,
+    "dates": 17,
+    "hit_rate": 0.4885,
+    "avg_novig": 0.4942,
+    "avg_implied": 0.5264,
+    "market_miss": -0.0057,
+    "market_miss_date_se": 0.0199,
+    "roi_per_bet": -0.0781,
+    "roi_date_se": 0.0393,
+    "avg_candidate": 0.457
+   },
+   "unders_fade": {
+    "n": 911,
+    "dates": 17,
+    "hit_rate": 0.5115,
+    "avg_novig": 0.5058,
+    "avg_implied": 0.5388,
+    "market_miss": 0.0057,
+    "market_miss_date_se": 0.0199,
+    "roi_per_bet": -0.0549,
+    "roi_date_se": 0.0365,
+    "avg_candidate": 0.543
+   },
+   "unders_fade_when_v3_agrees_3pct": {
+    "n": 334,
+    "dates": 17,
+    "hit_rate": 0.5389,
+    "avg_novig": 0.5065,
+    "avg_implied": 0.5393,
+    "market_miss": 0.0324,
+    "market_miss_date_se": 0.0277,
+    "roi_per_bet": -0.0046,
+    "roi_date_se": 0.0522,
+    "avg_candidate": 0.6349
+   },
+   "by_stat_unders": {
+    "points": {
+     "n": 240,
+     "dates": 17,
+     "hit_rate": 0.5208,
+     "avg_novig": 0.5014,
+     "avg_implied": 0.5319,
+     "market_miss": 0.0194,
+     "market_miss_date_se": 0.0327,
+     "roi_per_bet": -0.0207,
+     "roi_date_se": 0.0607,
+     "avg_candidate": 0.5241
+    },
+    "rebounds": {
+     "n": 232,
+     "dates": 17,
+     "hit_rate": 0.5172,
+     "avg_novig": 0.5044,
+     "avg_implied": 0.5375,
+     "market_miss": 0.0128,
+     "market_miss_date_se": 0.0381,
+     "roi_per_bet": -0.039,
+     "roi_date_se": 0.0718,
+     "avg_candidate": 0.5565
+    },
+    "assists": {
+     "n": 223,
+     "dates": 17,
+     "hit_rate": 0.4843,
+     "avg_novig": 0.5041,
+     "avg_implied": 0.5382,
+     "market_miss": -0.0197,
+     "market_miss_date_se": 0.0329,
+     "roi_per_bet": -0.1066,
+     "roi_date_se": 0.0602,
+     "avg_candidate": 0.5445
+    },
+    "threes": {
+     "n": 216,
+     "dates": 17,
+     "hit_rate": 0.5231,
+     "avg_novig": 0.5142,
+     "avg_implied": 0.5486,
+     "market_miss": 0.009,
+     "market_miss_date_se": 0.0428,
+     "roi_per_bet": -0.0567,
+     "roi_date_se": 0.079,
+     "avg_candidate": 0.5478
+    }
+   }
+  },
+  "baseline_all_main_unders": {
+   "n": 2949,
+   "dates": 19,
+   "hit_rate": 0.5083,
+   "avg_novig": 0.5054,
+   "avg_implied": 0.5383,
+   "market_miss": 0.003,
+   "market_miss_date_se": 0.0124,
+   "roi_per_bet": -0.0562,
+   "roi_date_se": 0.0231,
+   "avg_candidate": 0.5248
+  },
+  "baseline_all_main_overs": {
+   "n": 2949,
+   "dates": 19,
+   "hit_rate": 0.4917,
+   "avg_novig": 0.4946,
+   "avg_implied": 0.5268,
+   "market_miss": -0.003,
+   "market_miss_date_se": 0.0124,
+   "roi_per_bet": -0.0653,
+   "roi_date_se": 0.0245,
+   "avg_candidate": 0.4752
   }
  },
  "by_stat_overs_passing": {

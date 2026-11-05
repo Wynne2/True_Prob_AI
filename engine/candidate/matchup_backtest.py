@@ -58,6 +58,35 @@ def _summary(rows: list[dict], prob_key: str = "v3") -> dict:
     return out
 
 
+FADE_VARIANTS = {
+    "all_3_screens": lambda s: s["passes_screen"],
+    "screens_1_and_2_no_opportunity": lambda s: s["step1_bottom10_defense"] and s["step2_bottom10_vs_position"],
+    "bottom10_defense_only": lambda s: s["step1_bottom10_defense"],
+}
+
+
+def fade_section(lines: list[dict]) -> dict:
+    """Under side vs over side of the same screened main lines; also fading only when v3 agrees."""
+    main = [r for r in lines if r.get("evaluation_line")]
+    out = {}
+    for name, cond in FADE_VARIANTS.items():
+        hit = [r for r in main if cond(r["screen"])]
+        overs = [r for r in hit if r["side"] == "over"]
+        unders = [r for r in hit if r["side"] == "under"]
+        entry = {
+            "overs": _summary(overs),
+            "unders_fade": _summary(unders),
+            "unders_fade_when_v3_agrees_3pct": _summary([r for r in unders if r["v3_edge"] >= 0.03]),
+            "by_stat_unders": {
+                stat: _summary([r for r in unders if str(r["prop_type"]).lower() == stat]) for stat in mf.STATS
+            },
+        }
+        out[name] = entry
+    out["baseline_all_main_unders"] = _summary([r for r in main if r["side"] == "under"])
+    out["baseline_all_main_overs"] = _summary([r for r in main if r["side"] == "over"])
+    return out
+
+
 def run() -> dict:
     from engine.backtest.advanced_history import load_historical_logs
 
@@ -95,6 +124,8 @@ def run() -> dict:
             "passes_screen": _summary(pick("under", full)),
             "fails_screen": _summary(pick("under", lambda s: not s["passes_screen"])),
         },
+        # Fade test: main lines only, where both sides were offered at real prices.
+        "fade_main_lines": fade_section(lines),
         "by_stat_overs_passing": {
             stat: _summary([r for r in pick("over", full) if str(r["prop_type"]).lower() == stat]) for stat in mf.STATS
         },
@@ -125,6 +156,18 @@ def main() -> None:
     print("UNDERS")
     for k, s in r["unders"].items():
         print(_line(k, s))
+    f = r["fade_main_lines"]
+    print("FADE TEST (main lines, both sides offered)")
+    print(_line("baseline all main overs", f["baseline_all_main_overs"]))
+    print(_line("baseline all main unders", f["baseline_all_main_unders"]))
+    for name in FADE_VARIANTS:
+        e = f[name]
+        print(f" [{name}]")
+        print(_line("  overs", e["overs"]))
+        print(_line("  unders (fade)", e["unders_fade"]))
+        print(_line("  unders, v3 agrees >=3%", e["unders_fade_when_v3_agrees_3pct"]))
+        for stat, s in e["by_stat_unders"].items():
+            print(_line(f"    under {stat}", s))
     print("OVERS passing the screen, by stat")
     for k, s in r["by_stat_overs_passing"].items():
         print(_line(k, s))
