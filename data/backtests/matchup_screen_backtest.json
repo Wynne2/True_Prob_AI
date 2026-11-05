@@ -1,0 +1,172 @@
+{
+ "generated_at": "2026-11-05T02:09:32+00:00",
+ "window": "Jan-Feb 2026 saved sportsbook lines; ranks and averages from earlier 2025-26 games only",
+ "lines": 8911,
+ "overs": {
+  "all": {
+   "n": 5962,
+   "dates": 19,
+   "hit_rate": 0.4819,
+   "avg_novig": 0.4917,
+   "avg_implied": 0.5244,
+   "market_miss": -0.0098,
+   "market_miss_date_se": 0.0115,
+   "roi_per_bet": -0.081,
+   "roi_date_se": 0.0229,
+   "avg_candidate": 0.4698
+  },
+  "passes_screen": {
+   "n": 329,
+   "dates": 15,
+   "hit_rate": 0.4043,
+   "avg_novig": 0.4939,
+   "avg_implied": 0.5267,
+   "market_miss": -0.0896,
+   "market_miss_date_se": 0.0689,
+   "roi_per_bet": -0.2337,
+   "roi_date_se": 0.1321,
+   "avg_candidate": 0.4227
+  },
+  "fails_screen": {
+   "n": 5633,
+   "dates": 19,
+   "hit_rate": 0.4864,
+   "avg_novig": 0.4916,
+   "avg_implied": 0.5242,
+   "market_miss": -0.0051,
+   "market_miss_date_se": 0.0111,
+   "roi_per_bet": -0.072,
+   "roi_date_se": 0.0223,
+   "avg_candidate": 0.4726
+  },
+  "step1_only_bottom10_defense": {
+   "n": 1821,
+   "dates": 17,
+   "hit_rate": 0.4882,
+   "avg_novig": 0.4914,
+   "avg_implied": 0.5241,
+   "market_miss": -0.0032,
+   "market_miss_date_se": 0.0201,
+   "roi_per_bet": -0.0703,
+   "roi_date_se": 0.0382,
+   "avg_candidate": 0.4468
+  },
+  "step2_only_bottom10_vs_position": {
+   "n": 2272,
+   "dates": 18,
+   "hit_rate": 0.471,
+   "avg_novig": 0.493,
+   "avg_implied": 0.5258,
+   "market_miss": -0.0221,
+   "market_miss_date_se": 0.0174,
+   "roi_per_bet": -0.1093,
+   "roi_date_se": 0.033,
+   "avg_candidate": 0.451
+  },
+  "steps2_3_position_and_opportunity": {
+   "n": 692,
+   "dates": 18,
+   "hit_rate": 0.4538,
+   "avg_novig": 0.4959,
+   "avg_implied": 0.5288,
+   "market_miss": -0.0421,
+   "market_miss_date_se": 0.0469,
+   "roi_per_bet": -0.146,
+   "roi_date_se": 0.091,
+   "avg_candidate": 0.4281
+  },
+  "passes_screen_and_v3_edge_3pct": {
+   "n": 12,
+   "dates": 5,
+   "hit_rate": 0.25,
+   "avg_novig": 0.483,
+   "avg_implied": 0.5155,
+   "market_miss": -0.233,
+   "market_miss_date_se": 0.2242,
+   "roi_per_bet": -0.5314,
+   "roi_date_se": 0.4605,
+   "avg_candidate": 0.6013
+  }
+ },
+ "unders": {
+  "passes_screen": {
+   "n": 128,
+   "dates": 15,
+   "hit_rate": 0.4922,
+   "avg_novig": 0.5026,
+   "avg_implied": 0.5348,
+   "market_miss": -0.0104,
+   "market_miss_date_se": 0.0718,
+   "roi_per_bet": -0.0789,
+   "roi_date_se": 0.1348,
+   "avg_candidate": 0.575
+  },
+  "fails_screen": {
+   "n": 2821,
+   "dates": 19,
+   "hit_rate": 0.509,
+   "avg_novig": 0.5055,
+   "avg_implied": 0.5384,
+   "market_miss": 0.0036,
+   "market_miss_date_se": 0.0121,
+   "roi_per_bet": -0.0552,
+   "roi_date_se": 0.0224,
+   "avg_candidate": 0.5225
+  }
+ },
+ "by_stat_overs_passing": {
+  "points": {
+   "n": 169,
+   "dates": 14,
+   "hit_rate": 0.3254,
+   "avg_novig": 0.4913,
+   "avg_implied": 0.524,
+   "market_miss": -0.1659,
+   "market_miss_date_se": 0.0911,
+   "roi_per_bet": -0.3791,
+   "roi_date_se": 0.1755,
+   "avg_candidate": 0.4281
+  },
+  "rebounds": {
+   "n": 35,
+   "dates": 10,
+   "hit_rate": 0.5429,
+   "avg_novig": 0.505,
+   "avg_implied": 0.5381,
+   "market_miss": 0.0379,
+   "market_miss_date_se": 0.1032,
+   "roi_per_bet": -0.0425,
+   "roi_date_se": 0.2009,
+   "avg_candidate": 0.3977
+  },
+  "assists": {
+   "n": 55,
+   "dates": 12,
+   "hit_rate": 0.5455,
+   "avg_novig": 0.4986,
+   "avg_implied": 0.5312,
+   "market_miss": 0.0469,
+   "market_miss_date_se": 0.0883,
+   "roi_per_bet": 0.0277,
+   "roi_date_se": 0.1715,
+   "avg_candidate": 0.406
+  },
+  "threes": {
+   "n": 70,
+   "dates": 14,
+   "hit_rate": 0.4143,
+   "avg_novig": 0.4909,
+   "avg_implied": 0.5238,
+   "market_miss": -0.0766,
+   "market_miss_date_se": 0.0758,
+   "roi_per_bet": -0.1836,
+   "roi_date_se": 0.145,
+   "avg_candidate": 0.4352
+  }
+ },
+ "notes": [
+  "Positive market_miss means the outcome beat the no-vig price; ROI is at the offered odds (vig included).",
+  "Alternate lines are overs only, so overs outnumber unders.",
+  "Thresholds were fixed before this run; nothing here was tuned on these lines."
+ ]
+}
