@@ -173,6 +173,17 @@ def _render_version_card(card: dict) -> None:
             "ROI date SE": s.get("roi_date_se"),
         })
     st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+    m = card.get("matchup") or {}
+    if m.get("screened_rows"):
+        mrows = []
+        for name, label in (("fade_picks", "Fade picks: under vs weak D + weak vs position, candidate edge 3%+"),
+                            ("screened_overs", "Screened overs: all 3 Matchup Finder screens")):
+            s = m[name]
+            mrows.append({"Group": label, "Bets": s.get("n", 0), "Hit rate": s.get("hit_rate"),
+                          "Implied": s.get("avg_implied"), "Flat ROI / bet": s.get("flat_roi_per_bet"),
+                          "ROI date SE": s.get("roi_date_se")})
+        st.markdown("Matchup Finder groups")
+        st.dataframe(pd.DataFrame(mrows), width="stretch", hide_index=True)
     st.caption(card["note"])
 
 

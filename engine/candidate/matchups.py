@@ -196,6 +196,31 @@ def screen_lines(logs: list[dict], lines: list[dict], season: str) -> None:
 # Live slate
 # ---------------------------------------------------------------------------
 
+FADE_MIN_EDGE = 0.03
+
+
+def tag(s: dict, side: str, candidate: float | None, implied: float, outside_range: bool) -> dict:
+    """
+    Screen result stored with each logged prop, for live grading.
+
+    fade_pick: an UNDER where the opponent is bottom-10 on defense and bottom-10
+    vs the player's group, and the candidate likes the under by FADE_MIN_EDGE
+    or more inside its tested price range (the best fixed variant in the
+    Jan-Feb fade test; break-even there, so it is tracked, not trusted).
+    screened_over: an OVER passing all three screens (the original thesis).
+    """
+    weak = s["step1_bottom10_defense"] and s["step2_bottom10_vs_position"]
+    return {
+        "step1": s["step1_bottom10_defense"], "step2": s["step2_bottom10_vs_position"], "step3": s["step3_opportunity"],
+        "defense_rank": s["defense_rank"], "position_fp_rank": s["position_fp_rank"],
+        "fade_pick": bool(
+            side == "under" and weak and candidate is not None and not outside_range
+            and candidate - implied >= FADE_MIN_EDGE
+        ),
+        "screened_over": bool(side == "over" and s["passes_screen"]),
+    }
+
+
 def _profit(american: int) -> float:
     a = float(american)
     return a / 100.0 if a >= 100 else 100.0 / abs(a)
@@ -236,10 +261,12 @@ def find_for_slate(props: list, slate: date, season: str | None = None, logs: li
             cache[key] = screen(state, str(prop.player_id), opp, stat)
         s = cache[key]
         steps = sum((s["step1_bottom10_defense"], s["step2_bottom10_vs_position"], s["step3_opportunity"]))
-        if steps < min_steps:
-            continue
         p = getattr(prop, "candidate_probability", None)
         implied = float(prop.implied_probability)
+        prop.matchup_screen = tag(s, getattr(prop.side, "value", str(prop.side)), p, implied,
+                                  bool(getattr(prop, "candidate_outside_range", False)))
+        if steps < min_steps:
+            continue
         avg = s["averages"] or {}
         out.append({
             "player": prop.player_name, "team": prop.team_abbr, "opponent": prop.opponent_abbr,

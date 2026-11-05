@@ -116,7 +116,16 @@ def scorecard(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_STA
         buckets[f"{lo:.0%}-{hi:.0%}" if hi < 1 else f"{lo:.0%}+"] = _bets(
             [r for r in edge_rows if lo <= r["candidate_edge"] < hi]
         )
+    tagged = [r for r in with_cand if isinstance(r.get("matchup"), dict)]
+    for r in tagged:
+        r.setdefault("candidate_edge", float(r["candidate_probability"]) - float(r["implied_probability"]))
+    matchup_groups = {
+        "fade_picks": _bets([r for r in tagged if r["matchup"].get("fade_pick")]),
+        "screened_overs": _bets([r for r in tagged if r["matchup"].get("screened_over")]),
+        "screened_rows": len(tagged),
+    }
     return {
+        "matchup": matchup_groups,
         "version": version or "all",
         "since": since.isoformat(),
         "dates": sorted({r["date"] for r in rows}),
@@ -139,6 +148,12 @@ def _print(card: dict, graded: list[dict]) -> None:
     print(f"\nScorecard [{card['version']}] since {card['since']} ({len(card['dates'])} dates, {card['decided_rows']} decided props)")
     b = card["brier_same_props"]
     print(f"  Brier on {b['n']} shared props: candidate {b['candidate']}  production {b['production']}  market {b['market_novig']}")
+    m = card.get("matchup") or {}
+    if m.get("screened_rows"):
+        for name in ("fade_picks", "screened_overs"):
+            s = m[name]
+            print(f"  Matchup {name}: " + (f"n={s['n']} hit {s['hit_rate']:.1%} implied {s['avg_implied']:.1%} "
+                                          f"ROI {s['flat_roi_per_bet']:+.3f}" if s["n"] else "n=0"))
     print("  Candidate-edge bets (flat stake):")
     for name, s in card["candidate_edge_bets"].items():
         if s["n"]:

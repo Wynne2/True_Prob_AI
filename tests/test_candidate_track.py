@@ -99,3 +99,18 @@ def test_scorecard_splits_by_version(tmp_path):
 def test_each_version_counts_from_its_own_holdout():
     assert track.holdout_start("candidate-v2") == date(2026, 11, 4)
     assert track.holdout_start("candidate-v3") == date(2026, 11, 5)
+
+
+def test_scorecard_tracks_matchup_groups(tmp_path):
+    day = date(2026, 11, 6)
+    fade = _prop("1", "Ann", 19.5, PropSide.UNDER, -110, 0.524, 0.60, 0.50, 0.50)
+    fade.matchup_screen = {"fade_pick": True, "screened_over": False}
+    over = _prop("2", "Bo", 10.5, PropSide.OVER, -110, 0.524, 0.45, 0.50, 0.50)
+    over.matchup_screen = {"fade_pick": False, "screened_over": True}
+    save_pregame_predictions(day, [fade, over], tmp_path)
+    box = [{"game_id": "g1", "player_id": "1", "player_name": "Ann", "pts": 15, "min": 33},
+           {"game_id": "g1", "player_id": "2", "player_name": "Bo", "pts": 12, "min": 30}]
+    clv.grade_predictions(day, tmp_path, final_game_ids={"g1"}, box_logs=box)
+    m = track.scorecard(tmp_path, since=day)["matchup"]
+    assert m["fade_picks"]["n"] == 1 and m["fade_picks"]["hit_rate"] == 1.0
+    assert m["screened_overs"]["n"] == 1 and m["screened_overs"]["hit_rate"] == 1.0

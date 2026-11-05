@@ -85,3 +85,35 @@ def test_find_for_slate_prices_screened_props():
     assert r["steps_passed"] == 3
     assert r["edge"] == pytest.approx(0.60 - 110 / 210)
     assert r["expected_roi"] == pytest.approx(0.60 * (100 / 110) - 0.40)
+
+
+def _s(step1=True, step2=True, step3=True):
+    return {"step1_bottom10_defense": step1, "step2_bottom10_vs_position": step2, "step3_opportunity": step3,
+            "passes_screen": step1 and step2 and step3, "defense_rank": 3, "position_fp_rank": 5}
+
+
+def test_fade_pick_rules():
+    assert mf.tag(_s(), "under", 0.60, 0.52, False)["fade_pick"]
+    assert not mf.tag(_s(), "under", 0.54, 0.52, False)["fade_pick"]        # edge under 3%
+    assert not mf.tag(_s(), "under", 0.60, 0.52, True)["fade_pick"]         # untested price
+    assert not mf.tag(_s(step2=False), "under", 0.60, 0.52, False)["fade_pick"]
+    assert not mf.tag(_s(), "over", 0.60, 0.52, False)["fade_pick"]
+    assert mf.tag(_s(step3=False), "under", 0.60, 0.52, False)["fade_pick"]  # opportunity not required
+
+
+def test_screened_over_rule():
+    assert mf.tag(_s(), "over", 0.40, 0.52, False)["screened_over"]
+    assert not mf.tag(_s(step3=False), "over", 0.40, 0.52, False)["screened_over"]
+    assert not mf.tag(_s(), "under", 0.40, 0.52, False)["screened_over"]
+
+
+def test_find_for_slate_tags_every_screened_prop():
+    logs = _season()
+    for r in logs:
+        r["team_abbr"] = r["team_id"]
+    prop = NS(player_id="T1-G", player_name="Guard One", team_abbr="T1", opponent_abbr="T0",
+              prop_type=PropType.POINTS, side=PropSide.UNDER, line=24.5, sportsbook_odds=-110,
+              implied_probability=110 / 210, candidate_probability=0.60, candidate_projection=22.0,
+              best_book_key="fanduel", candidate_outside_range=False)
+    mf.find_for_slate([prop], date(2026, 12, 1), season="2026-27", logs=logs, min_steps=3)
+    assert prop.matchup_screen["fade_pick"] and not prop.matchup_screen["screened_over"]

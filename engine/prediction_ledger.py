@@ -54,6 +54,8 @@ def _prop_row(prop, game_date: date, saved_at: str) -> dict:
         "production_probability": _opt(getattr(prop, "production_probability", None)),
         "candidate_outside_range": bool(getattr(prop, "candidate_outside_range", False)),
         "candidate_version": _candidate_version(prop),
+        # Matchup Finder screen (engine/candidate/matchups.py); None when not screened.
+        "matchup": getattr(prop, "matchup_screen", None),
     }
 
 

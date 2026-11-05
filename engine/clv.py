@@ -277,6 +277,7 @@ def grade_predictions(
             ),
             "candidate_version": row.get("candidate_version"),
             "candidate_outside_range": row.get("candidate_outside_range", False),
+            "matchup": row.get("matchup"),
             "game_id": gid,
             "actual": actual,
             "result": result,
