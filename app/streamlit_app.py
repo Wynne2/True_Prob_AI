@@ -390,6 +390,59 @@ def _straight_bet_details(prop, stake: float) -> None:
             st.markdown(prop.explanation.replace("$", "\\$"))
 
 
+def render_matchup_finder(rows: list) -> None:
+    """The five-step discovery workflow on tonight's slate (engine/candidate/matchups.py)."""
+    ui.section("Matchup Finder", "weak defenses, weak vs the position, real opportunity, then price")
+    st.caption(
+        "1 Bottom-10 defensive rating · 2 Bottom-10 fantasy points allowed to the player's G/F/C group · "
+        "3 Opportunity (26+ minutes and the stat's volume) · 4 Candidate model chance (no matchup boost) · "
+        "5 Break-even, edge and expected ROI at the offered price. Ranks use this season's games before tonight."
+    )
+    st.warning(
+        "Backtest, Jan-Feb 2026 sportsbook lines: overs that passed all three screens hit 40.4% against a "
+        "49.4% market price (329 lines, ROI -23%). Books already price weak defenses, so a matchup alone is "
+        "not an edge. Use the candidate's edge, and check the graded track record.",
+        icon=":material/info:",
+    )
+    c1, c2 = st.columns(2)
+    show_near = c1.toggle("Include props that pass 2 of 3 screens", value=False)
+    show_unders = c2.toggle("Include unders", value=False, help="The workflow targets overs against weak defenses.")
+    picked = [
+        r for r in rows
+        if (r["steps_passed"] == 3 or show_near) and (r["side"] == "over" or show_unders)
+    ]
+    if not picked:
+        st.info("No props pass the screen on this slate.", icon=":material/filter_alt_off:")
+        return
+    table = pd.DataFrame([{
+        "Player": r["player"], "Team": r["team"], "Opp": r["opponent"], "Prop": r["prop"],
+        "Screens": f"{r['steps_passed']}/3",
+        "Opp D rank": r["defense_rank"], "Pos": r["position"], "Opp vs pos rank": r["position_fp_rank"],
+        "Opp vs pos (stat)": r["position_stat_rank"],
+        "Min": None if r["minutes"] is None else round(r["minutes"], 1),
+        "FGA": None if r["fga"] is None else round(r["fga"], 1),
+        "3PA": None if r["fg3a"] is None else round(r["fg3a"], 1),
+        "Passes": None if r["passes"] is None else round(r["passes"], 1),
+        "Reb ch": None if r["rebound_chances"] is None else round(r["rebound_chances"], 1),
+        "Cand proj": None if r["candidate_projection"] is None else round(r["candidate_projection"], 1),
+        "Cand %": None if r["candidate_probability"] is None else round(r["candidate_probability"] * 100, 1),
+        "Odds": format_american(r["odds"]), "Book": r["book"],
+        "Break-even %": round(r["break_even"] * 100, 1),
+        "Edge %": None if r["edge"] is None else round(r["edge"] * 100, 1),
+        "EV ROI %": None if r["expected_roi"] is None else round(r["expected_roi"] * 100, 1),
+        "Tested price": "no" if r["outside_tested_range"] else "yes",
+    } for r in picked])
+    st.dataframe(table, width="stretch", hide_index=True, column_config={
+        "Opp D rank": st.column_config.NumberColumn(help="1 = worst defensive rating this season."),
+        "Opp vs pos rank": st.column_config.NumberColumn(help="1 = most fantasy points allowed to this G/F/C group."),
+        "Opp vs pos (stat)": st.column_config.NumberColumn(help="Rank for this prop's own stat allowed to the group."),
+        "Edge %": st.column_config.NumberColumn(format="%+.1f%%", help="Candidate chance minus break-even."),
+        "EV ROI %": st.column_config.NumberColumn(format="%+.1f%%", help="Expected return per unit at the offered odds."),
+    })
+    st.caption(f"{len(picked)} props. Edge and EV ROI use the candidate's chance; prices outside about "
+               "+300/-300 are untested for the candidate.")
+
+
 def render_straight_bets(props: list, stake: float, top_n: int) -> None:
     """Render top straight-bet recommendations as individual cards with payouts."""
     if not props:
@@ -931,6 +984,7 @@ def main() -> None:
                 scanner.last_odds_source_errors,
             )
         st.session_state.candidate_status = None
+        st.session_state.matchup_rows = []
         if all_props:
             with st.spinner("Scoring props with the frozen candidate model..."):
                 from engine.candidate.live import attach_candidate
@@ -938,6 +992,8 @@ def main() -> None:
                     st.session_state.candidate_status = attach_candidate(all_props, params["date"], games=games)
                     from engine.candidate.live import apply_candidate_edges
                     st.session_state.candidate_status["edges"] = apply_candidate_edges(all_props)
+                    from engine.candidate.matchups import find_for_slate
+                    st.session_state.matchup_rows = find_for_slate(all_props, params["date"], min_steps=2)
                 except Exception as exc:  # the board works without the candidate
                     st.session_state.candidate_status = {"status": "error", "reason": str(exc)}
             # Pregame snapshot for next-day grading. The first save of a prop keeps its price.
@@ -1027,9 +1083,10 @@ def main() -> None:
     render_odds_sources(*st.session_state.odds_source_counts)
 
     # Tab layout
-    (tab_straight, tab_parlays, tab_props, tab_lines, tab_game_lines, tab_advisor, tab_debug, tab_backtest,
-     tab_arb) = st.tabs([
+    (tab_straight, tab_matchups, tab_parlays, tab_props, tab_lines, tab_game_lines, tab_advisor, tab_debug,
+     tab_backtest, tab_arb) = st.tabs([
         ":material/target: Straight bets",
+        ":material/shield: Matchup Finder",
         ":material/stacks: Parlays",
         ":material/table_chart: Props",
         ":material/compare_arrows: Line shopping",
@@ -1047,6 +1104,12 @@ def main() -> None:
             qualifying = _qualifying_props_for_display(all_props, params)
             render_straight_bets(qualifying, params["stake"], params["top_straight"])
             render_favorite_band_straight_audit(all_props, params)
+        else:
+            st.info(scan_first, icon=":material/radar:")
+
+    with tab_matchups:
+        if all_props:
+            render_matchup_finder(st.session_state.get("matchup_rows") or [])
         else:
             st.info(scan_first, icon=":material/radar:")
 

@@ -190,3 +190,72 @@ def screen_lines(logs: list[dict], lines: list[dict], season: str) -> None:
                 cache[key] = screen(state, pid, opp, stat) if opp else None
             line["screen"] = cache[key]
         state.update(by_date.get(day, []))
+
+
+# ---------------------------------------------------------------------------
+# Live slate
+# ---------------------------------------------------------------------------
+
+def _profit(american: int) -> float:
+    a = float(american)
+    return a / 100.0 if a >= 100 else 100.0 / abs(a)
+
+
+def find_for_slate(props: list, slate: date, season: str | None = None, logs: list[dict] | None = None,
+                   min_steps: int = 3) -> list[dict]:
+    """
+    Run the workflow on tonight's priced props. Returns one row per prop that
+    passes at least ``min_steps`` of steps 1-3, with steps 4-5 filled in.
+    """
+    from domain.constants import NBA_SEASON
+    from engine.candidate import live
+
+    season = season or NBA_SEASON
+    logs = logs if logs is not None else live.season_logs(slate, season)
+    current = sorted((r for r in logs if r.get("season") == season and r.get("game_date", "") < slate.isoformat()),
+                     key=lambda r: r["game_date"])
+    state = SeasonState()
+    by_date: dict[str, list[dict]] = defaultdict(list)
+    for r in current:
+        by_date[r["game_date"]].append(r)
+    for day in sorted(by_date):
+        state.update(by_date[day])
+    teams = live._team_ids(logs)
+
+    out = []
+    cache: dict = {}
+    for prop in props:
+        stat = getattr(prop.prop_type, "value", str(prop.prop_type))
+        if stat not in STATS:
+            continue
+        opp = teams.get(str(prop.opponent_abbr).upper())
+        if not opp:
+            continue
+        key = (str(prop.player_id), opp, stat)
+        if key not in cache:
+            cache[key] = screen(state, str(prop.player_id), opp, stat)
+        s = cache[key]
+        steps = sum((s["step1_bottom10_defense"], s["step2_bottom10_vs_position"], s["step3_opportunity"]))
+        if steps < min_steps:
+            continue
+        p = getattr(prop, "candidate_probability", None)
+        implied = float(prop.implied_probability)
+        avg = s["averages"] or {}
+        out.append({
+            "player": prop.player_name, "team": prop.team_abbr, "opponent": prop.opponent_abbr,
+            "prop": f"{stat} {getattr(prop.side, 'value', prop.side)} {prop.line:g}",
+            "stat": stat, "side": getattr(prop.side, "value", str(prop.side)),
+            "steps_passed": steps,
+            "defense_rank": s["defense_rank"], "position": s["position_groups"],
+            "position_fp_rank": s["position_fp_rank"], "position_stat_rank": s["position_stat_rank"],
+            "minutes": avg.get("minutes"), "usage": avg.get("usage"), "fga": avg.get("fga"),
+            "fg3a": avg.get("fg3a"), "passes": avg.get("passes"), "rebound_chances": avg.get("rebound_chances"),
+            "candidate_probability": p, "candidate_projection": getattr(prop, "candidate_projection", None),
+            "odds": prop.sportsbook_odds, "book": getattr(prop, "best_book_key", "") or str(getattr(prop, "best_book", "")),
+            "break_even": implied,
+            "edge": None if p is None else p - implied,
+            "expected_roi": None if p is None else p * _profit(prop.sportsbook_odds) - (1 - p),
+            "outside_tested_range": bool(getattr(prop, "candidate_outside_range", False)),
+        })
+    out.sort(key=lambda r: (r["edge"] is None, -(r["edge"] or 0)))
+    return out
