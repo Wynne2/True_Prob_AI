@@ -80,3 +80,22 @@ def test_grade_pending_skips_today_and_graded_dates(tmp_path, monkeypatch):
     assert calls == []  # same day: not graded yet
     track.grade_pending(today=date(2026, 11, 5), directory=tmp_path, since=day)
     assert calls == [day]
+
+
+def test_scorecard_splits_by_version(tmp_path):
+    day, box = _board(tmp_path)
+    clv.grade_predictions(day, tmp_path, final_game_ids={"g1"}, box_logs=box)
+    path = tmp_path / f"{day}.graded.json"
+    data = json.loads(path.read_text())
+    data["rows"][0]["candidate_version"] = "candidate-v3"
+    for r in data["rows"][1:]:
+        r["candidate_version"] = "candidate-v2"
+    path.write_text(json.dumps(data))
+    assert track.versions(tmp_path, since=day) == ["candidate-v2", "candidate-v3"]
+    assert track.scorecard(tmp_path, since=day, version="candidate-v3")["decided_rows"] == 1
+    assert track.scorecard(tmp_path, since=day, version="candidate-v2")["decided_rows"] == 2
+
+
+def test_each_version_counts_from_its_own_holdout():
+    assert track.holdout_start("candidate-v2") == date(2026, 11, 4)
+    assert track.holdout_start("candidate-v3") == date(2026, 11, 5)

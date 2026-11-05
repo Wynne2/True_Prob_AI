@@ -240,7 +240,7 @@ def _print(report: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--credit-cap", type=int, default=DEFAULT_CREDIT_CAP)
-    parser.add_argument("--version", default="v2", choices=("v1", "v2"))
+    parser.add_argument("--version", default="v3", choices=("v1", "v2", "v3"))
     args = parser.parse_args()
     _print(run(credit_cap=args.credit_cap, version=args.version))
 

@@ -143,10 +143,18 @@ def _render_live_track_record() -> None:
         with st.spinner("Grading saved boards..."):
             graded = track.grade_pending(today=today_eastern())
         st.caption(f"Graded {len(graded)} date(s).")
-    card = track.scorecard()
-    if not card["decided_rows"]:
+    found = track.versions()
+    if not found:
         st.info("No graded boards yet. Scan a slate before tip-off, then grade the next day.", icon=":material/schedule:")
         return
+    for version in reversed(found):
+        _render_version_card(track.scorecard(since=track.holdout_start(version), version=version))
+
+
+def _render_version_card(card: dict) -> None:
+    if not card["decided_rows"]:
+        return
+    st.markdown(f"**{card['version']}** · games from {card['since']} · {len(card['dates'])} date(s)")
     b = card["brier_same_props"]
     ui.tiles([
         ("Graded props", f"{card['decided_rows']:,}", ""),

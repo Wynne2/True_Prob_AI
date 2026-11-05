@@ -101,8 +101,11 @@ def load_graded(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_S
     return rows
 
 
-def scorecard(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_START) -> dict:
+def scorecard(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_START, version: str | None = None) -> dict:
+    """Scorecard for graded rows since ``since``; ``version`` keeps only rows the given candidate scored."""
     rows = _decided(load_graded(directory, since))
+    if version:
+        rows = [r for r in rows if r.get("candidate_version") == version]
     with_cand = [r for r in rows if r.get("candidate_probability") is not None and r.get("implied_probability") is not None]
     same = [r for r in with_cand if r.get("market_probability") is not None and r.get("production_probability") is not None]
     edge_rows = [r for r in with_cand if not r.get("candidate_outside_range")]
@@ -114,6 +117,7 @@ def scorecard(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_STA
             [r for r in edge_rows if lo <= r["candidate_edge"] < hi]
         )
     return {
+        "version": version or "all",
         "since": since.isoformat(),
         "dates": sorted({r["date"] for r in rows}),
         "decided_rows": len(rows),
@@ -132,7 +136,7 @@ def scorecard(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_STA
 def _print(card: dict, graded: list[dict]) -> None:
     for g in graded:
         print(f"graded {g.get('date')}: {g.get('final_games', 0)} final games, {g.get('all', {}).get('decided', 0)} decided rows")
-    print(f"\nScorecard since {card['since']} ({len(card['dates'])} dates, {card['decided_rows']} decided props)")
+    print(f"\nScorecard [{card['version']}] since {card['since']} ({len(card['dates'])} dates, {card['decided_rows']} decided props)")
     b = card["brier_same_props"]
     print(f"  Brier on {b['n']} shared props: candidate {b['candidate']}  production {b['production']}  market {b['market_novig']}")
     print("  Candidate-edge bets (flat stake):")
@@ -145,9 +149,30 @@ def _print(card: dict, graded: list[dict]) -> None:
             print(f"    edge {name:<8} n=0")
 
 
+def holdout_start(version: str) -> date:
+    """A version's own holdout start (from its frozen file); earlier games do not count for it."""
+    from engine.candidate import model as cmodel
+
+    short = version.replace("candidate-", "")
+    path = cmodel.ROOT / "data" / "models" / f"candidate_{short}.json"
+    params = cmodel.load_params(path) or {}
+    try:
+        return max(DEFAULT_START, date.fromisoformat(params.get("holdout_start") or DEFAULT_START.isoformat()))
+    except ValueError:
+        return DEFAULT_START
+
+
+def versions(directory: Path | str = clv.DEFAULT_DIR, since: date = DEFAULT_START) -> list[str]:
+    return sorted({r.get("candidate_version") for r in load_graded(directory, since) if r.get("candidate_version")})
+
+
 def main() -> None:
     graded = grade_pending()
-    _print(scorecard(), graded)
+    found = versions()
+    if not found:
+        _print(scorecard(), graded)
+    for i, v in enumerate(found):
+        _print(scorecard(since=holdout_start(v), version=v), graded if i == 0 else [])
 
 
 if __name__ == "__main__":

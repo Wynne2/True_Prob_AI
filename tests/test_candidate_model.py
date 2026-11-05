@@ -102,3 +102,16 @@ def test_v2_params_present_and_calibrated():
     assert params["version"] == "candidate-v2"
     assert "abs_spread" in params["settings"]["minutes_features"]
     assert set(params["calibration"]) <= {"points", "rebounds", "assists", "threes"}
+
+
+def test_v3_params_fix_volume_and_drop_calibration():
+    v3 = m.load_params(m.ROOT / "data" / "models" / "candidate_v3.json")
+    v1 = m.load_params()
+    if v3 is None or v1 is None:
+        pytest.skip("frozen params not generated")
+    assert v3["version"] == "candidate-v3" and v3["calibration"] == {}
+    assert v3["holdout_start"] == "2026-11-05"
+    for stat in ("points", "rebounds", "assists", "threes"):
+        assert v3["settings"]["volume"][stat]["choice"] == v1["settings"]["volume"][stat]["choice"]
+        assert v3["settings"]["volume"][stat]["features"] == v1["settings"]["volume"][stat]["features"]
+    assert "abs_spread" in v3["settings"]["minutes_features"]

@@ -174,3 +174,10 @@ def test_candidate_edge_skips_untested_prices():
     assert longshot.probability_method == "market_blend" and longshot.candidate_outside_range
     assert "outside the range" in ui.candidate_note(longshot)
     assert normal.probability_method == "candidate"
+
+
+def test_board_uses_newest_frozen_version():
+    params = live.frozen_params()
+    if params is None:
+        pytest.skip("no frozen params")
+    assert params["version"] == "candidate-v3"

@@ -13,7 +13,7 @@ Inputs for tonight:
               Every other recent rotation player on a team is treated as playing.
     spread    the board's game lines (Game.home_spread), when present.
 
-The newest frozen version is used (v2, else v1).
+The newest frozen version is used (v3, else v2, else v1).
 """
 
 from __future__ import annotations
@@ -32,10 +32,16 @@ ROTATION_LOOKBACK_GAMES = 5
 _CURRENT_MONTH_TTL = 6 * 3600
 
 
+LIVE_VERSIONS = ("v3", "v2")
+
+
 def frozen_params() -> dict | None:
-    """Newest frozen candidate: v2 if present, else v1."""
-    v2 = cmodel.ROOT / "data" / "models" / "candidate_v2.json"
-    return cmodel.load_params(v2) or cmodel.load_params()
+    """Newest frozen candidate on the board: v3, else v2, else v1."""
+    for version in LIVE_VERSIONS:
+        params = cmodel.load_params(cmodel.ROOT / "data" / "models" / f"candidate_{version}.json")
+        if params:
+            return params
+    return cmodel.load_params()
 
 
 def _month_windows(start: date, end: date, season: str):
