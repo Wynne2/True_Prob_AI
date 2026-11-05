@@ -602,7 +602,7 @@ class TestCLI:
 
         main.main()
         out = console.export_text()
-        assert "Top 5 picks" in out
+        assert "Candidate pool (5, ranked by edge)" in out
         assert "Alpha One" in out
         assert "PL1" in out
         assert "AI layer: disabled" in out

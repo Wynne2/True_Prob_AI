@@ -45,6 +45,8 @@ def _prop_row(prop, game_date: date, saved_at: str) -> dict:
         "model_weight": float(getattr(prop, "model_weight", 0.0) or 0.0),
         "probability_method": getattr(prop, "probability_method", "legacy") or "legacy",
         "edge": prop.edge,
+        # False when the model's own chance is below the price (engine/model_agreement.py).
+        "model_agrees": getattr(prop, "model_agrees", None),
         "projected_value": float(getattr(prop, "projected_value", 0.0) or 0.0),
         "projected_minutes": prop.expected_minutes,
         "confidence": getattr(prop.confidence, "value", str(prop.confidence)),

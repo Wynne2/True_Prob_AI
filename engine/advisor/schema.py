@@ -34,6 +34,12 @@ class TopPick(BaseModel):
     risk_notes: str
 
 
+class PassedPick(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    reason: str
+
+
 class ParlayRecommendation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str
@@ -48,6 +54,8 @@ class ParlayRecommendation(BaseModel):
 class AdvisorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     top_picks: list[TopPick] = Field(max_length=MAX_TOP_PICKS)
+    # Picks the AI would not take, each with a reason (the shortlist ones it left out, at least).
+    passes: list[PassedPick] = Field(default_factory=list)
     parlay_recommendations: list[ParlayRecommendation]
     straight_bets_only: bool
     summary: str
@@ -75,6 +83,18 @@ def response_json_schema() -> dict:
                     "required": ["id", "rank", "rationale", "risk_notes"],
                 },
             },
+            "passes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "id": {"type": "string", "description": "Pick ID you would not take"},
+                        "reason": {"type": "string", "description": "One sentence: why not"},
+                    },
+                    "required": ["id", "reason"],
+                },
+            },
             "parlay_recommendations": {
                 "type": "array",
                 "items": {
@@ -97,6 +117,7 @@ def response_json_schema() -> dict:
         },
         "required": [
             "top_picks",
+            "passes",
             "parlay_recommendations",
             "straight_bets_only",
             "summary",
@@ -138,6 +159,7 @@ def validate_response(
     parlay_legs: dict[str, list[str]],
     parlay_numbers: dict[str, dict[str, float]],
     allowed_amounts: set[float] | None = None,
+    max_picks: int = MAX_TOP_PICKS,
 ) -> tuple[AdvisorResponse, list[str]]:
     """
     Enforce ID integrity and overwrite LLM-stated numbers.
@@ -156,8 +178,19 @@ def validate_response(
         if pick.id in seen:
             raise AdvisorResponseError(f"Duplicate pick ID {pick.id!r}")
         seen.add(pick.id)
-    if len(response.top_picks) > min(MAX_TOP_PICKS, len(pick_ids)):
-        raise AdvisorResponseError(f"Too many top picks ({len(response.top_picks)})")
+    limit = min(MAX_TOP_PICKS, max_picks, len(pick_ids))
+    if len(response.top_picks) > limit:
+        raise AdvisorResponseError(f"Too many top picks ({len(response.top_picks)}); at most {limit}")
+
+    passed: set[str] = set()
+    for p in response.passes:
+        if p.id not in valid_picks:
+            raise AdvisorResponseError(f"Unknown passed pick ID {p.id!r}")
+        if p.id in seen:
+            raise AdvisorResponseError(f"{p.id} is both a top pick and passed")
+        if p.id in passed:
+            raise AdvisorResponseError(f"Duplicate passed pick ID {p.id!r}")
+        passed.add(p.id)
 
     per_leg_count: dict[int, str] = {}
     for rec in response.parlay_recommendations:
@@ -167,6 +200,10 @@ def validate_response(
         if sorted(rec.legs) != sorted(expected):
             raise AdvisorResponseError(
                 f"Parlay {rec.id} legs {rec.legs} do not match the table legs {expected}"
+            )
+        if passed.intersection(expected):
+            raise AdvisorResponseError(
+                f"Parlay {rec.id} uses passed pick(s) {sorted(passed.intersection(expected))}"
             )
         n = len(expected)
         if n in per_leg_count:
@@ -196,6 +233,7 @@ def validate_response(
     if allowed_amounts:
         texts = [response.summary]
         texts += [p.rationale + " " + p.risk_notes for p in response.top_picks]
+        texts += [p.reason for p in response.passes]
         texts += [r.rationale + " " + r.key_risks for r in response.parlay_recommendations]
         stray = sorted({amt for t in texts for amt in _unverified_amounts(t, allowed_amounts)})
         if stray:

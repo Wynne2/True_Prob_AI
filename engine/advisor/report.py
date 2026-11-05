@@ -59,8 +59,20 @@ def _filter_counts_line(result: "AdvisorResult") -> str:
     s = result.stats
     return (
         f"{s.total_props} props → {s.positive_edge} positive edge → {s.in_odds_band} in odds band → "
-        f"{s.confidence_ok} after confidence → {s.deduped} unique → {s.selected} selected"
+        f"{s.confidence_ok} after confidence → {s.model_agrees} model agrees → {s.deduped} unique → "
+        f"{s.pool} sent to the AI ({s.selected} shortlist)"
     )
+
+
+def ai_marks(result: "AdvisorResult") -> dict[str, str]:
+    """Pick ID → the AI's call: its rank, or 'pass'."""
+    marks: dict[str, str] = {}
+    if result.ai_response:
+        for tp in result.ai_response.top_picks:
+            marks[tp.id] = str(tp.rank)
+        for p in result.ai_response.passes:
+            marks[p.id] = "pass"
+    return marks
 
 
 def _parlay_legs_text(row: "ParlayRow", picks: dict[str, "PickRow"]) -> str:
@@ -105,14 +117,9 @@ def render_console(result: "AdvisorResult", console: "Console", max_parlays: int
         _print_paths(result, console)
         return
 
-    ai_rank: dict[str, int] = {}
-    ai_notes: dict[str, str] = {}
-    if result.ai_response:
-        for tp in result.ai_response.top_picks:
-            ai_rank[tp.id] = tp.rank
-            ai_notes[tp.id] = tp.rationale
+    ai_rank = ai_marks(result)
 
-    t = Table(title=f"Top {len(result.picks)} picks", box=box.SIMPLE_HEAVY, show_lines=False)
+    t = Table(title=f"Candidate pool ({len(result.picks)}, ranked by edge)", box=box.SIMPLE_HEAVY, show_lines=False)
     for col in ("ID", "AI", "Player", "Prop", "Odds", "Venue", "Proj", "Market", "True", "Implied", "Edge",
                 "Conf", f"Return on {format_currency(opts.stake)}", "EV", "Kelly"):
         t.add_column(col, justify="right" if col not in ("Player", "Prop", "Venue", "Conf") else "left")
@@ -179,6 +186,10 @@ def render_console(result: "AdvisorResult", console: "Console", max_parlays: int
             lines.append(f"[bold]#{tp.rank} {tp.id} {_pick_label(picks[tp.id])}[/bold] — {tp.rationale}")
             if tp.risk_notes:
                 lines.append(f"   [dim]Risk: {tp.risk_notes}[/dim]")
+        if not resp.top_picks:
+            lines.append("[bold]No picks:[/bold] the AI passed on the whole pool.")
+        for p in resp.passes:
+            lines.append(f"[dim]Pass {p.id} {_pick_label(picks[p.id])}: {p.reason}[/dim]")
         lines.append("")
         if resp.straight_bets_only or not resp.parlay_recommendations:
             lines.append("[bold]Parlay call:[/bold] straight bets only.")
@@ -253,16 +264,21 @@ def to_markdown(result: "AdvisorResult", max_parlays: int = 10) -> str:
     out += [f"- {_status_line(result)}", ""]
 
     if result.picks:
+        marks = ai_marks(result)
         out += [
-            "## Top picks",
+            "## Candidate pool",
             "",
-            "| ID | Player | Prop | Odds | Venue | Market | True | Implied | Edge | Conf | Return | EV | Kelly |",
-            "|---|---|---|---:|---|---:|---:|---:|---:|---|---:|---:|---:|",
+            f"Ranked by edge. The first {len(result.shortlist)} are the shortlist that parlays are built from. "
+            "AI = the advisor's rank, or pass.",
+            "",
+            "| ID | AI | Player | Prop | Odds | Venue | Market | True | Implied | Edge | Conf | Return | EV | Kelly |",
+            "|---|---|---|---|---:|---|---:|---:|---:|---:|---|---:|---:|---:|",
         ]
         for row in result.picks:
             p = row.prop
             out.append(
-                f"| {row.id} | {p.player_name} | {p.prop_type.value.upper()} {p.side.value} {p.line:g} | "
+                f"| {row.id} | {marks.get(row.id, '')} | {p.player_name} | "
+                f"{p.prop_type.value.upper()} {p.side.value} {p.line:g} | "
                 f"{format_american(p.sportsbook_odds)} | "
                 f"{book_display_name(p.best_book, getattr(p, 'best_book_key', '') or '')} | "
                 f"{format_prob(p.market_probability) if getattr(p, 'market_probability', None) is not None else '–'} | "
@@ -297,6 +313,11 @@ def to_markdown(result: "AdvisorResult", max_parlays: int = 10) -> str:
             out.append(f"{tp.rank}. **{tp.id} {_pick_label(result.pick_by_id[tp.id])}** — {tp.rationale}")
             if tp.risk_notes:
                 out.append(f"   - Risk: {tp.risk_notes}")
+        if not resp.top_picks:
+            out.append("**No picks:** the AI passed on the whole pool.")
+        if resp.passes:
+            out += ["", "**Passed:**", ""]
+            out += [f"- {p.id} {_pick_label(result.pick_by_id[p.id])}: {p.reason}" for p in resp.passes]
         out.append("")
         if resp.straight_bets_only or not resp.parlay_recommendations:
             out.append("**Parlay call:** straight bets only.")

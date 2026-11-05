@@ -82,6 +82,7 @@ def patched_scan(monkeypatch):
     games, props, lines = fake_slate()
 
     def fake_scan(self, game_date, prop_types=None, is_playoff=False):
+        self.last_games = list(games)
         self.last_game_lines = lines
         self.last_odds_source_counts = {"kalshi": 120, "polymarket": 64}
         self.last_odds_source_errors = {}

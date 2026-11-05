@@ -7,9 +7,10 @@ per-stage counts so an empty result can be explained:
 1. edge strictly greater than ``min_edge`` (default 0.0 → positive edge only)
 2. American odds inside the band (inclusive; default -600 … -200)
 3. optional minimum confidence tier
-4. dedupe to one row per (player, prop type, side), keeping the best-priced line
-5. sort by edge ↓, confidence ↓, true probability ↓ (stable tie-breaks)
-6. take the top N
+4. the model itself backs the edge (engine/model_agreement.py; on by default)
+5. dedupe to one row per (player, prop type, side), keeping the best-priced line
+6. sort by edge ↓, confidence ↓, true probability ↓ (stable tie-breaks)
+7. take the top N
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from typing import Optional
 
 from domain.entities import PropProbability
 from domain.enums import ConfidenceTier
+from engine.model_agreement import model_agrees
 from engine.parlay_builder import leg_odds_match_constraints
 from odds.normalizer import american_to_decimal
 
@@ -35,8 +37,10 @@ class CandidateStats:
     positive_edge: int = 0
     in_odds_band: int = 0
     confidence_ok: int = 0
+    model_agrees: int = 0
     deduped: int = 0
     selected: int = 0
+    pool: int = 0
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -83,6 +87,7 @@ def select_candidates(
     min_edge: float = 0.0,
     min_confidence: Optional[str] = None,
     top_n: int = 5,
+    require_model_agreement: bool = True,
 ) -> tuple[list[PropProbability], list[PropProbability], CandidateStats]:
     """
     Return ``(top_n_candidates, all_ranked_candidates, stats)``.
@@ -103,6 +108,10 @@ def select_candidates(
         stage = [p for p in stage if confidence_rank(p.confidence) >= floor]
     stats.confidence_ok = len(stage)
 
+    if require_model_agreement:
+        stage = [p for p in stage if model_agrees(p)]
+    stats.model_agrees = len(stage)
+
     best: dict[tuple[str, str, str], PropProbability] = {}
     for prop in stage:
         key = dedupe_key(prop)
@@ -116,8 +125,8 @@ def select_candidates(
     stats.selected = len(top)
 
     logger.info(
-        "Advisor candidates: total=%d +edge=%d band=%d conf=%d deduped=%d selected=%d",
+        "Advisor candidates: total=%d +edge=%d band=%d conf=%d agrees=%d deduped=%d selected=%d",
         stats.total_props, stats.positive_edge, stats.in_odds_band,
-        stats.confidence_ok, stats.deduped, stats.selected,
+        stats.confidence_ok, stats.model_agrees, stats.deduped, stats.selected,
     )
     return top, ranked, stats

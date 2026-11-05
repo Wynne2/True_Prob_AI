@@ -365,6 +365,8 @@ class PropProbability:
     production_probability: Optional[float] = None
     # True when the book price is outside the range the candidate was tested on.
     candidate_outside_range: bool = False
+    # False when the model's own chance for this side is below the price (engine/model_agreement.py).
+    model_agrees: Optional[bool] = None
 
 
 # ---------------------------------------------------------------------------

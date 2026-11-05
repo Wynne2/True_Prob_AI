@@ -28,7 +28,6 @@ from domain.enums import ConfidenceTier, PropType, SortField
 from engine.bankroll_engine import apply_stake_to_all, payout_summary
 from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays, summary_stats
-from engine.slate_scanner import SlateScanner
 from app import ui
 from app.arbitrage_view import render_arbitrage_tab
 from app.backtest_view import render_backtest_tab
@@ -793,9 +792,9 @@ def render_ai_advisor_tab(all_props: list, params: dict) -> None:
 
     ui.section("AI Advisor", "a second opinion on the model's best picks")
     ui.note(
-        "Python filters the scanned props (positive edge, odds band) and computes every payout "
-        "and expected value. OpenAI then reasons over the top picks by ID only, so it never "
-        "invents a price."
+        "Python filters the scanned props (positive edge, odds band, and an edge the model itself "
+        "backs) and computes every payout and expected value. OpenAI then picks from the top "
+        "candidates by ID only, says which it would pass on and why, and never invents a price."
     )
     cfg = get_openai_config()
     if not cfg.is_configured:
@@ -873,16 +872,21 @@ def render_ai_advisor_tab(all_props: list, params: dict) -> None:
         ("positive edge", s.positive_edge),
         ("in odds band", s.in_odds_band),
         ("after confidence", s.confidence_ok),
+        ("model agrees", s.model_agrees),
         ("unique", s.deduped),
-        ("selected", s.selected),
+        ("sent to AI", s.pool),
     ])
     if not result.picks:
         st.warning("No props qualified with these settings, so the AI was not called.")
         return
 
-    ui.section("Picks")
+    from engine.advisor.report import ai_marks
+
+    marks = ai_marks(result)
+    ui.section("Candidate pool", f"ranked by edge; the first {len(result.shortlist)} are the parlay shortlist")
     st.dataframe(pd.DataFrame([{
         "ID": r.id,
+        "AI": marks.get(r.id, ""),
         "Player": r.prop.player_name,
         "Prop": f"{ui.prop_label(r.prop.prop_type)} {r.prop.side.value} {r.prop.line:g}",
         "Odds": format_american(r.prop.sportsbook_odds),
@@ -963,39 +967,25 @@ def main() -> None:
         st.session_state.odds_source_counts = ({}, {})
 
     if params["run"]:
-        with st.spinner("Scanning the slate and pulling Kalshi, Polymarket and sportsbook odds..."):
-            from data.loaders import load_games, reset_registry
-            from odds.game_lines import apply_game_lines
+        with st.spinner("Scanning the slate, pulling Kalshi, Polymarket and sportsbook odds, "
+                        "and scoring props with the frozen candidate model..."):
+            from data.loaders import reset_registry
+            from engine.board import scan_board
             reset_registry()
-            games = load_games(params["date"])
-            scanner = SlateScanner()
-            all_props = scanner.scan(
+            board = scan_board(
                 params["date"],
                 prop_types=params["prop_types"],
                 is_playoff=params.get("is_playoff", False),
             )
-            if games and scanner.last_game_lines:
-                apply_game_lines(games, scanner.last_game_lines)
-            st.session_state.games = games
+            all_props = board.props
+            st.session_state.games = board.games
             st.session_state.all_props = all_props
-            st.session_state.game_lines = scanner.last_game_lines
-            st.session_state.odds_source_counts = (
-                scanner.last_odds_source_counts,
-                scanner.last_odds_source_errors,
-            )
-        st.session_state.candidate_status = None
-        st.session_state.matchup_rows = []
+            st.session_state.game_lines = board.game_lines
+            st.session_state.odds_source_counts = (board.odds_source_counts, board.odds_source_errors)
+            st.session_state.candidate_status = board.candidate_status
+            st.session_state.agreement = board.agreement
+            st.session_state.matchup_rows = board.matchup_rows
         if all_props:
-            with st.spinner("Scoring props with the frozen candidate model..."):
-                from engine.candidate.live import attach_candidate
-                try:
-                    st.session_state.candidate_status = attach_candidate(all_props, params["date"], games=games)
-                    from engine.candidate.live import apply_candidate_edges
-                    st.session_state.candidate_status["edges"] = apply_candidate_edges(all_props)
-                    from engine.candidate.matchups import find_for_slate
-                    st.session_state.matchup_rows = find_for_slate(all_props, params["date"], min_steps=2)
-                except Exception as exc:  # the board works without the candidate
-                    st.session_state.candidate_status = {"status": "error", "reason": str(exc)}
             # Pregame snapshot for next-day grading. The first save of a prop keeps its price.
             if params["date"] >= today_eastern():
                 try:

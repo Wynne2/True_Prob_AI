@@ -53,6 +53,8 @@ class SlateScanner:
         self.last_odds_source_counts: dict[str, int] = {}
         self.last_odds_source_errors: dict[str, str] = {}
         self.last_game_lines: list[GameLine] = []
+        # Every game on the date (started ones too), with game lines applied.
+        self.last_games: list[Game] = []
 
     def scan(
         self,
@@ -76,6 +78,7 @@ class SlateScanner:
         logger.info("SlateScanner: scanning slate for %s", game_date)
         self.last_raw_slate_game_count = 0
         self.last_pregame_slate_game_count = 0
+        self.last_games = []
 
         # ----------------------------------------------------------
         # STEP 1: Pull slate
@@ -171,6 +174,7 @@ class SlateScanner:
             self.last_game_lines = []
         if games and self.last_game_lines:
             apply_game_lines(games, self.last_game_lines)
+        self.last_games = games
         return games, all_odds
 
     def _warm_services(self, game_date: date) -> None:

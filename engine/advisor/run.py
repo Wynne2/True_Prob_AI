@@ -31,6 +31,7 @@ from engine.advisor.prompts import (
     default_user_prompt,
 )
 from engine.advisor.schema import (
+    MAX_TOP_PICKS,
     AdvisorResponse,
     AdvisorResponseError,
     parse_response,
@@ -57,6 +58,10 @@ class AdvisorOptions:
     stake: float = 100.0
     bankroll: Optional[float] = None
     min_confidence: Optional[str] = None
+    # The AI sees this many ranked candidates and picks its top_n from all of them.
+    pool_n: int = 20
+    # Leave out props whose edge the model itself does not back (engine/model_agreement.py).
+    require_model_agreement: bool = True
     prompt: Optional[str] = None
     use_llm: bool = True
     save: bool = True
@@ -97,6 +102,11 @@ class AdvisorResult:
     @property
     def pick_by_id(self) -> dict[str, PickRow]:
         return {p.id: p for p in self.picks}
+
+    @property
+    def shortlist(self) -> list[PickRow]:
+        """The deterministic top N by edge; parlays are built from these only."""
+        return self.picks[: max(0, self.options.top_n)]
 
     @property
     def parlay_by_id(self) -> dict[str, ParlayRow]:
@@ -141,14 +151,37 @@ def _allowed_amounts(
     return amounts
 
 
-def _scan(game_date: date, options: AdvisorOptions) -> tuple[list[PropProbability], dict, Optional[int]]:
-    from engine.slate_scanner import SlateScanner
+def track_record() -> Optional[dict]:
+    """Graded results of earlier boards (engine/candidate/track.py), compact; None when none are graded."""
+    try:
+        from engine.candidate.track import scorecard
 
-    scanner = SlateScanner()
-    props = scanner.scan(game_date, is_playoff=options.is_playoff)
-    counts = dict(getattr(scanner, "last_odds_source_counts", {}) or {})
-    pregame = getattr(scanner, "last_pregame_slate_game_count", None)
-    return props, counts, pregame
+        card = scorecard()
+    except Exception as exc:  # the advisor runs without it
+        logger.warning("Track record unavailable: %s", exc)
+        return None
+    if not card.get("decided_rows"):
+        return None
+    keep = ("n", "hit_rate", "avg_implied", "flat_roi_per_bet")
+    return {
+        "dates": card.get("dates"),
+        "decided_props": card.get("decided_rows"),
+        "brier_same_props": card.get("brier_same_props"),
+        "candidate_edge_bets_by_edge": {
+            name: {k: s.get(k) for k in keep}
+            for name, s in (card.get("candidate_edge_bets") or {}).items() if s.get("n")
+        },
+        "note": "Earlier boards graded against box scores, flat stake. Lower Brier is better. "
+                "Lines for one player and game are correlated, so a few dates is a small sample.",
+    }
+
+
+def _scan(game_date: date, options: AdvisorOptions) -> tuple[list[PropProbability], dict, Optional[int]]:
+    """Scan and score the slate exactly as the dashboard does (candidate edges, agreement check)."""
+    from engine.board import scan_board
+
+    board = scan_board(game_date, is_playoff=options.is_playoff, matchups=False)
+    return board.props, board.odds_source_counts, board.pregame_games
 
 
 def _run_llm(result: AdvisorResult, client: OpenAIAdvisorClient) -> None:
@@ -156,6 +189,7 @@ def _run_llm(result: AdvisorResult, client: OpenAIAdvisorClient) -> None:
     user_message = build_user_message(result.user_prompt, payload_to_json(result.payload))
     messages: list[dict] = [{"role": "user", "content": user_message}]
     pick_ids = [p.id for p in result.picks]
+    max_picks = min(result.options.top_n, MAX_TOP_PICKS)
     parlay_legs = {p.id: list(p.leg_ids) for p in result.parlays}
     parlay_numbers = {
         p.id: {"total_return": p.total_return, "profit": p.profit} for p in result.parlays
@@ -212,6 +246,7 @@ def _run_llm(result: AdvisorResult, client: OpenAIAdvisorClient) -> None:
                 parlay_legs=parlay_legs,
                 parlay_numbers=parlay_numbers,
                 allowed_amounts=allowed,
+                max_picks=max_picks,
             )
         except AdvisorResponseError as exc:
             meta["errors"].append(f"attempt {attempt}: {exc}")
@@ -268,17 +303,21 @@ def run_advisor(
         props, scanned_counts, pregame = _scan(game_date, options)
         odds_source_counts = odds_source_counts or scanned_counts
 
-    top, _ranked, stats = select_candidates(
+    _top, ranked, stats = select_candidates(
         props,
         min_odds=options.min_odds,
         max_odds=options.max_odds,
         min_edge=options.min_edge,
         min_confidence=options.min_confidence,
         top_n=options.top_n,
+        require_model_agreement=options.require_model_agreement,
     )
-    picks = build_pick_rows(top, options.stake)
+    pool = ranked[: max(options.top_n, options.pool_n)]
+    stats.pool = len(pool)
+    picks = build_pick_rows(pool, options.stake)
+    shortlist = picks[: max(0, options.top_n)]
     parlays = build_parlay_rows(
-        picks,
+        shortlist,
         stake=options.stake,
         min_odds=options.min_odds,
         max_odds=options.max_odds,
@@ -295,6 +334,8 @@ def run_advisor(
         stake=options.stake,
         odds_source_counts=odds_source_counts,
         bankroll=options.bankroll,
+        top_n=options.top_n,
+        track_record=track_record() if options.use_llm else None,
     )
     user_prompt = (options.prompt or "").strip() or default_user_prompt(
         min_odds=options.min_odds, max_odds=options.max_odds,
@@ -309,7 +350,7 @@ def run_advisor(
         parlays=parlays,
         payload=payload,
         user_prompt=user_prompt,
-        deterministic=_deterministic(picks, parlays),
+        deterministic=_deterministic(shortlist, parlays),
         odds_source_counts=dict(odds_source_counts or {}),
         pregame_games=pregame,
     )

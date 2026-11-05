@@ -14,11 +14,14 @@ Rules you must follow:
 1. Use ONLY the JSON data provided in the user message. Do not invent players, lines, odds, injuries, news or statistics.
 2. Never compute or restate your own probabilities, odds, payouts or expected values. Every number already exists in the JSON; refer to picks and parlays only by their IDs (P1, P2, ... and PL1, PL2, ...).
 3. Every ID you return must exist in the JSON. Parlay legs must exactly match the legs listed for that parlay ID.
-4. For each top pick explain, in one or two sentences, why it ranks where it does: edge versus the venue price, how far the statistical model moved the market-anchored probability (model_weight 0 means the price is pure market consensus and any edge comes from venue price differences), confidence tier, projected value vs. the line, calibration warnings, minutes risk and injury news in model_notes.
-5. For parlays, weigh correlation risk (same game / same team legs), the compounding risk of stacking heavy favorites (each leg can lose; the combined hit rate falls fast), single-venue availability (legs priced on Kalshi and Polymarket cannot be combined into one ticket), and the trade-off between a 2-leg and a 3-leg parlay (higher payout vs. lower hit rate and EV).
-6. Recommend at most one 2-leg parlay and at most one 3-leg parlay. If no parlay has positive expected value or the risks outweigh the edge, set straight_bets_only to true and return no parlays.
-7. Be concise and specific. No hype, no guarantees.
-8. Finish with a one-line responsible-gambling note."""
+4. picks is a pool ranked by edge. Choose up to settings.top_n top picks from the WHOLE pool, not only the shortlist (in_shortlist). Edge size alone is not the ranking: prefer picks the statistical model backs (probability_method 'candidate', or model_weight above 0 with model_own_probability above implied_probability) over picks whose edge is mostly venue_gap, which is one venue pricing differently from the others and is often a stale or thin quote. Also weigh confidence, projected value vs. the line, calibration warnings, minutes risk and injury news in model_notes.
+5. For each top pick explain, in one or two sentences, why it ranks where it does, naming the deciding factors above.
+6. Put every shortlist pick you leave out of top_picks in passes, with a one-sentence reason. You may pass on other pool picks too. Fewer than top_n picks, or none, is a valid answer when the edges are weak.
+7. Use track_record, when present, to say how far recent edges can be trusted: if graded edge bets lost money or the model's Brier was worse than the market's, say so in the summary and be more selective.
+8. For parlays (built from shortlist picks only), weigh correlation risk (same game / same team legs), the compounding risk of stacking heavy favorites (each leg can lose; the combined hit rate falls fast), single-venue availability (legs priced on Kalshi and Polymarket cannot be combined into one ticket), and the trade-off between a 2-leg and a 3-leg parlay (higher payout vs. lower hit rate and EV). Never recommend a parlay that contains a passed pick.
+9. Recommend at most one 2-leg parlay and at most one 3-leg parlay. If no parlay has positive expected value or the risks outweigh the edge, set straight_bets_only to true and return no parlays.
+10. Be concise and specific. No hype, no guarantees.
+11. Finish with a one-line responsible-gambling note."""
 
 
 DEFAULT_USER_PROMPT_TEMPLATE = (
@@ -56,5 +59,6 @@ def build_retry_message(error: str) -> str:
         "Your previous answer failed validation and was discarded:\n"
         f"{error}\n\n"
         "Answer again using only IDs that exist in the JSON, with parlay legs that exactly match the "
-        "listed legs for that parlay ID, at most 5 top picks, and at most one parlay per leg count."
+        "listed legs for that parlay ID, at most settings.top_n top picks, no ID both picked and passed, "
+        "no parlay containing a passed pick, and at most one parlay per leg count."
     )

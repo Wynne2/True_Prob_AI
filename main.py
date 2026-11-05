@@ -37,7 +37,6 @@ from domain.enums import PropType, SortField
 from engine.bankroll_engine import apply_stake_to_all
 from engine.parlay_builder import ParlayConstraints, build_parlays, leg_odds_match_constraints
 from engine.ranking_engine import rank_parlays
-from engine.slate_scanner import SlateScanner
 from utils.date_utils import parse_date, today_eastern
 from utils.formatting import (
     book_display_name,
@@ -711,22 +710,38 @@ def main() -> None:
 
     # Scan slate
     console.print(f"\n[cyan]Scanning NBA slate for {game_date}...[/cyan]")
-    scanner = SlateScanner()
-    all_props = scanner.scan(game_date, prop_types=prop_types, is_playoff=args.playoff)
-    if scanner.last_odds_source_counts or scanner.last_odds_source_errors:
+    from engine.board import scan_board
+
+    board = scan_board(game_date, prop_types=prop_types, is_playoff=args.playoff)
+    all_props = board.props
+    if board.odds_source_counts or board.odds_source_errors:
         parts = [
-            f"{name}={count}" for name, count in sorted(scanner.last_odds_source_counts.items())
+            f"{name}={count}" for name, count in sorted(board.odds_source_counts.items())
         ]
         console.print(
             f"[dim]Prop lines by source: {', '.join(parts) or 'none'}; "
-            f"game-line sides: {len(scanner.last_game_lines)}[/dim]"
+            f"game-line sides: {len(board.game_lines)}[/dim]"
         )
-        for name, err in sorted(scanner.last_odds_source_errors.items()):
+        for name, err in sorted(board.odds_source_errors.items()):
             console.print(f"[yellow]{name} odds error: {err}[/yellow]")
     n = len(all_props)
     console.print(
         f"[green]Evaluated {n} prop line{'s' if n != 1 else ''}.[/green]"
     )
+    cand = board.candidate_status or {}
+    if cand.get("status") == "ok":
+        edges = cand.get("edges") or {}
+        console.print(
+            f"[dim]Candidate model {cand.get('version')}: scored {cand.get('attached', 0)} lines, "
+            f"sets the edge on {edges.get('applied', 0)}.[/dim]"
+        )
+    elif cand:
+        console.print(f"[yellow]Candidate model not used: {cand.get('status')} {cand.get('reason', '')}[/yellow]")
+    if board.agreement.get("model_disagrees"):
+        console.print(
+            f"[dim]{board.agreement['model_disagrees']} of {board.agreement['positive_edge']} positive-edge "
+            "lines have an edge the model itself does not back (flagged, confidence lowered).[/dim]"
+        )
     if n:
         console.print(
             "[dim]Pregame only: games in progress or final are excluded from the slate.[/dim]"
@@ -738,13 +753,10 @@ def main() -> None:
                 f"[yellow]No props found for {game_date}.[/yellow] "
                 f"This is a future date — lines may not be posted yet."
             )
-        elif (
-            getattr(scanner, "last_raw_slate_game_count", 0) > 0
-            and getattr(scanner, "last_pregame_slate_game_count", 0) == 0
-        ):
+        elif board.raw_games > 0 and board.pregame_games == 0:
             console.print(
                 f"[yellow]No pregame props for {game_date}.[/yellow] "
-                f"The slate had [bold]{scanner.last_raw_slate_game_count}[/bold] game(s), "
+                f"The slate had [bold]{board.raw_games}[/bold] game(s), "
                 f"but every one had already started or finished — only upcoming games are evaluated."
             )
         else:
