@@ -275,12 +275,16 @@ def confirmed_pairs(pairs: list[dict], kalshi: list[Event], poly: list[Event]) -
 
 
 _STOP = set("the will and for with from that this than what when who which by of in on at to a an be is are or market yes no vs".split())
+_KEEP_SHORT = {"jr", "sr", "ii", "iii", "iv"}  # "Trump" and "Trump Jr." are different people
+# A title that differs only by one of these words is a different question ("Vice-Presidential winner").
+_PAIR_GUARD = _GUARD | _KEEP_SHORT | {"vice", "not", "above", "below", "over", "under", "before", "after"}
 
 
 def propose_pairs(kalshi: list[Event], poly: list[Event], limit: int = 30) -> list[dict]:
     """Fuzzy title matches for a human to review. Never priced as arbs."""
     def toks(text: str) -> set[str]:
-        return {w for w in tokens(text) if len(w) > 2 and w not in _STOP}
+        # Numbers stay: "Above 30" vs "Above 35" and "Draw 0-0" vs "Draw" are different markets.
+        return {w for w in tokens(text) if (len(w) > 2 or w.isdigit() or w in _KEEP_SHORT) and w not in _STOP}
 
     index, info = defaultdict(set), []
     for ev in poly:
@@ -288,7 +292,7 @@ def propose_pairs(kalshi: list[Event], poly: list[Event], limit: int = 30) -> li
             if ":" in o.id or not o.yes:
                 continue
             t = toks(f"{ev.title} {o.label}")
-            info.append((t, ev, o))
+            info.append((t, ev, o, tokens(f"{ev.title} {o.label}")))
             for w in t:
                 index[w].add(len(info) - 1)
     out = []
@@ -297,13 +301,18 @@ def propose_pairs(kalshi: list[Event], poly: list[Event], limit: int = 30) -> li
             continue  # handled by match_games
         for o in ev.outcomes:
             kt = toks(f"{ev.title} {o.label}")
+            # The outcome's own name must appear on the other side: "AI" is not "contains 'vibe'".
+            need = {w for w in tokens(o.label) if (len(w) > 1 or w.isdigit()) and w not in _STOP}
             rare = sorted(kt, key=lambda w: len(index.get(w, ())))[:3]
+            hits = []
             for i in {i for w in rare if 0 < len(index.get(w, ())) < 200 for i in index[w]}:
-                pt, pev, po = info[i]
+                pt, pev, po, p_all = info[i]
                 score = len(kt & pt) / len(kt | pt)
                 close_gap = abs((ev.close - pev.close).days) if ev.close and pev.close else 99
-                if score >= 0.6 and close_gap <= 3:
-                    out.append({"score": round(score, 2), "kalshi_ticker": o.id, "kalshi": f"{ev.title}: {o.label}",
-                                "polymarket_id": po.id, "polymarket": f"{pev.title}: {po.label}",
-                                "urls": f"{ev.url} | {pev.url}"})
+                if score >= 0.6 and close_gap <= 3 and need <= p_all and not (kt ^ pt) & _PAIR_GUARD:
+                    hits.append({"score": round(score, 2), "kalshi_ticker": o.id, "kalshi": f"{ev.title}: {o.label}",
+                                 "polymarket_id": po.id, "polymarket": f"{pev.title}: {po.label}",
+                                 "urls": f"{ev.url} | {pev.url}"})
+            top = max((h["score"] for h in hits), default=0)
+            out += [h for h in hits if h["score"] == top]  # only the best match per Kalshi outcome
     return sorted(out, key=lambda r: -r["score"])[:limit]

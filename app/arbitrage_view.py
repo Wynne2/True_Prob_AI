@@ -12,7 +12,8 @@ def render_arbitrage_tab() -> None:
     ui.section("Arbitrage", "fee-inclusive, order-book-verified; no model, no AI")
     st.caption(
         "Checks every open Kalshi and Polymarket event for outcome baskets that pay out more than they cost "
-        "after fees, then walks the live order books to size them. Prices move: re-check each book before "
+        "after fees, then walks the live order books to size them. Listed arbs must still clear your minimum "
+        "if every leg fills one cent worse (profit_if_slipped). Prices move: re-check each book before "
         "every leg, and read both venues' rules before trading across them."
     )
     with st.container(border=True):
@@ -33,6 +34,7 @@ def render_arbitrage_tab() -> None:
     for title, rows in (("Arbitrage (passes every filter)", res["arbs"]), ("Real but below your minimums", res["near"])):
         st.subheader(f"{title}: {len(rows)}")
         if rows:
-            df = pd.DataFrame(rows)[["kind", "title", "contracts", "cost", "profit", "roi", "annualized", "closes", "legs"]]
+            df = pd.DataFrame(rows)[["kind", "title", "contracts", "cost", "profit", "profit_if_slipped", "roi",
+                                     "annualized", "closes", "legs"]]
             df["legs"] = df["legs"].map(" | ".join)
             st.dataframe(df, hide_index=True, use_container_width=True)

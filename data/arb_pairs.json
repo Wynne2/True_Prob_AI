@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "kalshi_ticker": "KXRANKLISTGOOGLESEARCHTOP5-26DEC-ERL",
+    "polymarket_id": "0x2f4dc4c45799f3dbfd5627ac28b0dcb9c8dcee04ca21197d4b7b11bbe5f5befe",
+    "yes_maps_to": "yes",
+    "label": "Erling Haaland in Google Year in Search 2026 Global People Top 5",
+    "reviewed": "2026-11-05: both resolve on Google's Year in Search 2026 Global People list, Top 5. If Google never publishes it, Polymarket resolves No (by 2027-03-31); Kalshi's rules do not say."
+  },
+  {
+    "kalshi_ticker": "KXRANKLISTGOOGLESEARCHTOP5-26-ALS",
+    "polymarket_id": "0x78a522d5f622644a9552ed473aa10b57cb6d1b5304f0927580c3f84252f8f540",
+    "yes_maps_to": "yes",
+    "label": "Alysa Liu in Google Year in Search 2026 Global People Top 5",
+    "reviewed": "2026-11-05: both resolve on Google's Year in Search 2026 Global People list, Top 5. If Google never publishes it, Polymarket resolves No (by 2027-03-31); Kalshi's rules do not say."
+  }
+]

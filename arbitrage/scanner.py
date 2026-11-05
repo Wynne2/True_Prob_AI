@@ -17,6 +17,9 @@ PAIRS_FILE = ROOT / "data" / "arb_pairs.json"
 LOG_DIR = ROOT / "data" / "arbs"
 
 
+SLIP_PER_LEG = 0.01  # legs fill one after another; each may fill one tick (1 cent) worse than the book read
+
+
 def _row(c: finder.Candidate, contracts: float, cost: float, profit: float, now: datetime) -> dict:
     return {
         "kind": c.kind,
@@ -25,6 +28,7 @@ def _row(c: finder.Candidate, contracts: float, cost: float, profit: float, now:
         "cost": cost,
         "payout": round(contracts * c.payout, 2),
         "profit": profit,
+        "profit_if_slipped": round(profit - contracts * SLIP_PER_LEG * len(c.legs), 2),
         "roi": round(profit / cost, 4) if cost else 0.0,
         "annualized": round(finder.annualized(profit, cost, c.close, now), 4),
         "closes": c.close.isoformat() if c.close else None,
@@ -48,11 +52,13 @@ def scan(
     kalshi = venues.fetch_kalshi(s) if "kalshi" in which else []
     poly = venues.fetch_polymarket(s) if "polymarket" in which else []
     games = finder.match_games(kalshi, poly)
-    try:
-        venues.refresh_polymarket(s, games)
-    except (requests.RequestException, ValueError):
-        pass  # Gamma quotes are still usable; depth is re-read per candidate anyway
     pairs = finder.confirmed_pairs(json.loads(PAIRS_FILE.read_text()) if PAIRS_FILE.exists() else [], kalshi, poly)
+    # Listing prices lag the books by a few cents; cross-venue screens are re-priced from live books.
+    for refresh in (venues.refresh_polymarket, venues.refresh_kalshi):
+        try:
+            refresh(s, games + pairs)
+        except (requests.RequestException, ValueError):
+            pass  # listing quotes are still usable; depth is re-read per candidate anyway
     cands = [
         c for c in finder.candidates(kalshi + poly + games + pairs)
         if not c.close or c.close > now + timedelta(minutes=10)
@@ -76,7 +82,8 @@ def scan(
                 rows.append(_row(c, contracts, cost, profit, now))
 
     rows.sort(key=lambda r: -r["profit"])
-    arbs = [r for r in rows if r["profit"] >= min_profit and r["annualized"] >= min_annual]
+    # An arb must still clear min_profit after every leg slips a tick, or it is a bet on execution.
+    arbs = [r for r in rows if r["profit_if_slipped"] >= min_profit and r["annualized"] >= min_annual]
     if log and arbs:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         with (LOG_DIR / f"{now:%Y-%m-%d}.jsonl").open("a", encoding="utf-8") as fh:

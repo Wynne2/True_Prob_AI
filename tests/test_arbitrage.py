@@ -103,6 +103,84 @@ def test_kalshi_event_completeness_and_fee_rate():
     assert not kalshi_event(raw, {}).complete
 
 
+def test_propose_pairs_rejects_lookalike_questions():
+    def ev(venue, title, labels, eid):
+        e = event([Outcome(lab, [leg(0.5, venue, ref=f"{eid}{i}")], [], f"{eid}{i}") for i, lab in enumerate(labels)],
+                  venue=venue)
+        e.title, e.id = title, eid
+        return e
+
+    k = ev("kalshi", "2028 Republican VP nominee", ["Donald J. Trump", "Donald J. Trump Jr."], "K")
+    k2 = ev("kalshi", "Merriam-Webster Word of the Year 2026?", ["AI"], "W")
+    k3 = ev("kalshi", "2028 U.S. Vice-Presidential Election winner", ["Jon Ossoff"], "V")
+    k4 = ev("kalshi", "Rotten Tomatoes score", ["Above 30"], "R")
+    poly = [
+        ev("polymarket", "Republican VP Nominee 2028", ["Donald Trump", "Donald Trump Jr."], "P"),
+        ev("polymarket", "Will Merriam-Webster's 2026 Word of the Year contain \"vibe\"?", ["vibe"], "Q"),
+        ev("polymarket", "Presidential Election Winner 2028", ["Jon Ossoff"], "S"),
+        ev("polymarket", "Rotten Tomatoes score", ["Above 35"], "T"),
+    ]
+    got = {(r["kalshi_ticker"], r["polymarket_id"]) for r in finder.propose_pairs([k, k2, k3, k4], poly, limit=50)}
+    # Each Trump keeps only his own best match; AI is not "contains vibe"; VP is not President; 30 is not 35.
+    assert got == {("K0", "P0"), ("K1", "P1")}
+
+
+class _Resp:
+    status_code = 200
+
+    def __init__(self, data):
+        self.data = data
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self.data
+
+
+class _Session:
+    def __init__(self, books):
+        self.books, self.calls = books, []
+
+    def get(self, url, params=None, timeout=None):
+        self.calls.append(params["tickers"])
+        return _Resp({"orderbooks": [{"ticker": t, "orderbook_fp": self.books[t]} for t in params["tickers"] if t in self.books]})
+
+
+def test_refresh_kalshi_reprices_from_live_books_and_drops_empty_sides():
+    from arbitrage.venues import refresh_kalshi
+
+    yes, no = leg(0.60, "kalshi", ref="K1:yes"), leg(0.45, "kalshi", ref="K1:no")
+    gone = leg(0.30, "kalshi", ref="K2:yes")
+    ev = event([Outcome("A", [yes], [no]), Outcome("B", [gone], [])])
+    # YES ask = 1 - best NO bid (0.43); NO ask = 1 - best YES bid (0.55); K2 has no NO bids at all.
+    s = _Session({"K1": {"no_dollars": [["0.4000", "10"], ["0.4300", "5"]], "yes_dollars": [["0.5500", "3"]]},
+                  "K2": {"no_dollars": [], "yes_dollars": [["0.2000", "9"]]}})
+    refresh_kalshi(s, [ev])
+    assert yes.ask == pytest.approx(0.57) and no.ask == pytest.approx(0.45)
+    assert ev.outcomes[1].yes == [] and s.calls == [["K1", "K2"]]
+
+
+def test_scan_lists_only_arbs_that_survive_a_one_tick_slip(monkeypatch, tmp_path):
+    from arbitrage import scanner, venues
+
+    # All-no on a 2-outcome exclusive market: payout 1 per contract, legs 0.45 + 0.53 = 0.98.
+    ev = event([Outcome("A", no=[leg(0.45, ref="na")]), Outcome("B", no=[leg(0.53, ref="nb")])])
+    ev.close = None  # never filtered as closing soon
+    monkeypatch.setattr(venues, "fetch_kalshi", lambda s: [])
+    monkeypatch.setattr(venues, "fetch_polymarket", lambda s: [ev])
+    books = {"na": [(0.45, 1000)], "nb": [(0.53, 1000)]}
+    monkeypatch.setattr(venues, "ladder", lambda s, l: books[l.ref])
+    monkeypatch.setattr(scanner, "PAIRS_FILE", tmp_path / "none.json")
+    res = scanner.scan(min_profit=5, min_annual=0, session=object(), log=False)
+    (row,) = res["near"]  # $20 locked at the book, but -$0 after two 1-cent slips on 1,000 contracts
+    assert row["profit"] == pytest.approx(20.0) and row["profit_if_slipped"] == pytest.approx(0.0)
+    assert res["arbs"] == []
+    books["nb"] = [(0.50, 1000)]  # 5 cents of edge: survives the slip
+    res = scanner.scan(min_profit=5, min_annual=0, session=object(), log=False)
+    assert res["arbs"][0]["profit_if_slipped"] == pytest.approx(30.0)
+
+
 def test_polymarket_named_market_maps_second_outcome_to_one_minus_bid():
     raw = {
         "slug": "nba-okc-cle-2026-11-02", "title": "Thunder vs. Cavaliers", "startTime": "2026-11-03T00:00:00Z",

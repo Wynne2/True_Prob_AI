@@ -529,11 +529,12 @@ def run_arb_command(args) -> None:
     for title, rows in (("Arbitrage (passes every filter)", res["arbs"]),
                         ("Depth-real but below --min-profit/--min-annual", res["near"][: args.top])):
         t = Table(title=f"{title}: {len(rows)}", box=box.SIMPLE_HEAVY)
-        for col in ("Kind", "Event", "Contracts", "Cost", "Locked $", "ROI", "Annual", "Closes", "Legs"):
-            t.add_column(col, justify="right" if col in {"Contracts", "Cost", "Locked $", "ROI", "Annual"} else "left")
+        for col in ("Kind", "Event", "Contracts", "Cost", "Locked $", "If slipped", "ROI", "Annual", "Closes", "Legs"):
+            t.add_column(col, justify="right" if col in {"Contracts", "Cost", "Locked $", "If slipped", "ROI", "Annual"} else "left")
         for r in rows:
             t.add_row(r["kind"], r["title"], f"{r['contracts']:,.0f}", f"${r['cost']:,.2f}", f"${r['profit']:,.2f}",
-                      f"{r['roi']:.2%}", f"{r['annualized']:.0%}", (r["closes"] or "")[:16], "\n".join(r["legs"]))
+                      f"${r['profit_if_slipped']:,.2f}", f"{r['roi']:.2%}", f"{r['annualized']:.0%}",
+                      (r["closes"] or "")[:16], "\n".join(r["legs"]))
         console.print(t)
     console.print("[dim]Prices move: re-check each book before every leg. Read both venues' rules for cross-venue legs.[/dim]")
 

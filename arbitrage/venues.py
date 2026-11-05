@@ -128,13 +128,42 @@ def fetch_kalshi(session: requests.Session) -> list[Event]:
     return events
 
 
+def _kalshi_asks(book: dict, side: str) -> list[tuple[float, float]]:
+    """Kalshi books hold bids only: YES ask = 1 - NO bid."""
+    bids = (book or {}).get("no_dollars" if side == "yes" else "yes_dollars") or []
+    return sorted((round(1 - float(p), 4), float(q)) for p, q in bids if float(q) > 0)
+
+
 def kalshi_ladder(session: requests.Session, ref: str) -> list[tuple[float, float]]:
-    """Ask ladder for one side. Kalshi books hold bids only: YES ask = 1 - NO bid."""
+    """Ask ladder for one side."""
     ticker, side = ref.rsplit(":", 1)
     base = get_prediction_market_config().kalshi_base_url.rstrip("/")
-    book = _get(session, f"{base}/markets/{ticker}/orderbook").get("orderbook_fp") or {}
-    bids = book.get("no_dollars" if side == "yes" else "yes_dollars") or []
-    return sorted((round(1 - float(p), 4), float(q)) for p, q in bids if float(q) > 0)
+    return _kalshi_asks(_get(session, f"{base}/markets/{ticker}/orderbook").get("orderbook_fp"), side)
+
+
+def refresh_kalshi(session: requests.Session, events: list[Event]) -> None:
+    """Replace the event listing's asks with live book asks (100 tickers per call); drop empty sides."""
+    base = get_prediction_market_config().kalshi_base_url.rstrip("/")
+    legs = {leg.ref: leg for ev in events for o in ev.outcomes for leg in o.yes + o.no if leg.venue == "kalshi"}
+    tickers = sorted({ref.rsplit(":", 1)[0] for ref in legs})
+    books = {}
+    for i in range(0, len(tickers), 100):
+        payload = _get(session, f"{base}/markets/orderbooks", {"tickers": tickers[i:i + 100]})
+        books.update({b.get("ticker"): b.get("orderbook_fp") or {} for b in payload.get("orderbooks") or []})
+    empty = set()
+    for ref, leg in legs.items():
+        ticker, side = ref.rsplit(":", 1)
+        if ticker not in books:
+            continue  # not returned: keep the listing price; depth is re-read per candidate anyway
+        asks = _kalshi_asks(books[ticker], side)
+        if asks:
+            leg.ask = asks[0][0]
+        else:
+            empty.add(ref)
+    for ev in events:
+        for o in ev.outcomes:
+            o.yes = [leg for leg in o.yes if leg.ref not in empty]
+            o.no = [leg for leg in o.no if leg.ref not in empty]
 
 
 # ---------------------------------------------------------------------------
