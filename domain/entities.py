@@ -361,6 +361,10 @@ class PropProbability:
     # Frozen candidate model (engine/candidate), shown beside production. Not used for edge.
     candidate_probability: Optional[float] = None
     candidate_projection: Optional[float] = None
+    # Production blend probability, kept when the candidate drives the edge.
+    production_probability: Optional[float] = None
+    # True when the book price is outside the range the candidate was tested on.
+    candidate_outside_range: bool = False
 
 
 # ---------------------------------------------------------------------------

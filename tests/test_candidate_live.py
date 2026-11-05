@@ -107,3 +107,70 @@ def test_recent_rotation_and_spreads():
              NS(home_team_abbr="BBB", away_team_abbr="AAA", home_spread=0.0)]
     s = live._spreads(games, teams, date(2026, 11, 5))
     assert s[("1", "2026-11-05")] == -6.5 and s[("2", "2026-11-05")] == 6.5
+
+
+def _priced(cand, implied=0.5, true=0.45):
+    return NS(candidate_probability=cand, candidate_projection=9.0, true_probability=true,
+              implied_probability=implied, calibrated_probability=true, raw_model_probability=true,
+              edge=true - implied, fair_odds=0, model_weight=0.0, probability_method="market_blend",
+              production_probability=None, market_probability=0.47)
+
+
+def test_candidate_drives_edge_and_keeps_production():
+    prop = _priced(0.60)
+    fallback = _priced(None)
+    status = live.apply_candidate_edges([prop, fallback])
+    assert status == {"applied": 1, "fallback": 1, "outside_range": 0, "enabled": True}
+    assert prop.true_probability == pytest.approx(0.60)
+    assert prop.edge == pytest.approx(0.10)
+    assert prop.production_probability == pytest.approx(0.45)
+    assert prop.fair_odds < 0 and prop.probability_method == "candidate"
+    assert fallback.true_probability == 0.45 and fallback.probability_method == "market_blend"
+
+
+def test_candidate_edge_is_clamped_like_production():
+    from domain.constants import MAX_PROBABILITY_CEILING
+    prop = _priced(0.99)
+    live.apply_candidate_edges([prop])
+    assert prop.true_probability == pytest.approx(MAX_PROBABILITY_CEILING)
+
+
+def test_candidate_edge_switch_off(monkeypatch):
+    from domain import constants
+    monkeypatch.setattr(constants, "USE_CANDIDATE_EDGES", False)
+    prop = _priced(0.60)
+    assert live.apply_candidate_edges([prop])["enabled"] is False
+    assert prop.true_probability == 0.45
+
+
+def test_board_labels_for_candidate_props():
+    prop = _priced(0.60)
+    live.apply_candidate_edges([prop])
+    assert ui.probability_label(prop) == "Candidate"
+    assert ui.edge_basis(prop) == "edge"
+    note = ui.probability_note(prop)
+    assert "Candidate model" in note and "45.0%" in note and "vig included" in note
+    assert ui.candidate_note(prop) == ""
+
+
+def test_spreads_skip_games_already_started():
+    from datetime import datetime, timezone
+    now = datetime(2026, 11, 5, 1, 0, tzinfo=timezone.utc)
+    teams = {"AAA": "1", "BBB": "2", "CCC": "3", "DDD": "4"}
+    started = NS(home_team_abbr="AAA", away_team_abbr="BBB", home_spread=-22.5, status="",
+                 tip_off_time=datetime(2026, 11, 5, 0, 0, tzinfo=timezone.utc))
+    later = NS(home_team_abbr="CCC", away_team_abbr="DDD", home_spread=-4.5, status="",
+               tip_off_time=datetime(2026, 11, 5, 3, 0, tzinfo=timezone.utc))
+    s = live._spreads([started, later], teams, date(2026, 11, 4), now=now)
+    assert ("1", "2026-11-04") not in s and s[("3", "2026-11-04")] == -4.5
+
+
+def test_candidate_edge_skips_untested_prices():
+    longshot = _priced(0.40, implied=0.21)
+    heavy_fav = _priced(0.90, implied=0.86)
+    normal = _priced(0.55, implied=0.50)
+    status = live.apply_candidate_edges([longshot, heavy_fav, normal])
+    assert status["applied"] == 1 and status["outside_range"] == 2
+    assert longshot.probability_method == "market_blend" and longshot.candidate_outside_range
+    assert "outside the range" in ui.candidate_note(longshot)
+    assert normal.probability_method == "candidate"

@@ -288,6 +288,11 @@ def render_props_table(props: list) -> None:
             "Projected": round(p.projected_value, 1),
             "Exp Min": round(getattr(p, "expected_minutes", 0), 1),
             "Used %": round(p.true_probability * 100, 1),
+            "Source": "Candidate" if getattr(p, "probability_method", "") == "candidate" else "Production",
+            "Prod %": (
+                round(p.production_probability * 100, 1)
+                if getattr(p, "production_probability", None) is not None else None
+            ),
             "Model %": round((getattr(p, "raw_model_probability", 0.0) or 0.0) * 100, 1),
             "Candidate %": (
                 round(p.candidate_probability * 100, 1)
@@ -341,6 +346,7 @@ def render_props_table(props: list) -> None:
             "Consensus %": st.column_config.NumberColumn(
                 format="%.1f%%", help="No-vig market consensus for this side across venues.",
             ),
+            "Prod %": st.column_config.NumberColumn(format="%.1f%%", help="Production blend probability, for reference."),
             "Model wt": st.column_config.NumberColumn(
                 format="%.2f", help="Weight the model had against the consensus. 0 means Used % is the consensus.",
             ),
@@ -416,17 +422,16 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
         ("Average edge", f"{avg_edge * 100:+.1f}%", "edge"),
         ("Average chance", f"{avg_true * 100:.1f}%", ""),
     ])
+    n_cand = sum(1 for p in sorted_props if ui.is_candidate(p))
     n_blend = sum(1 for p in sorted_props if ui.is_market_blend(p))
-    n_market_only = sum(1 for p in sorted_props if ui.edge_basis(p) == "vs consensus")
     ui.note(
         "The green bar is the chance used for edge. The blue tick is the chance the price implies. "
         "The bright segment between them is the edge. "
         + (
-            f"Probabilities are market-anchored. Of these {len(sorted_props)}, {n_blend - n_market_only} blend "
-            f"the no-vig consensus with the model and {n_market_only} give the model zero weight, so their edge "
-            "is line shopping against the consensus. "
-            "Each card says which."
-            if n_blend else ""
+            f"Of these {len(sorted_props)}, {n_cand} use the candidate model's own probability against the "
+            f"book's price (vig included). {n_blend} use the production blend: the candidate could not "
+            "score the player, or the price is outside its tested range (about +300 to -300). Each card says which."
+            if (n_cand or n_blend) else ""
         )
     )
 
@@ -931,6 +936,8 @@ def main() -> None:
                 from engine.candidate.live import attach_candidate
                 try:
                     st.session_state.candidate_status = attach_candidate(all_props, params["date"], games=games)
+                    from engine.candidate.live import apply_candidate_edges
+                    st.session_state.candidate_status["edges"] = apply_candidate_edges(all_props)
                 except Exception as exc:  # the board works without the candidate
                     st.session_state.candidate_status = {"status": "error", "reason": str(exc)}
 
@@ -993,7 +1000,14 @@ def main() -> None:
                 f"({cand['players_scored']} players with 5+ games this season; "
                 f"{cand.get('injured_out_on_slate', 0)} rotation players listed out; "
                 f"{cand.get('games_with_spread', 0)} games with a spread). "
-                "It is shown for comparison and does not change edges or rankings."
+                + (
+                    f"It sets the true probability and edge for {cand['edges']['applied']:,} lines; "
+                    f"{cand['edges']['fallback']:,} stay on the production blend "
+                    f"({cand['edges'].get('outside_range', 0):,} of them because the price is outside the "
+                    "candidate's tested range of about +300 to -300)."
+                    if (cand.get("edges") or {}).get("enabled") else
+                    "It is shown for comparison and does not change edges or rankings."
+                )
             )
         elif cand:
             st.caption(f"Candidate model not shown: {cand.get('status')}. {cand.get('reason', '')}")

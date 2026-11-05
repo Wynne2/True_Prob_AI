@@ -617,8 +617,14 @@ def is_market_blend(prop) -> bool:
     return getattr(prop, "probability_method", "") == "market_blend"
 
 
+def is_candidate(prop) -> bool:
+    return getattr(prop, "probability_method", "") == "candidate"
+
+
 def probability_label(prop) -> str:
-    """Name for the probability used for edge: the model's own, or the market blend."""
+    """Name for the probability used for edge: candidate, market blend, or legacy model."""
+    if is_candidate(prop):
+        return "Candidate"
     return "Blended" if is_market_blend(prop) else "Model"
 
 
@@ -631,6 +637,14 @@ def edge_basis(prop) -> str:
 
 def probability_note(prop) -> str:
     """One plain sentence saying where the shown probability came from. Empty for legacy props."""
+    if is_candidate(prop):
+        prod = getattr(prop, "production_probability", None)
+        proj = getattr(prop, "candidate_projection", None)
+        bits = [f"Candidate model{f' (projected {proj:.1f})' if proj is not None else ''}; "
+                "edge is this chance against the book's price, vig included."]
+        if prod is not None:
+            bits.append(f"Production blend: {prod * 100:.1f}%.")
+        return " ".join(bits)
     if not is_market_blend(prop):
         return ""
     model_alone = float(getattr(prop, "raw_model_probability", 0.0) or 0.0) * 100
@@ -651,8 +665,13 @@ def probability_note(prop) -> str:
 def candidate_note(prop) -> str:
     """The frozen candidate's chance for this side, for comparison only."""
     p = getattr(prop, "candidate_probability", None)
-    if p is None:
+    if p is None or is_candidate(prop):
         return ""
+    if getattr(prop, "candidate_outside_range", False):
+        return (
+            f"Candidate model: {p * 100:.1f}%. This price is outside the range the candidate was tested on "
+            "(about +300 to -300), so the edge uses the production blend."
+        )
     proj = getattr(prop, "candidate_projection", None)
     proj_text = f", projected {proj:.1f}" if proj is not None else ""
     return f"Candidate model: {p * 100:.1f}%{proj_text}. Experimental, not used for edge."

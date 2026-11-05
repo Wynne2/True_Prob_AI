@@ -134,11 +134,28 @@ def _placeholder(pid: str, team: str, opp: str, slate: date, season: str) -> dic
     }
 
 
-def _spreads(games: list | None, teams: dict[str, str], slate: date) -> dict[tuple[str, str], float]:
+def _started(game, now=None) -> bool:
+    """True once a game has tipped or its status says it is under way or over."""
+    from datetime import datetime, timezone
+
+    status = str(getattr(game, "status", "") or "").lower()
+    if any(word in status for word in ("progress", "final", "half", "qtr", "live")):
+        return True
+    tip = getattr(game, "tip_off_time", None)
+    if tip is None:
+        return False
+    now = now or datetime.now(timezone.utc)
+    if tip.tzinfo is None:
+        tip = tip.replace(tzinfo=timezone.utc)
+    return tip <= now
+
+
+def _spreads(games: list | None, teams: dict[str, str], slate: date, now=None) -> dict[tuple[str, str], float]:
+    """Pregame spreads only: lines for games already under way are in-game prices."""
     out = {}
     for g in games or []:
         spread = getattr(g, "home_spread", None)
-        if spread in (None, 0, 0.0):
+        if spread in (None, 0, 0.0) or _started(g, now):
             continue  # 0.0 is the entity default for "no line"
         home, away = teams.get(str(g.home_team_abbr).upper()), teams.get(str(g.away_team_abbr).upper())
         if home and away:
@@ -210,3 +227,40 @@ def attach_candidate(props: list, slate: date, season: str = NBA_SEASON, games: 
         "injured_out_on_slate": len([p for t in matchups for p in rotation.get(t, set()) if p in out_ids]),
         "games_with_spread": len(_spreads(games, teams, slate)) // 2,
     }
+
+
+def apply_candidate_edges(props: list) -> dict:
+    """
+    Make the candidate the true probability that drives edges.
+
+    For each prop the candidate scored: true probability = candidate (clamped to the
+    production floor/ceiling), edge = that minus the book's implied probability,
+    fair odds recomputed. The production blend is kept in ``production_probability``.
+    Props without a candidate probability are left on the production blend.
+    """
+    from domain import constants
+    from odds.fair_odds import calculate_edge, true_prob_to_american_odds
+
+    if not getattr(constants, "USE_CANDIDATE_EDGES", False):
+        return {"applied": 0, "fallback": len(props), "enabled": False}
+    lo, hi = getattr(constants, "CANDIDATE_EDGE_IMPLIED_RANGE", (0.0, 1.0))
+    applied = outside = 0
+    for prop in props:
+        p = getattr(prop, "candidate_probability", None)
+        if p is None:
+            continue
+        if not (lo <= float(prop.implied_probability) <= hi):
+            prop.candidate_outside_range = True
+            outside += 1
+            continue
+        p = min(max(float(p), constants.MIN_PROBABILITY_FLOOR), constants.MAX_PROBABILITY_CEILING)
+        prop.production_probability = prop.true_probability
+        prop.true_probability = p
+        prop.calibrated_probability = p
+        prop.raw_model_probability = p
+        prop.edge = calculate_edge(p, prop.implied_probability)
+        prop.fair_odds = true_prob_to_american_odds(p)
+        prop.model_weight = 1.0
+        prop.probability_method = "candidate"
+        applied += 1
+    return {"applied": applied, "fallback": len(props) - applied, "outside_range": outside, "enabled": True}

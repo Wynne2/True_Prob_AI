@@ -243,6 +243,16 @@ USE_MARKET_BLEND: bool = True
 # Each audit or self-check flag halves how far the model may move the market price.
 BLEND_FLAG_TRUST_DECAY: float = 0.5
 BLEND_FLAG_TRUST_MAX_STEPS: int = 3
+# When True (user's choice, 2026-11-04), the frozen candidate model's probability
+# replaces the blend as the true probability wherever the candidate can score the
+# prop: edge = candidate - book implied (vig included). Props the candidate cannot
+# score keep the production blend and are labeled as such.
+USE_CANDIDATE_EDGES: bool = True
+# Book implied-probability range where the candidate was fitted and tested on
+# graded sportsbook lines (1,000+ lines per band in Jan-Feb 2026; only 6 lines
+# below 25%). Outside it (longer than about +300 or shorter than about -300) the
+# candidate is untested, so those props keep the production blend.
+CANDIDATE_EDGE_IMPLIED_RANGE: tuple[float, float] = (0.25, 0.75)
 
 # Opponent pace / defensive-rating / positional adjustments raised Brier in the
 # January and February backtests (+0.0073 to +0.0080), so production uses
