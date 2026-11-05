@@ -22,9 +22,7 @@ MODEL_DISAGREES_FLAG = "model_disagrees_with_price"
 
 
 def own_model_probability(prop) -> Optional[float]:
-    """The model's own chance for this side, before any market anchoring; None when unknown."""
-    if getattr(prop, "probability_method", "") == "candidate":
-        return float(prop.true_probability)
+    """The model's own chance for this side (production tail or candidate), before market anchoring."""
     raw = float(getattr(prop, "raw_model_probability", 0.0) or 0.0)
     return raw if raw > 0 else None
 

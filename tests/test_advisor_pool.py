@@ -48,8 +48,9 @@ class TestModelAgreement:
     def test_own_probability_by_method(self):
         blend = disagreeing_prop()
         assert own_model_probability(blend) == pytest.approx(0.08)
-        cand = make_prop("Cand", true_prob=0.6, edge=0.05)
+        cand = make_prop("Cand", true_prob=0.47, edge=-0.03)   # anchored to the market
         cand.probability_method = "candidate"
+        cand.raw_model_probability = 0.6                        # the candidate alone
         assert own_model_probability(cand) == pytest.approx(0.6)
         unknown = make_prop("Unknown")  # raw_model_probability left at 0
         assert own_model_probability(unknown) is None and model_agrees(unknown)
@@ -117,6 +118,7 @@ class TestBoard:
         def apply(props):
             for p in props:
                 p.production_probability, p.true_probability = p.true_probability, p.candidate_probability
+                p.raw_model_probability = p.candidate_probability
                 p.edge = p.true_probability - p.implied_probability
                 p.probability_method = "candidate"
             return {"applied": len(props), "enabled": True}

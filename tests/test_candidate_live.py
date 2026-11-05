@@ -113,10 +113,17 @@ def _priced(cand, implied=0.5, true=0.45):
     return NS(candidate_probability=cand, candidate_projection=9.0, true_probability=true,
               implied_probability=implied, calibrated_probability=true, raw_model_probability=true,
               edge=true - implied, fair_odds=0, model_weight=0.0, probability_method="market_blend",
-              production_probability=None, market_probability=0.47)
+              production_probability=None, market_probability=0.47, prop_type="points")
 
 
-def test_candidate_drives_edge_and_keeps_production():
+@pytest.fixture
+def full_weight(monkeypatch):
+    """A fitted weight of 1 with no clip: the blend returns the candidate unchanged."""
+    import engine.candidate.blend as blend
+    monkeypatch.setattr(blend, "load_weights", lambda *a, **k: {"points": {"weight": 1.0, "clip": 99.0}})
+
+
+def test_candidate_drives_edge_and_keeps_production(full_weight):
     prop = _priced(0.60)
     fallback = _priced(None)
     status = live.apply_candidate_edges([prop, fallback])
@@ -124,15 +131,34 @@ def test_candidate_drives_edge_and_keeps_production():
     assert prop.true_probability == pytest.approx(0.60)
     assert prop.edge == pytest.approx(0.10)
     assert prop.production_probability == pytest.approx(0.45)
-    assert prop.fair_odds < 0 and prop.probability_method == "candidate"
+    assert prop.fair_odds < 0 and prop.probability_method == "candidate" and prop.model_weight == 1.0
     assert fallback.true_probability == 0.45 and fallback.probability_method == "market_blend"
 
 
-def test_candidate_edge_is_clamped_like_production():
-    from domain.constants import MAX_PROBABILITY_CEILING
-    prop = _priced(0.99)
+def test_zero_fitted_weight_keeps_the_market_price(monkeypatch):
+    """The audit fix: a candidate that did not beat the market cannot set the edge on its own."""
+    import engine.candidate.blend as blend
+    monkeypatch.setattr(blend, "load_weights", lambda *a, **k: {"points": {"weight": 0.0, "clip": 0.5}})
+    prop = _priced(0.60)
     live.apply_candidate_edges([prop])
-    assert prop.true_probability == pytest.approx(MAX_PROBABILITY_CEILING)
+    assert prop.true_probability == pytest.approx(0.47)          # the no-vig consensus
+    assert prop.edge == pytest.approx(-0.03)
+    assert prop.raw_model_probability == pytest.approx(0.60)     # the candidate alone, kept
+    assert prop.model_weight == 0.0 and prop.probability_method == "candidate"
+
+
+def test_unfitted_stat_trusts_the_market(monkeypatch):
+    import engine.candidate.blend as blend
+    monkeypatch.setattr(blend, "load_weights", lambda *a, **k: None)
+    prop = _priced(0.60)
+    live.apply_candidate_edges([prop])
+    assert prop.true_probability == pytest.approx(0.47)
+
+
+def test_candidate_edge_has_no_production_ceiling(full_weight):
+    prop = _priced(0.99, implied=0.74)
+    live.apply_candidate_edges([prop])
+    assert prop.true_probability == pytest.approx(0.99)
 
 
 def test_candidate_edge_switch_off(monkeypatch):
@@ -143,14 +169,23 @@ def test_candidate_edge_switch_off(monkeypatch):
     assert prop.true_probability == 0.45
 
 
-def test_board_labels_for_candidate_props():
+def test_board_labels_for_candidate_props(full_weight):
     prop = _priced(0.60)
     live.apply_candidate_edges([prop])
     assert ui.probability_label(prop) == "Candidate"
     assert ui.edge_basis(prop) == "edge"
     note = ui.probability_note(prop)
-    assert "Candidate model" in note and "45.0%" in note and "vig included" in note
+    assert "Candidate model alone: 60.0%" in note and "45.0%" in note and "vig included" in note
     assert ui.candidate_note(prop) == ""
+
+
+def test_board_labels_zero_weight_candidate(monkeypatch):
+    import engine.candidate.blend as blend
+    monkeypatch.setattr(blend, "load_weights", lambda *a, **k: {"points": {"weight": 0.0, "clip": 0.5}})
+    prop = _priced(0.60)
+    live.apply_candidate_edges([prop])
+    assert ui.edge_basis(prop) == "vs consensus"
+    assert "market consensus (47.0%, no vig)" in ui.probability_note(prop)
 
 
 def test_spreads_skip_games_already_started():
@@ -165,7 +200,7 @@ def test_spreads_skip_games_already_started():
     assert ("1", "2026-11-04") not in s and s[("3", "2026-11-04")] == -4.5
 
 
-def test_candidate_edge_skips_untested_prices():
+def test_candidate_edge_skips_untested_prices(full_weight):
     longshot = _priced(0.40, implied=0.21)
     heavy_fav = _priced(0.90, implied=0.86)
     normal = _priced(0.55, implied=0.50)

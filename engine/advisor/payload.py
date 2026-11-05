@@ -168,11 +168,12 @@ def build_payload(
         "notes": [
             "picks is a pool ranked by edge (P1 highest). in_shortlist marks the top_n by edge; parlays are "
             "built from the shortlist only",
-            "model_true_probability is the probability that drives edge. With probability_method 'candidate' "
-            "it is the frozen candidate model's own chance (production_probability keeps the market-anchored "
-            "blend). Otherwise it starts from the de-vigged consensus market (market_probability) and moves "
-            "toward the statistical model only by model_weight (0 means the model did not beat the market "
-            "for that prop type, so the probability is pure consensus)",
+            "model_true_probability is the probability that drives edge. It starts from the de-vigged "
+            "consensus market (market_probability) and moves toward the statistical model only by "
+            "model_weight, fitted on graded lines (0 means the model did not beat the market for that prop "
+            "type, so the probability is pure consensus). The model is the frozen candidate when "
+            "probability_method is 'candidate' (production_probability keeps the older production blend), "
+            "else the production model",
             "implied_probability is the vig-included price at the listed venue; edge = model_true_probability - implied_probability",
             "venue_gap = market_probability - implied_probability: the part of the edge that is only this venue "
             "pricing differently from the consensus of venues_quoting venues",

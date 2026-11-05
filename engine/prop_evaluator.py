@@ -563,7 +563,8 @@ class PropEvaluator:
                 weights = load_blend_params().for_prop(prop_type)
                 model_weight = round(weights.weight * trust, 4)
                 true_prob = blend_probability(model_tail, prior, weights, trust=trust)
-                true_prob = clamp(true_prob, MIN_PROBABILITY_FLOOR, MAX_PROBABILITY_CEILING)
+                # No 7%/93% floor/ceiling here: it would lift a 5% market price to 7% and invent an edge.
+                true_prob = clamp(true_prob, 0.001, 0.999)
                 true_prob_pre_market = float(model_tail)
                 true_prob_after_market_calibration = float(true_prob)
                 market_calibration_warnings = []

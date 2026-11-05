@@ -480,8 +480,9 @@ def render_straight_bets(props: list, stake: float, top_n: int) -> None:
         "The green bar is the chance used for edge. The blue tick is the chance the price implies. "
         "The bright segment between them is the edge. "
         + (
-            f"Of these {len(sorted_props)}, {n_cand} use the candidate model's own probability against the "
-            f"book's price (vig included). {n_blend} use the production blend: the candidate could not "
+            f"Of these {len(sorted_props)}, {n_cand} use the candidate model, moved from the market consensus "
+            "only by its fitted weight (0 means the consensus stands), against the book's price (vig included). "
+            f"{n_blend} use the production blend: the candidate could not "
             "score the player, or the price is outside its tested range (about +300 to -300). Each card says which."
             if (n_cand or n_blend) else ""
         )

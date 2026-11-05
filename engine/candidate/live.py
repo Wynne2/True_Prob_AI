@@ -237,19 +237,25 @@ def attach_candidate(props: list, slate: date, season: str = NBA_SEASON, games: 
 
 def apply_candidate_edges(props: list) -> dict:
     """
-    Make the candidate the true probability that drives edges.
+    Make the candidate the model that drives edges, anchored to the market.
 
-    For each prop the candidate scored: true probability = candidate (clamped to the
-    production floor/ceiling), edge = that minus the book's implied probability,
-    fair odds recomputed. The production blend is kept in ``production_probability``.
+    For each prop the candidate scored, the true probability is the no-vig market
+    moved toward the candidate by its fitted weight (engine/candidate/blend.py,
+    the same log-odds form as the production blend). A weight of 0 means the
+    candidate did not beat the market, so the market price stands. Edge = that
+    minus the book's implied probability. The candidate's own chance is kept in
+    ``raw_model_probability`` and the production blend in ``production_probability``.
     Props without a candidate probability are left on the production blend.
     """
     from domain import constants
+    from engine.candidate.blend import load_weights
+    from engine.market_blend import BlendWeights, blend_probability
     from odds.fair_odds import calculate_edge, true_prob_to_american_odds
 
     if not getattr(constants, "USE_CANDIDATE_EDGES", False):
         return {"applied": 0, "fallback": len(props), "enabled": False}
     lo, hi = getattr(constants, "CANDIDATE_EDGE_IMPLIED_RANGE", (0.0, 1.0))
+    fitted = load_weights() or {}
     applied = outside = 0
     for prop in props:
         p = getattr(prop, "candidate_probability", None)
@@ -259,14 +265,20 @@ def apply_candidate_edges(props: list) -> dict:
             prop.candidate_outside_range = True
             outside += 1
             continue
-        p = min(max(float(p), constants.MIN_PROBABILITY_FLOOR), constants.MAX_PROBABILITY_CEILING)
+        prop_type = getattr(prop, "prop_type", "")
+        stat = STAT_OF_PROP.get(getattr(prop_type, "value", str(prop_type)), "")
+        w = fitted.get(stat) or {"weight": 0.0, "clip": 0.25}  # unfitted: trust the market
+        weights = BlendWeights(float(w["weight"]), float(w["clip"]))
+        market = getattr(prop, "market_probability", None)
+        prior = float(market) if market is not None else float(prop.implied_probability)
+        blended = min(max(blend_probability(float(p), prior, weights), 0.001), 0.999)
         prop.production_probability = prop.true_probability
-        prop.true_probability = p
-        prop.calibrated_probability = p
-        prop.raw_model_probability = p
-        prop.edge = calculate_edge(p, prop.implied_probability)
-        prop.fair_odds = true_prob_to_american_odds(p)
-        prop.model_weight = 1.0
+        prop.true_probability = blended
+        prop.calibrated_probability = blended
+        prop.raw_model_probability = float(p)
+        prop.edge = calculate_edge(blended, prop.implied_probability)
+        prop.fair_odds = true_prob_to_american_odds(blended)
+        prop.model_weight = weights.weight
         prop.probability_method = "candidate"
         applied += 1
     return {"applied": applied, "fallback": len(props) - applied, "outside_range": outside, "enabled": True}

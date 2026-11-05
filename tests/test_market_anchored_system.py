@@ -187,8 +187,7 @@ class TestEvaluatorBlend:
             assert 0.0 <= r.model_weight <= w.weight + 1e-9
             max_move = w.weight * w.clip + 1e-6
             moved = abs(logit(r.true_probability) - logit(r.market_probability))
-            clamped = r.true_probability in (constants.MIN_PROBABILITY_FLOOR, constants.MAX_PROBABILITY_CEILING)
-            assert moved <= max_move or clamped
+            assert moved <= max_move
             assert r.edge == pytest.approx(r.true_probability - r.implied_probability)
             assert "Market-anchored" in r.explanation
 
@@ -201,9 +200,22 @@ class TestEvaluatorBlend:
         player, game, defense, odds = jokic_inputs
         results = prop_evaluator.PropEvaluator().evaluate(player, game, defense, odds, PropType.POINTS, is_home=True)
         for r in results:
-            assert r.true_probability == pytest.approx(
-                min(max(r.market_probability, constants.MIN_PROBABILITY_FLOOR), constants.MAX_PROBABILITY_CEILING)
-            )
+            assert r.true_probability == pytest.approx(r.market_probability)
+
+    def test_long_shot_market_price_is_not_lifted_to_the_floor(self, jokic_inputs, monkeypatch):
+        """A 4% consensus price stays 4%; the old 7% floor turned it into a fake +edge."""
+        from engine import prop_evaluator
+        from engine.market_blend import BlendParams
+
+        zero = BlendParams(by_prop={}, default=BlendWeights(0.0, 0.5))
+        monkeypatch.setattr(prop_evaluator, "load_blend_params", lambda *a, **k: zero)
+        monkeypatch.setattr(prop_evaluator, "consensus_market_probability", lambda *a, **k: 0.04)
+        player, game, defense, odds = jokic_inputs
+        results = prop_evaluator.PropEvaluator().evaluate(player, game, defense, odds, PropType.POINTS, is_home=True)
+        assert results
+        for r in results:
+            assert r.true_probability == pytest.approx(0.04)
+            assert r.edge == pytest.approx(0.04 - r.implied_probability)
 
     def test_legacy_path_still_available(self, jokic_inputs, monkeypatch):
         from engine.prop_evaluator import PropEvaluator

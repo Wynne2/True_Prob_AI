@@ -630,7 +630,7 @@ def probability_label(prop) -> str:
 
 def edge_basis(prop) -> str:
     """With zero model weight the edge is the best price against the market consensus."""
-    if is_market_blend(prop) and float(getattr(prop, "model_weight", 0.0) or 0.0) <= 0.0:
+    if (is_market_blend(prop) or is_candidate(prop)) and float(getattr(prop, "model_weight", 0.0) or 0.0) <= 0.0:
         return "vs consensus"
     return "edge"
 
@@ -640,8 +640,17 @@ def probability_note(prop) -> str:
     if is_candidate(prop):
         prod = getattr(prop, "production_probability", None)
         proj = getattr(prop, "candidate_projection", None)
-        bits = [f"Candidate model{f' (projected {proj:.1f})' if proj is not None else ''}; "
-                "edge is this chance against the book's price, vig included."]
+        alone = float(getattr(prop, "raw_model_probability", 0.0) or 0.0) * 100
+        weight = float(getattr(prop, "model_weight", 0.0) or 0.0)
+        consensus = getattr(prop, "market_probability", None)
+        consensus_text = f"{consensus * 100:.1f}%" if consensus is not None else "unavailable"
+        bits = [f"Candidate model alone: {alone:.1f}%{f' (projected {proj:.1f})' if proj is not None else ''}."]
+        if weight <= 0.0:
+            bits.append(f"Its fitted weight against the market is 0, so this is the market consensus "
+                        f"({consensus_text}, no vig).")
+        else:
+            bits.append(f"Blended with the market consensus {consensus_text} at its fitted weight {weight:.2f}.")
+        bits.append("Edge is this chance against the book's price, vig included.")
         if prod is not None:
             bits.append(f"Production blend: {prod * 100:.1f}%.")
         return " ".join(bits)
