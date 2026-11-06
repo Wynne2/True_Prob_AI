@@ -13,8 +13,11 @@ def render_arbitrage_tab() -> None:
     st.caption(
         "Checks every open Kalshi and Polymarket event for outcome baskets that pay out more than they cost "
         "after fees, then walks the live order books to size them. Listed arbs must still clear your minimum "
-        "if every leg fills one cent worse (profit_if_slipped). Prices move: re-check each book before "
-        "every leg, and read both venues' rules before trading across them."
+        "if every leg fills one cent worse (profit_if_slipped). Interest is what the venues pay while the "
+        "position is held (Kalshi APY, Polymarket holding rewards): variable, and counted in the annualized "
+        "return but not in locked profit. Resting-bid pairs post a Polymarket bid one tick above the best bid "
+        "(makers pay no fee) and only lock a profit if it fills before the other venue's price moves. "
+        "Prices move: re-check each book before every leg, and read both venues' rules before trading across them."
     )
     with st.container(border=True):
         c1, c2 = st.columns(2)
@@ -31,10 +34,11 @@ def render_arbitrage_tab() -> None:
         st.info("Press scan to check the markets. Nothing is fetched until you do.", icon=":material/radar:")
         return
     st.caption(" | ".join(f"{k.replace('_', ' ')}: {v:,}" for k, v in res["stats"].items()))
-    for title, rows in (("Arbitrage (passes every filter)", res["arbs"]), ("Real but below your minimums", res["near"])):
+    for title, rows in (("Arbitrage (passes every filter)", res["arbs"]), ("Real but below your minimums", res["near"]),
+                        ("Resting-bid pairs (not locked: only if your Polymarket bid fills first)", res.get("maker", []))):
         st.subheader(f"{title}: {len(rows)}")
         if rows:
-            df = pd.DataFrame(rows)[["kind", "title", "contracts", "cost", "profit", "profit_if_slipped", "roi",
-                                     "annualized", "closes", "legs"]]
+            df = pd.DataFrame(rows)[["kind", "title", "contracts", "cost", "profit", "profit_if_slipped", "interest",
+                                     "roi", "annualized", "closes", "legs"]]
             df["legs"] = df["legs"].map(" | ".join)
             st.dataframe(df, hide_index=True, use_container_width=True)

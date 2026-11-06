@@ -9,13 +9,16 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Iterable, Optional
 
 from odds.prediction_market import effective_cost
 
 KALSHI_ROUNDING = 0.01  # Kalshi rounds each order's fee up to the cent; charged per leg per level
+# A resting bid far below the ask fills only when the price crashes, i.e. when the other venue's price has
+# moved against you too. Bids more than this below the ask are not counted.
+MAX_MAKER_GAP = 0.02
 
 
 @dataclass
@@ -27,6 +30,10 @@ class Leg:
     label: str = ""
     url: str = ""
     min_size: float = 1.0
+    apy: float = 0.0  # interest or holding reward the venue pays on this position, per year
+    bid: Optional[float] = None  # best bid, read from the live book (Polymarket refresh only)
+    tick: float = 0.01
+    resting: bool = False  # a limit order that fills at its own price, so it cannot slip
 
     def cost(self, price: Optional[float] = None) -> float:
         return effective_cost(self.ask if price is None else price, self.fee_rate)
@@ -71,6 +78,12 @@ class Candidate:
     def edge(self) -> float:
         return self.payout - self.unit_cost
 
+    @property
+    def carry(self) -> float:
+        """Yearly interest on the capital, weighted by what each leg costs."""
+        unit = self.unit_cost
+        return sum(leg.cost() * leg.apy for leg in self.legs) / unit if unit > 0 else 0.0
+
 
 def _best(legs: list[Leg]) -> Optional[Leg]:
     return min(legs, key=lambda leg: leg.cost()) if legs else None
@@ -101,6 +114,36 @@ def cross_pairs(ev: Event) -> Iterable[Candidate]:
         if pairs:
             y, n = min(pairs, key=lambda p: p[0].cost() + p[1].cost())
             yield Candidate("cross-pair", f"{ev.title}: {o.label}", [y, n], 1.0, ev.close)
+
+
+def maker_pairs(ev: Event) -> Iterable[Candidate]:
+    """Rest a Polymarket bid one tick above the best bid, then take the other venue's opposite side.
+
+    Polymarket makers pay no fee (the rebate is ignored here). Not locked: the bid may never fill,
+    and the other venue's price can move before the second leg is bought.
+    """
+    if not ev.complete:  # same rule as cross_pairs
+        return
+    for o in ev.outcomes:
+        best = None
+        for side, others in ((o.yes, o.no), (o.no, o.yes)):
+            for rest in side:
+                if rest.venue != "polymarket" or rest.bid is None:
+                    continue
+                price = round(rest.bid + rest.tick, 4)
+                if price >= rest.ask:
+                    continue  # a bid at or above the ask crosses the book: that is a taker order
+                if rest.ask - price > MAX_MAKER_GAP + 1e-9:
+                    continue  # a wide spread: the bid fills only on a price crash
+                maker = replace(rest, ask=price, fee_rate=0.0, label=f"{rest.label} (resting bid)", resting=True)
+                for take in others:
+                    if take.venue == "polymarket":
+                        continue
+                    c = Candidate("maker-pair", f"{ev.title}: {o.label}", [maker, take], 1.0, ev.close)
+                    if best is None or c.edge > best.edge:
+                        best = c
+        if best and best.edge > 0:
+            yield best
 
 
 def candidates(events: Iterable[Event]) -> list[Candidate]:
@@ -149,12 +192,16 @@ def walk(ladders: list[list[tuple[float, float]]], legs: list[Leg], payout: floa
     return round(contracts, 2), round(cost, 2), round(contracts * payout - cost, 2)
 
 
-def annualized(profit: float, cost: float, close: Optional[datetime], now: datetime) -> float:
-    """Return on capital per year; anything settling within a day counts as one day."""
+def days_held(close: Optional[datetime], now: datetime) -> float:
+    """Days until settlement; anything settling within a day counts as one day, no close date as a year."""
+    return max((close - now).total_seconds() / 86400, 1.0) if close else 365.0
+
+
+def annualized(profit: float, cost: float, close: Optional[datetime], now: datetime, carry: float = 0.0) -> float:
+    """Return on capital per year: the locked profit plus the interest the venues pay while it is held."""
     if cost <= 0:
         return 0.0
-    days = max((close - now).total_seconds() / 86400, 1.0) if close else 365.0
-    return profit / cost * 365 / days
+    return profit / cost * 365 / days_held(close, now) + carry
 
 
 # ---------------------------------------------------------------------------

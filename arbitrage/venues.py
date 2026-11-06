@@ -16,6 +16,10 @@ from providers.kalshi_provider import _market_side_prices
 from providers.polymarket_provider import _fee_rate, _is_tradeable, _json_list
 
 CLOB_URL = "https://clob.polymarket.com"
+# shortcut: fixed rates; Kalshi's variable APY (3.5-4.05% reported, $250 minimum balance) and Polymarket's
+# holding reward (about 4% on holdingRewardsEnabled markets) change over time, so update them when they do.
+KALSHI_APY = 0.035
+POLYMARKET_HOLDING_APY = 0.04
 _MONTHS = {m: i for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split(), 1)}
 _KALSHI_DATE = re.compile(r"-(\d{2})([A-Z]{3})(\d{2})")
 _POLY_GAME_SLUG = re.compile(r"^([a-z0-9]+)-([a-z0-9]+)-([a-z0-9]+)-\d{4}-\d{2}-\d{2}$")
@@ -87,8 +91,8 @@ def kalshi_event(ev: dict, fee_rates: dict[str, float]) -> Optional[Event]:
         yes_ask, no_ask = (_price(p) for p in _market_side_prices(m))
         outcomes.append(Outcome(
             label,
-            [Leg("kalshi", f"{ticker}:yes", yes_ask, rate, f"YES {label}", url)] if yes_ask else [],
-            [Leg("kalshi", f"{ticker}:no", no_ask, rate, f"NO {label}", url)] if no_ask else [],
+            [Leg("kalshi", f"{ticker}:yes", yes_ask, rate, f"YES {label}", url, apy=KALSHI_APY)] if yes_ask else [],
+            [Leg("kalshi", f"{ticker}:no", no_ask, rate, f"NO {label}", url, apy=KALSHI_APY)] if no_ask else [],
             ticker, ticker.rsplit("-", 1)[-1],
         ))
     game_date = None
@@ -196,7 +200,9 @@ def polymarket_events(ev: dict) -> list[Event]:
         first_ask, second_ask = ask, _price(1 - bid) if bid else None  # second token ask ~ 1 - first bid
         asks = (first_ask, second_ask) if i == 0 else (second_ask, first_ask)
         rate, size = _poly_rate(m), to_float(m.get("orderMinSize")) or 1.0
-        mk = lambda tok, a, side: [Leg("polymarket", tok, a, rate, f"{side} {label}", url, size)] if a else []
+        apy = POLYMARKET_HOLDING_APY if m.get("holdingRewardsEnabled") else 0.0
+        tick = to_float(m.get("orderPriceMinTickSize")) or 0.01
+        mk = lambda tok, a, side: [Leg("polymarket", tok, a, rate, f"{side} {label}", url, size, apy, tick=tick)] if a else []
         if len(tokens) != 2:
             return [], []
         return mk(tokens[i], asks[0], "YES"), mk(tokens[1 - i], asks[1], "NO")
@@ -256,7 +262,7 @@ def polymarket_ladder(session: requests.Session, token: str) -> list[tuple[float
 
 
 def refresh_polymarket(session: requests.Session, events: list[Event]) -> None:
-    """Replace Gamma's cached asks with live CLOB best asks; drop legs with an empty book."""
+    """Replace Gamma's cached asks with live CLOB best asks and bids; drop legs with an empty ask book."""
     legs = {leg.ref: leg for ev in events for o in ev.outcomes for leg in o.yes + o.no if leg.venue == "polymarket"}
     refs, best = list(legs), {}
     for i in range(0, len(refs), 500):  # the batch endpoint takes 500 tokens per call
@@ -266,6 +272,10 @@ def refresh_polymarket(session: requests.Session, events: list[Event]) -> None:
         for book in resp.json():
             asks = [float(a["price"]) for a in book.get("asks") or [] if float(a["size"]) > 0]
             best[book.get("asset_id")] = min(asks) if asks else None
+            if (leg := legs.get(book.get("asset_id"))) is not None:
+                bids = [float(b["price"]) for b in book.get("bids") or [] if float(b["size"]) > 0]
+                leg.bid = max(bids) if bids else None
+                leg.tick = to_float(book.get("tick_size")) or leg.tick
     for ref, ask in best.items():
         if ask is not None:
             legs[ref].ask = ask

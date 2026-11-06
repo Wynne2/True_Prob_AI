@@ -527,16 +527,19 @@ def run_arb_command(args) -> None:
     console.print(f"[bold]{datetime.now():%H:%M:%S}[/bold]  " +
                   " | ".join(f"{k.replace('_', ' ')}: {v:,}" for k, v in res["stats"].items()))
     for title, rows in (("Arbitrage (passes every filter)", res["arbs"]),
-                        ("Depth-real but below --min-profit/--min-annual", res["near"][: args.top])):
+                        ("Depth-real but below --min-profit/--min-annual", res["near"][: args.top]),
+                        ("Resting-bid pairs (NOT locked: only if your Polymarket bid fills first)", res["maker"][: args.top])):
         t = Table(title=f"{title}: {len(rows)}", box=box.SIMPLE_HEAVY)
-        for col in ("Kind", "Event", "Contracts", "Cost", "Locked $", "If slipped", "ROI", "Annual", "Closes", "Legs"):
-            t.add_column(col, justify="right" if col in {"Contracts", "Cost", "Locked $", "If slipped", "ROI", "Annual"} else "left")
+        money = {"Contracts", "Cost", "Locked $", "If slipped", "Interest", "ROI", "Annual"}
+        for col in ("Kind", "Event", "Contracts", "Cost", "Locked $", "If slipped", "Interest", "ROI", "Annual", "Closes", "Legs"):
+            t.add_column(col, justify="right" if col in money else "left")
         for r in rows:
             t.add_row(r["kind"], r["title"], f"{r['contracts']:,.0f}", f"${r['cost']:,.2f}", f"${r['profit']:,.2f}",
-                      f"${r['profit_if_slipped']:,.2f}", f"{r['roi']:.2%}", f"{r['annualized']:.0%}",
-                      (r["closes"] or "")[:16], "\n".join(r["legs"]))
+                      f"${r['profit_if_slipped']:,.2f}", f"${r['interest']:,.2f}", f"{r['roi']:.2%}",
+                      f"{r['annualized']:.0%}", (r["closes"] or "")[:16], "\n".join(r["legs"]))
         console.print(t)
-    console.print("[dim]Prices move: re-check each book before every leg. Read both venues' rules for cross-venue legs.[/dim]")
+    console.print("[dim]Prices move: re-check each book before every leg. Read both venues' rules for cross-venue legs. "
+                  "Interest is the venues' variable APY / holding reward, not locked.[/dim]")
 
 
 # ---------------------------------------------------------------------------

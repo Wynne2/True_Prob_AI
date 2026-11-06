@@ -99,11 +99,68 @@ def test_kalshi_event_completeness_and_fee_rate():
     ev = kalshi_event(raw, {"KXUCLGAME": 0.035})
     assert ev.complete and ev.exclusive and ev.game_date == date(2026, 11, 3)
     assert ev.outcomes[0].yes[0].fee_rate == 0.035 and ev.outcomes[0].no[0].ask == 0.62
+    assert ev.outcomes[0].yes[0].apy == 0.035  # Kalshi pays interest on open positions
     raw["markets"] = raw["markets"][:2]  # no TIE market: soccer can draw, so the list is incomplete
     assert not kalshi_event(raw, {}).complete
 
 
+def test_interest_is_cost_weighted_and_added_to_annualized():
+    k = Leg("kalshi", "k", 0.50, 0.0, apy=0.035)
+    p = Leg("polymarket", "p", 0.30, 0.0, apy=0.04)
+    c = finder.Candidate("cross-pair", "t", [k, p], 1.0, NOW + timedelta(days=36.5))
+    assert c.carry == pytest.approx((0.5 * 0.035 + 0.3 * 0.04) / 0.8)
+    assert finder.annualized(1, 100, NOW + timedelta(days=36.5), NOW, carry=0.035) == pytest.approx(0.135)
+    assert finder.days_held(None, NOW) == 365.0
+
+
+def _maker_event(bid, ask=0.45, complete=True):
+    poly_yes = Leg("polymarket", "py", ask, 0.05, "YES A", bid=bid, tick=0.01)
+    kalshi_no = Leg("kalshi", "kn", 0.55, 0.07, "NO A")
+    return event([Outcome("A", [poly_yes], [kalshi_no])], complete=complete)
+
+
+def test_maker_pair_rests_one_tick_above_the_bid_with_no_fee():
+    (c,) = finder.maker_pairs(_maker_event(bid=0.42))
+    maker, take = c.legs
+    assert maker.ask == pytest.approx(0.43) and maker.fee_rate == 0.0 and "resting bid" in maker.label
+    assert maker.resting and not take.resting  # only the taken leg can slip
+    # 0.43 + Kalshi NO 0.55 + 0.07*0.55*0.45 fee = 0.997325 < $1, while taking both asks costs more than $1.
+    assert c.edge == pytest.approx(1 - 0.43 - 0.567325)
+    assert list(finder.cross_pairs(_maker_event(bid=0.42))) and next(finder.cross_pairs(_maker_event(bid=0.42))).edge < 0
+    assert list(finder.maker_pairs(_maker_event(bid=None))) == []            # no live bid read
+    assert list(finder.maker_pairs(_maker_event(bid=0.44))) == []            # 0.45 would cross the 0.45 ask
+    assert list(finder.maker_pairs(_maker_event(bid=0.42, complete=False))) == []
+    assert list(finder.maker_pairs(_maker_event(bid=0.43))) == []            # 0.44 + 0.567 is over $1
+    # A bid 0.51 under a 0.98 ask fills only on a crash (when the other leg has moved too): not counted.
+    wide = _maker_event(bid=0.30, ask=0.98)
+    assert list(finder.maker_pairs(wide)) == []
+
+
+def test_walk_sizes_a_resting_bid_against_the_taker_book():
+    maker = Leg("polymarket", "m", 0.43, 0.0)
+    take = Leg("kalshi", "t", 0.55, 0.0)
+    # The resting bid has no depth limit; the taker book stops paying after the 0.55 level.
+    assert finder.walk([[(0.43, float("inf"))], [(0.55, 100), (0.60, 100)]], [maker, take], 1.0) == (100.0, 98.01, 1.99)
+
+
+def test_refresh_polymarket_reads_best_bid_and_tick():
+    from arbitrage.venues import refresh_polymarket
+
+    yes = leg(0.50, ref="tok")
+    ev = event([Outcome("A", [yes], [])])
+
+    class S:
+        def post(self, url, json=None, timeout=None):
+            return _Resp([{"asset_id": "tok", "asks": [{"price": "0.48", "size": "10"}],
+                           "bids": [{"price": "0.40", "size": "5"}, {"price": "0.45", "size": "0"}, {"price": "0.44", "size": "7"}],
+                           "tick_size": "0.001"}])
+
+    refresh_polymarket(S(), [ev])
+    assert (yes.ask, yes.bid, yes.tick) == (0.48, 0.44, 0.001)
+
+
 def test_propose_pairs_rejects_lookalike_questions():
+
     def ev(venue, title, labels, eid):
         e = event([Outcome(lab, [leg(0.5, venue, ref=f"{eid}{i}")], [], f"{eid}{i}") for i, lab in enumerate(labels)],
                   venue=venue)
@@ -195,6 +252,10 @@ def test_polymarket_named_market_maps_second_outcome_to_one_minus_bid():
     thunder, cavs = ev.outcomes
     assert (thunder.code, cavs.code) == ("okc", "cle") and ev.game_date == date(2026, 11, 3)
     assert thunder.yes[0].ref == "t0" and thunder.yes[0].ask == 0.40
+    assert thunder.yes[0].apy == 0.0 and thunder.yes[0].tick == 0.01
+    raw["markets"][0].update(holdingRewardsEnabled=True, orderPriceMinTickSize=0.001)
+    (held,) = polymarket_events(raw)
+    assert held.outcomes[0].yes[0].apy == 0.04 and held.outcomes[0].yes[0].tick == 0.001
     assert cavs.yes[0].ref == "t1" and cavs.yes[0].ask == pytest.approx(0.61) and cavs.no[0].ref == "t0"
     raw["markets"][0]["feeSchedule"]["exponent"] = 2  # unknown fee curve: skipped, not guessed
     assert polymarket_events(raw) == []

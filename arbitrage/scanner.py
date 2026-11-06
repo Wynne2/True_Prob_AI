@@ -28,9 +28,11 @@ def _row(c: finder.Candidate, contracts: float, cost: float, profit: float, now:
         "cost": cost,
         "payout": round(contracts * c.payout, 2),
         "profit": profit,
-        "profit_if_slipped": round(profit - contracts * SLIP_PER_LEG * len(c.legs), 2),
+        "profit_if_slipped": round(profit - contracts * SLIP_PER_LEG * sum(not leg.resting for leg in c.legs), 2),
+        # Paid by the venues while the position is held (Kalshi APY, Polymarket holding rewards); variable.
+        "interest": round(cost * c.carry * finder.days_held(c.close, now) / 365, 2),
         "roi": round(profit / cost, 4) if cost else 0.0,
-        "annualized": round(finder.annualized(profit, cost, c.close, now), 4),
+        "annualized": round(finder.annualized(profit, cost, c.close, now, c.carry), 4),
         "closes": c.close.isoformat() if c.close else None,
         "legs": [f"{leg.venue}: {leg.label} @ {leg.ask:.3f} (fee rate {leg.fee_rate:g})" for leg in c.legs],
         "urls": sorted({leg.url for leg in c.legs}),
@@ -45,7 +47,8 @@ def scan(
     session: requests.Session | None = None,
     log: bool = True,
 ) -> dict:
-    """Return {"arbs": [...], "near": [...], "stats": {...}}; arbs pass every filter, near are depth-real but small."""
+    """Return {"arbs", "near", "maker", "stats"}: arbs pass every filter, near are depth-real but small,
+    maker are resting-bid pairs that lock a profit only if the bid fills and the other side has not moved."""
     s = session or requests.Session()
     which = set(which)
     now = datetime.now(timezone.utc)
@@ -81,6 +84,21 @@ def scan(
             if profit > 0 and contracts >= max(leg.min_size for leg in c.legs):
                 rows.append(_row(c, contracts, cost, profit, now))
 
+    # Resting-bid pairs: sized against the taker leg's book; the resting bid has no depth limit of its own.
+    makers = sorted((c for ev in games + pairs for c in finder.maker_pairs(ev) if c.close is None or c.close > now + timedelta(minutes=10)),
+                    key=lambda c: -c.edge)
+    maker_rows = []
+    for c in makers[:max_checks]:
+        try:
+            ladder = venues.ladder(s, c.legs[1])
+        except (requests.RequestException, ValueError, KeyError):
+            errors += 1
+            continue
+        contracts, cost, profit = finder.walk([[(c.legs[0].ask, float("inf"))], ladder], c.legs, c.payout)
+        if profit > 0 and contracts >= max(leg.min_size for leg in c.legs):
+            maker_rows.append(_row(c, contracts, cost, profit, now))
+    maker_rows.sort(key=lambda r: -r["profit"])
+
     rows.sort(key=lambda r: -r["profit"])
     # An arb must still clear min_profit after every leg slips a tick, or it is a bet on execution.
     arbs = [r for r in rows if r["profit_if_slipped"] >= min_profit and r["annualized"] >= min_annual]
@@ -96,9 +114,10 @@ def scan(
         "confirmed_pairs": len(pairs),
         "candidates": len(cands),
         "depth_checked": len(seen),
+        "maker_pairs": len(maker_rows),
         "book_errors": errors,
     }
-    return {"arbs": arbs, "near": [r for r in rows if r not in arbs], "stats": stats}
+    return {"arbs": arbs, "near": [r for r in rows if r not in arbs], "maker": maker_rows, "stats": stats}
 
 
 def propose(session: requests.Session | None = None, limit: int = 30) -> list[dict]:

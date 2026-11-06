@@ -89,6 +89,9 @@ def patched_scan(monkeypatch):
         return list(props)
 
     monkeypatch.setattr("engine.slate_scanner.SlateScanner.scan", fake_scan)
+    # The candidate step downloads season logs; a slow network made this UI test time out.
+    monkeypatch.setattr("engine.board.enrich_props", lambda props, day, games=None, matchups=True: {
+        "candidate_status": {"status": "no_data", "reason": "stubbed in tests"}, "agreement": {}, "matchup_rows": []})
     monkeypatch.setattr("data.loaders.load_games", lambda d: [g for g in games])
     monkeypatch.setattr("data.loaders.reset_registry", lambda: None)
     return props
