@@ -253,6 +253,11 @@ USE_CANDIDATE_EDGES: bool = True
 # below 25%). Outside it (longer than about +300 or shorter than about -300) the
 # candidate is untested, so those props keep the production blend.
 CANDIDATE_EDGE_IMPLIED_RANGE: tuple[float, float] = (0.25, 0.75)
+# Which frozen candidate drives the live board: "v1", "v2" or "v3"
+# (data/models/candidate_<version>.json). Set to v1 on 2026-11-05 (user's
+# choice): v1 beat the no-vig market on threes in the 2026-27 holdout and
+# beat v3 on threes in the Jan-Feb backtest.
+CANDIDATE_LIVE_VERSION: str = "v1"
 
 # Opponent pace / defensive-rating / positional adjustments raised Brier in the
 # January and February backtests (+0.0073 to +0.0080), so production uses

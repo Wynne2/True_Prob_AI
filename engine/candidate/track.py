@@ -164,8 +164,15 @@ def _print(card: dict, graded: list[dict]) -> None:
             print(f"    edge {name:<8} n=0")
 
 
+# Versions whose frozen holdout window was already used get a live start instead:
+# the first slate they drove on the board.
+LIVE_STARTS = {"candidate-v1": date(2026, 11, 5)}
+
+
 def holdout_start(version: str) -> date:
     """A version's own holdout start (from its frozen file); earlier games do not count for it."""
+    if version in LIVE_STARTS:
+        return LIVE_STARTS[version]
     from engine.candidate import model as cmodel
 
     short = version.replace("candidate-", "")

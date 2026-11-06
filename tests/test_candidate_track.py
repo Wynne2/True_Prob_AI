@@ -99,6 +99,7 @@ def test_scorecard_splits_by_version(tmp_path):
 def test_each_version_counts_from_its_own_holdout():
     assert track.holdout_start("candidate-v2") == date(2026, 11, 4)
     assert track.holdout_start("candidate-v3") == date(2026, 11, 5)
+    assert track.holdout_start("candidate-v1") == date(2026, 11, 5)  # live start, holdout already used
 
 
 def test_scorecard_tracks_matchup_groups(tmp_path):

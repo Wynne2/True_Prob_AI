@@ -211,8 +211,13 @@ def test_candidate_edge_skips_untested_prices(full_weight):
     assert normal.probability_method == "candidate"
 
 
-def test_board_uses_newest_frozen_version():
+def test_board_uses_configured_version(monkeypatch):
+    from domain import constants
     params = live.frozen_params()
     if params is None:
         pytest.skip("no frozen params")
-    assert params["version"] == "candidate-v3"
+    assert params["version"] == f"candidate-{constants.CANDIDATE_LIVE_VERSION}"
+    monkeypatch.setattr(constants, "CANDIDATE_LIVE_VERSION", "v3")
+    assert live.frozen_params()["version"] == "candidate-v3"
+    monkeypatch.setattr(constants, "CANDIDATE_LIVE_VERSION", "v9")  # missing file falls back to v1
+    assert live.frozen_params()["version"] == "candidate-v1"
