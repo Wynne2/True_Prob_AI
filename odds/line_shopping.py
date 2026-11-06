@@ -9,6 +9,7 @@ positive American odds) available for the side they want to take.
 from __future__ import annotations
 
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Optional
@@ -17,6 +18,24 @@ from domain.entities import OddsLine
 from domain.enums import BookName, PropType
 
 logger = logging.getLogger(__name__)
+
+# Books whose prices still feed the no-vig consensus but are never offered as
+# the bet (e.g. Bovada charges a deposit fee). Override with EXCLUDED_BOOKS
+# (comma-separated keys); set it to an empty string to allow every book.
+EXCLUDED_BOOKS: frozenset[str] = frozenset(
+    k.strip().lower()
+    for k in os.environ.get("EXCLUDED_BOOKS", "bovada").split(",")
+    if k.strip()
+)
+
+
+def is_bettable(odds_line: OddsLine) -> bool:
+    """False when the line comes from a book the user does not bet at."""
+    keys = {getattr(odds_line.book, "value", str(odds_line.book)).lower()}
+    raw = (getattr(odds_line, "book_key", "") or "").lower()
+    if raw:
+        keys.add(raw)
+    return not (keys & EXCLUDED_BOOKS)
 
 
 @dataclass
@@ -110,6 +129,8 @@ def shop_lines(
         under_books: dict[BookName, int] = {}
 
         for ol in group:
+            if not is_bettable(ol):
+                continue  # still counted for main-line coverage and consensus
             # For American odds: higher is always better for the bettor
             if ol.book not in over_books or ol.over_odds > over_books[ol.book]:
                 over_books[ol.book] = ol.over_odds
