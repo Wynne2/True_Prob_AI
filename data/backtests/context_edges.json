@@ -1,0 +1,265 @@
+{
+ "generated_at": "2026-11-08T00:42:36+00:00",
+ "lines": 8911,
+ "over_lines": 5962,
+ "dates": 19,
+ "market_brier": 0.23974,
+ "market_log_loss": 0.67232,
+ "variants": {
+  "all_factors@10": {
+   "brier": 0.24048,
+   "log_loss": 0.67404,
+   "brier_vs_market": 0.00074,
+   "brier_vs_market_date_se": 0.00099
+  },
+  "all_factors@100": {
+   "brier": 0.24026,
+   "log_loss": 0.67354,
+   "brier_vs_market": 0.00051,
+   "brier_vs_market_date_se": 0.00092
+  },
+  "only_model@100": {
+   "brier": 0.23967,
+   "log_loss": 0.67219,
+   "brier_vs_market": -8e-05,
+   "brier_vs_market_date_se": 0.00025
+  },
+  "only_matchup@100": {
+   "brier": 0.24069,
+   "log_loss": 0.67429,
+   "brier_vs_market": 0.00094,
+   "brier_vs_market_date_se": 0.00054
+  },
+  "only_pace@100": {
+   "brier": 0.23981,
+   "log_loss": 0.67245,
+   "brier_vs_market": 6e-05,
+   "brier_vs_market_date_se": 3e-05
+  },
+  "only_role@100": {
+   "brier": 0.23938,
+   "log_loss": 0.67161,
+   "brier_vs_market": -0.00036,
+   "brier_vs_market_date_se": 0.00063
+  },
+  "only_spread@100": {
+   "brier": 0.23968,
+   "log_loss": 0.6722,
+   "brier_vs_market": -6e-05,
+   "brier_vs_market_date_se": 0.00033
+  },
+  "all_but_model@100": {
+   "brier": 0.24039,
+   "log_loss": 0.67375,
+   "brier_vs_market": 0.00065,
+   "brier_vs_market_date_se": 0.00081
+  },
+  "all_but_matchup@100": {
+   "brier": 0.23922,
+   "log_loss": 0.67132,
+   "brier_vs_market": -0.00052,
+   "brier_vs_market_date_se": 0.00068
+  },
+  "all_but_pace@100": {
+   "brier": 0.24017,
+   "log_loss": 0.67334,
+   "brier_vs_market": 0.00043,
+   "brier_vs_market_date_se": 0.00094
+  },
+  "all_but_role@100": {
+   "brier": 0.2406,
+   "log_loss": 0.6742,
+   "brier_vs_market": 0.00085,
+   "brier_vs_market_date_se": 0.00074
+  },
+  "all_but_spread@100": {
+   "brier": 0.24047,
+   "log_loss": 0.67396,
+   "brier_vs_market": 0.00073,
+   "brier_vs_market_date_se": 0.00094
+  },
+  "all_factors@1000": {
+   "brier": 0.23963,
+   "log_loss": 0.67213,
+   "brier_vs_market": -0.00012,
+   "brier_vs_market_date_se": 0.00056
+  }
+ },
+ "headline": "all_factors@100",
+ "accuracy_by_band": {
+  "-600 to -200": {
+   "n_overs": 779,
+   "brier_market": 0.22786,
+   "brier_corrected": 0.22791
+  },
+  "-199 to +149": {
+   "n_overs": 4303,
+   "brier_market": 0.24599,
+   "brier_corrected": 0.24636
+  },
+  "+150 to +299": {
+   "n_overs": 876,
+   "brier_market": 0.21988,
+   "brier_corrected": 0.22149
+  },
+  "+300 or longer": {
+   "n_overs": 4,
+   "brier_market": 0.18754,
+   "brier_corrected": 0.195
+  }
+ },
+ "bets_by_band": {
+  "-600 to -200": {
+   ">=0%": {
+    "n": 201,
+    "dates": 18,
+    "hit_rate": 0.6418,
+    "avg_implied": 0.7044,
+    "roi_per_bet": -0.0855,
+    "roi_date_se": 0.0898,
+    "units": -17.2
+   },
+   ">=1%": {
+    "n": 140,
+    "dates": 17,
+    "hit_rate": 0.6429,
+    "avg_implied": 0.7056,
+    "roi_per_bet": -0.0859,
+    "roi_date_se": 0.0966,
+    "units": -12.0
+   },
+   ">=2%": {
+    "n": 91,
+    "dates": 17,
+    "hit_rate": 0.6703,
+    "avg_implied": 0.7055,
+    "roi_per_bet": -0.0463,
+    "roi_date_se": 0.1192,
+    "units": -4.2
+   },
+   ">=3%": {
+    "n": 65,
+    "dates": 16,
+    "hit_rate": 0.7385,
+    "avg_implied": 0.7065,
+    "roi_per_bet": 0.0526,
+    "roi_date_se": 0.1096,
+    "units": 3.4
+   }
+  },
+  "-199 to +149": {
+   ">=0%": {
+    "n": 1591,
+    "dates": 19,
+    "hit_rate": 0.5173,
+    "avg_implied": 0.5351,
+    "roi_per_bet": -0.0346,
+    "roi_date_se": 0.0271,
+    "units": -55.1
+   },
+   ">=1%": {
+    "n": 1196,
+    "dates": 19,
+    "hit_rate": 0.5117,
+    "avg_implied": 0.5345,
+    "roi_per_bet": -0.0446,
+    "roi_date_se": 0.0345,
+    "units": -53.4
+   },
+   ">=2%": {
+    "n": 871,
+    "dates": 19,
+    "hit_rate": 0.5178,
+    "avg_implied": 0.5364,
+    "roi_per_bet": -0.039,
+    "roi_date_se": 0.0416,
+    "units": -33.9
+   },
+   ">=3%": {
+    "n": 633,
+    "dates": 19,
+    "hit_rate": 0.5387,
+    "avg_implied": 0.5345,
+    "roi_per_bet": 0.0021,
+    "roi_date_se": 0.0536,
+    "units": 1.3
+   }
+  },
+  "+150 to +299": {
+   ">=0%": {
+    "n": 149,
+    "dates": 15,
+    "hit_rate": 0.2819,
+    "avg_implied": 0.3563,
+    "roi_per_bet": -0.2097,
+    "roi_date_se": 0.1506,
+    "units": -31.2
+   },
+   ">=1%": {
+    "n": 112,
+    "dates": 14,
+    "hit_rate": 0.3036,
+    "avg_implied": 0.3552,
+    "roi_per_bet": -0.1481,
+    "roi_date_se": 0.2793,
+    "units": -16.6
+   },
+   ">=2%": {
+    "n": 79,
+    "dates": 13,
+    "hit_rate": 0.3165,
+    "avg_implied": 0.3546,
+    "roi_per_bet": -0.1133,
+    "roi_date_se": 0.2912,
+    "units": -8.9
+   },
+   ">=3%": {
+    "n": 58,
+    "dates": 13,
+    "hit_rate": 0.3448,
+    "avg_implied": 0.3561,
+    "roi_per_bet": -0.0293,
+    "roi_date_se": 0.3059,
+    "units": -1.7
+   }
+  },
+  "+300 or longer": {
+   ">=0%": {
+    "n": 1,
+    "dates": 1,
+    "hit_rate": 0.0,
+    "avg_implied": 0.2222,
+    "roi_per_bet": -1.0,
+    "roi_date_se": null,
+    "units": -1.0
+   },
+   ">=1%": {
+    "n": 0
+   },
+   ">=2%": {
+    "n": 0
+   },
+   ">=3%": {
+    "n": 0
+   }
+  }
+ },
+ "full_fit_coefficients_per_sd": {
+  "z_model": 0.0691,
+  "weak_defense": 0.0145,
+  "weak_vs_position": 0.0161,
+  "allowed_gap": -0.033,
+  "weak_def_x_usage": 0.0748,
+  "weak_pos_x_minutes": -0.087,
+  "pace_gap": 0.0301,
+  "usage_trend": -0.038,
+  "touches_trend": 0.1388,
+  "minutes_trend": -0.0499,
+  "abs_spread": -0.0782
+ },
+ "notes": [
+  "Negative brier_vs_market means the correction beat the market on dates it did not see.",
+  "Coefficients are in log-odds per standard deviation of each factor; positive pushes toward the over.",
+  "Bets use the offered odds (vig included); under bets only exist on main lines."
+ ]
+}
