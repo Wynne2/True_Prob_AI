@@ -102,6 +102,17 @@ PLAYER_PROP_MARKET_BATCHES: tuple[str, ...] = (
 )
 
 
+# Lean mode: the four stats the candidate model prices, one call per game.
+LEAN_PROP_MARKET_BATCHES: tuple[str, ...] = (
+    "player_points,player_points_alternate,player_rebounds,player_rebounds_alternate,"
+    "player_assists,player_assists_alternate,player_threes,player_threes_alternate",
+)
+
+
+def prop_market_batches(lean: bool) -> tuple[str, ...]:
+    return LEAN_PROP_MARKET_BATCHES if lean else PLAYER_PROP_MARKET_BATCHES
+
+
 class OddsAPIProvider(BaseProvider):
     """
     The Odds API provider for live multi-book odds and player props.
@@ -284,7 +295,7 @@ class OddsAPIProvider(BaseProvider):
 
         for evt in events:
             event_id = evt.get("id", "")
-            for markets in PLAYER_PROP_MARKET_BATCHES:
+            for markets in prop_market_batches(getattr(self._cfg, "lean", False)):
                 data = self._get(
                     f"sports/{self._cfg.sport_key}/events/{event_id}/odds",
                     regions=self._cfg.regions,

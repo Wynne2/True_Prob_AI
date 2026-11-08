@@ -109,10 +109,15 @@ class SportsDataIOConfig:
 class OddsAPIConfig:
     base_url: str = "https://api.the-odds-api.com/v4"
     sport_key: str = "basketball_nba"
+    # Lean mode (default on): request only the four modeled stats and their
+    # alternates in one call per game, US region only. About 8 credits per game
+    # instead of about 34. Set ODDS_API_LEAN=0 for every market in us and us2.
+    lean: bool = field(default_factory=lambda: os.environ.get("ODDS_API_LEAN", "1").strip() != "0")
     # The Odds API uses comma-separated region codes, e.g. us,us2 (second US book group).
     # Override with env ODDS_API_REGIONS — do not use "us_2"; the API expects "us2".
     regions: str = field(
-        default_factory=lambda: os.environ.get("ODDS_API_REGIONS", "us,us2")
+        default_factory=lambda: os.environ.get("ODDS_API_REGIONS")
+        or ("us" if os.environ.get("ODDS_API_LEAN", "1").strip() != "0" else "us,us2")
     )
     markets: str = (
         "player_points,player_rebounds,player_assists,"

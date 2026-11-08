@@ -92,3 +92,22 @@ def test_registry_does_not_register_other_sports_apis():
     assert "OddsAPIProvider" in source
     assert "KalshiProvider" in source
     assert "PolymarketProvider" in source
+
+
+def test_lean_mode_requests_only_the_modeled_stats(monkeypatch):
+    from config import OddsAPIConfig
+    from providers.odds_api_provider import LEAN_PROP_MARKET_BATCHES, prop_market_batches
+
+    monkeypatch.delenv("ODDS_API_REGIONS", raising=False)
+    monkeypatch.setenv("ODDS_API_LEAN", "1")
+    cfg = OddsAPIConfig()
+    assert cfg.lean and cfg.regions == "us"
+    batches = prop_market_batches(cfg.lean)
+    assert batches == LEAN_PROP_MARKET_BATCHES and len(batches) == 1
+    markets = batches[0].split(",")
+    assert len(markets) == 8 and "player_blocks" not in markets and "player_threes_alternate" in markets
+
+    monkeypatch.setenv("ODDS_API_LEAN", "0")
+    full = OddsAPIConfig()
+    assert not full.lean and full.regions == "us,us2"
+    assert prop_market_batches(full.lean) == PLAYER_PROP_MARKET_BATCHES
