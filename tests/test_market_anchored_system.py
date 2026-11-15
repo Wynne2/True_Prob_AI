@@ -102,6 +102,13 @@ class TestBlendMath:
             path.write_text(json.dumps({"weights": {"points": bad}}), encoding="utf-8")
             assert load_blend_params(path).source == "fallback"
 
+    def test_shipped_weights_are_zero(self):
+        """The performance page says the board is the market consensus; no stat may get a model weight
+        until one beats the market on graded live boards (data/models/market_blend.json live_override)."""
+        for params in (load_blend_params(), fallback_params()):
+            assert params.default.weight == 0.0
+            assert all(w.weight == 0.0 for w in params.by_prop.values()), params.by_prop
+
 
 # ---------------------------------------------------------------------------
 # Fitter

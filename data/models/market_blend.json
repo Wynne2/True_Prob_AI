@@ -10,7 +10,7 @@
       "clip": 0.25
     },
     "points": {
-      "weight": 0.5,
+      "weight": 0.0,
       "clip": 0.5
     },
     "rebounds": {
@@ -23,7 +23,7 @@
     }
   },
   "default": {
-    "weight": 0.1,
+    "weight": 0.0,
     "clip": 0.25
   },
   "metrics": {
@@ -92,5 +92,10 @@
       "dates_improved": 13,
       "cv_beats_market": true
     }
+  },
+  "live_override": {
+    "set_at": "2026-11-15",
+    "change": "points weight 0.5 -> 0 and default weight 0.1 -> 0; the fitted values stay in metrics",
+    "why": "On graded live boards since 2026-11-04 the production blend scored Brier 0.20976 against the no-vig market's 0.20936 (5,731 lines), and flagged gaps lost money every graded night, so the backtest weight did not hold up live. The default weight for pra/steals/blocks was never fitted. The board now uses the market consensus until a weight beats the market on live boards."
   }
 }

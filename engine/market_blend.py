@@ -10,9 +10,10 @@ it by a fitted, bounded amount in log-odds space:
 allowed to act on) are fitted per prop type on graded backtest rows by
 ``python main.py fit-blend`` (see ``engine/market_blend_fit.py``) and stored in
 ``data/models/market_blend.json``. The backtests showed the raw model is less
-accurate than the no-vig market on its own, while a small, clipped model weight
-improves on the market for points and threes. Both facts are encoded here
-instead of the old hand-set haircuts.
+accurate than the no-vig market on its own. The points weight the backtest chose
+(0.5) did not beat the market on graded live boards, so every weight is 0 for now
+(see ``live_override`` in the file): the board shows the market consensus. A
+refit rewrites the file, so check it against live grading before keeping it.
 """
 
 from __future__ import annotations
@@ -31,14 +32,14 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_PARAMS_PATH = Path(__file__).resolve().parents[1] / "data" / "models" / "market_blend.json"
 
-# Used only when no fitted file exists. Mirrors the leave-one-date-out fit on 19 graded dates.
+# Used only when no fitted file exists: trust the market (no weight has beaten it on live boards).
 _FALLBACK_WEIGHTS: dict[str, tuple[float, float]] = {
-    "points": (0.50, 0.5),
+    "points": (0.0, 0.5),
     "threes": (0.0, 0.5),
     "rebounds": (0.0, 0.5),
     "assists": (0.0, 0.5),
 }
-_FALLBACK_DEFAULT: tuple[float, float] = (0.10, 0.25)
+_FALLBACK_DEFAULT: tuple[float, float] = (0.0, 0.25)
 
 _EPS = 1e-4
 
