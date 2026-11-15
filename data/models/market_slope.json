@@ -1,0 +1,177 @@
+{
+ "fitted_at": "2026-11-15T06:16:53+00:00",
+ "method": "logit(p) = b * logit(no-vig market); b fitted on earlier dates only, scored on the next date",
+ "rows": 11052,
+ "dates": [
+  "2026-01-05",
+  "2026-01-08",
+  "2026-01-12",
+  "2026-01-15",
+  "2026-01-19",
+  "2026-01-22",
+  "2026-01-26",
+  "2026-01-29",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06"
+ ],
+ "walk_forward": {
+  "folds": [
+   {
+    "date": "2026-01-15",
+    "n": 424,
+    "train_rows": 1174,
+    "slope": 1.18,
+    "brier_market": 0.249513,
+    "brier_corrected": 0.250142,
+    "logloss_market": 0.692203,
+    "logloss_corrected": 0.69353
+   },
+   {
+    "date": "2026-01-19",
+    "n": 400,
+    "train_rows": 1598,
+    "slope": 0.98,
+    "brier_market": 0.242853,
+    "brier_corrected": 0.242921,
+    "logloss_market": 0.678494,
+    "logloss_corrected": 0.678645
+   },
+   {
+    "date": "2026-01-22",
+    "n": 302,
+    "train_rows": 1998,
+    "slope": 1.11,
+    "brier_market": 0.248464,
+    "brier_corrected": 0.248692,
+    "logloss_market": 0.689973,
+    "logloss_corrected": 0.690412
+   },
+   {
+    "date": "2026-01-26",
+    "n": 450,
+    "train_rows": 2300,
+    "slope": 1.06,
+    "brier_market": 0.249094,
+    "brier_corrected": 0.249198,
+    "logloss_market": 0.691468,
+    "logloss_corrected": 0.691713
+   },
+   {
+    "date": "2026-01-29",
+    "n": 294,
+    "train_rows": 2750,
+    "slope": 1.0,
+    "brier_market": 0.238976,
+    "brier_corrected": 0.238976,
+    "logloss_market": 0.6704,
+    "logloss_corrected": 0.6704
+   },
+   {
+    "date": "2026-11-04",
+    "n": 2206,
+    "train_rows": 3044,
+    "slope": 1.11,
+    "brier_market": 0.222987,
+    "brier_corrected": 0.222815,
+    "logloss_market": 0.634009,
+    "logloss_corrected": 0.633306
+   },
+   {
+    "date": "2026-11-05",
+    "n": 967,
+    "train_rows": 5250,
+    "slope": 1.14,
+    "brier_market": 0.22024,
+    "brier_corrected": 0.219915,
+    "logloss_market": 0.628124,
+    "logloss_corrected": 0.627203
+   },
+   {
+    "date": "2026-11-06",
+    "n": 4835,
+    "train_rows": 6217,
+    "slope": 1.14,
+    "brier_market": 0.214231,
+    "brier_corrected": 0.213725,
+    "logloss_market": 0.613997,
+    "logloss_corrected": 0.612083
+   }
+  ],
+  "test_rows": 9878,
+  "test_dates": 8,
+  "brier_market": 0.222819,
+  "brier_corrected": 0.222543,
+  "logloss_market": 0.633349,
+  "logloss_corrected": 0.632252,
+  "mean_date_brier_delta": 3e-06,
+  "date_se": 0.000124,
+  "dates_improved": 3
+ },
+ "slope_all_rows": 1.2,
+ "in_use": false,
+ "slope_in_use": 1.0,
+ "decision": "Not used (slope stays 1): the walk-forward improvement over the market is within two date-clustered standard errors, so it is not distinguishable from noise.",
+ "calibration_market": [
+  {
+   "bin": "0%-10%",
+   "n": 54,
+   "predicted": 0.0861,
+   "realized": 0.037
+  },
+  {
+   "bin": "10%-20%",
+   "n": 364,
+   "predicted": 0.1487,
+   "realized": 0.1154
+  },
+  {
+   "bin": "20%-30%",
+   "n": 345,
+   "predicted": 0.2497,
+   "realized": 0.2029
+  },
+  {
+   "bin": "30%-40%",
+   "n": 1058,
+   "predicted": 0.3558,
+   "realized": 0.3497
+  },
+  {
+   "bin": "40%-50%",
+   "n": 3576,
+   "predicted": 0.4628,
+   "realized": 0.4519
+  },
+  {
+   "bin": "50%-60%",
+   "n": 3775,
+   "predicted": 0.5344,
+   "realized": 0.5489
+  },
+  {
+   "bin": "60%-70%",
+   "n": 1078,
+   "predicted": 0.6447,
+   "realized": 0.6494
+  },
+  {
+   "bin": "70%-80%",
+   "n": 375,
+   "predicted": 0.7486,
+   "realized": 0.8027
+  },
+  {
+   "bin": "80%-90%",
+   "n": 370,
+   "predicted": 0.8493,
+   "realized": 0.8811
+  },
+  {
+   "bin": "90%-100%",
+   "n": 57,
+   "predicted": 0.9148,
+   "realized": 0.9649
+  }
+ ]
+}
