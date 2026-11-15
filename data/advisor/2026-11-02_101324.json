@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-11-02T10:13:24",
+  "game_date": "2026-11-02",
+  "inputs": {
+    "options": {
+      "min_odds": -600,
+      "max_odds": -200,
+      "min_edge": 0.0,
+      "top_n": 5,
+      "stake": 100.0,
+      "bankroll": null,
+      "min_confidence": null,
+      "prompt": null,
+      "use_llm": true,
+      "save": true,
+      "output_dir": "C:\\git\\True_Prob_AI\\data\\advisor",
+      "is_playoff": false
+    },
+    "user_prompt": "Run the model to find the best positive-edge props with odds between -200 and -600. Give me the top 5 picks. Reason over them to decide whether I should combine them into a 2-leg or 3-leg parlay, which combination is best and why, and how much I get back if I put $100 on it.",
+    "filter_counts": {
+      "total_props": 3150,
+      "positive_edge": 152,
+      "in_odds_band": 0,
+      "confidence_ok": 0,
+      "deduped": 0,
+      "selected": 0
+    },
+    "odds_source_counts": {
+      "kalshi": 2322,
+      "polymarket": 522
+    },
+    "pregame_games": 15,
+    "payload": {
+      "date": "2026-11-02",
+      "settings": {
+        "odds_band_american": [
+          -600,
+          -200
+        ],
+        "min_edge_exclusive": 0.0,
+        "stake": 100.0,
+        "bankroll": null
+      },
+      "odds_sources": {
+        "kalshi": 2322,
+        "polymarket": 522
+      },
+      "filter_counts": {
+        "total_props": 3150,
+        "positive_edge": 152,
+        "in_odds_band": 0,
+        "confidence_ok": 0,
+        "deduped": 0,
+        "selected": 0
+      },
+      "notes": [
+        "model_true_probability is market-anchored: it starts from the de-vigged consensus market probability (market_probability) and moves toward the statistical model only by model_weight, a weight fitted on graded backtests (0 means the model did not beat the market for that prop type)",
+        "implied_probability is the vig-included price at the listed venue; edge = model_true_probability - implied_probability",
+        "parlay model_true_probability is a Gaussian-copula joint probability using correlations fitted from backtest residuals; it is not a naive product",
+        "kelly.bankroll_fraction is quarter-Kelly capped at 5% of bankroll; suggested_stake is null when no bankroll was given",
+        "Kalshi and Polymarket are separate venues: a parlay mixing venues cannot be placed as one ticket"
+      ],
+      "picks": [],
+      "parlays": []
+    }
+  },
+  "request": {
+    "system_prompt": "You are a disciplined NBA player-prop betting analyst working on top of a quantitative true-probability model.\n\nRules you must follow:\n1. Use ONLY the JSON data provided in the user message. Do not invent players, lines, odds, injuries, news or statistics.\n2. Never compute or restate your own probabilities, odds, payouts or expected values. Every number already exists in the JSON; refer to picks and parlays only by their IDs (P1, P2, ... and PL1, PL2, ...).\n3. Every ID you return must exist in the JSON. Parlay legs must exactly match the legs listed for that parlay ID.\n4. For each top pick explain, in one or two sentences, why it ranks where it does: edge versus the venue price, how far the statistical model moved the market-anchored probability (model_weight 0 means the price is pure market consensus and any edge comes from venue price differences), confidence tier, projected value vs. the line, calibration warnings, minutes risk and injury news in model_notes.\n5. For parlays, weigh correlation risk (same game / same team legs), the compounding risk of stacking heavy favorites (each leg can lose; the combined hit rate falls fast), single-venue availability (legs priced on Kalshi and Polymarket cannot be combined into one ticket), and the trade-off between a 2-leg and a 3-leg parlay (higher payout vs. lower hit rate and EV).\n6. Recommend at most one 2-leg parlay and at most one 3-leg parlay. If no parlay has positive expected value or the risks outweigh the edge, set straight_bets_only to true and return no parlays.\n7. Be concise and specific. No hype, no guarantees.\n8. Finish with a one-line responsible-gambling note."
+  },
+  "ai_status": "skipped_no_candidates",
+  "ai_error": "No props passed the filters; the LLM was not called.",
+  "raw_responses": [],
+  "validated_output": null,
+  "deterministic_recommendation": {
+    "top_pick_ids": [],
+    "best_two_leg": null,
+    "best_three_leg": null,
+    "straight_bets_only": true,
+    "note": "No props qualified, so there is nothing to recommend."
+  },
+  "warnings": []
+}

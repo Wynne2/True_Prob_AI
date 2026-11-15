@@ -1,0 +1,453 @@
+{
+  "generated_at": "2026-11-02T10:14:20",
+  "game_date": "2026-11-02",
+  "inputs": {
+    "options": {
+      "min_odds": -600,
+      "max_odds": 400,
+      "min_edge": 0.0,
+      "top_n": 5,
+      "stake": 100.0,
+      "bankroll": null,
+      "min_confidence": null,
+      "prompt": null,
+      "use_llm": true,
+      "save": true,
+      "output_dir": "C:\\git\\True_Prob_AI\\data\\advisor",
+      "is_playoff": false
+    },
+    "user_prompt": "Run the model to find the best positive-edge props with odds between 400 and -600. Give me the top 5 picks. Reason over them to decide whether I should combine them into a 2-leg or 3-leg parlay, which combination is best and why, and how much I get back if I put $100 on it.",
+    "filter_counts": {
+      "total_props": 3150,
+      "positive_edge": 149,
+      "in_odds_band": 77,
+      "confidence_ok": 77,
+      "deduped": 69,
+      "selected": 5
+    },
+    "odds_source_counts": {
+      "kalshi": 2321,
+      "polymarket": 522
+    },
+    "pregame_games": 15,
+    "payload": {
+      "date": "2026-11-02",
+      "settings": {
+        "odds_band_american": [
+          -600,
+          400
+        ],
+        "min_edge_exclusive": 0.0,
+        "stake": 100.0,
+        "bankroll": null
+      },
+      "odds_sources": {
+        "kalshi": 2321,
+        "polymarket": 522
+      },
+      "filter_counts": {
+        "total_props": 3150,
+        "positive_edge": 149,
+        "in_odds_band": 77,
+        "confidence_ok": 77,
+        "deduped": 69,
+        "selected": 5
+      },
+      "notes": [
+        "model_true_probability is market-anchored: it starts from the de-vigged consensus market probability (market_probability) and moves toward the statistical model only by model_weight, a weight fitted on graded backtests (0 means the model did not beat the market for that prop type)",
+        "implied_probability is the vig-included price at the listed venue; edge = model_true_probability - implied_probability",
+        "parlay model_true_probability is a Gaussian-copula joint probability using correlations fitted from backtest residuals; it is not a naive product",
+        "kelly.bankroll_fraction is quarter-Kelly capped at 5% of bankroll; suggested_stake is null when no bankroll was given",
+        "Kalshi and Polymarket are separate venues: a parlay mixing venues cannot be placed as one ticket"
+      ],
+      "picks": [
+        {
+          "id": "P1",
+          "player": "Kyrie Irving",
+          "team": "DAL",
+          "opponent": "SAC",
+          "game_id": "21718018",
+          "market": "assists",
+          "line": 5.5,
+          "side": "under",
+          "odds_american": -137,
+          "odds_decimal": 1.7299,
+          "venue": "Kalshi",
+          "projected_value": 4.27,
+          "model_true_probability": 0.6352,
+          "implied_probability": 0.5781,
+          "market_probability": 0.6352,
+          "model_weight": 0.0,
+          "probability_method": "market_blend",
+          "edge": 0.0572,
+          "fair_odds": -174,
+          "confidence": "low",
+          "expected_minutes": 29.3,
+          "calibration_warnings": [],
+          "model_notes": "Projected assists: 4.3 (model mean). Minutes projected 29.3 (season 28.6). Potential assists per minute 0.294. Expected potential assists tonight 8.61 (pace \u00d71.000). Historical conversion 0.554 (75% of season assists/potential, 25% prior 0.50). Matchup-adjusted conversion 0.581. Opponent assists allowed by position factor 1.000 (60% of that gap applied to conversion). Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Fantasy points allowed is not applied. It repeats assists along with points and rebounds. Potential assists and conversion were both used. Skill baseline ~4.7 at season-minute load (env \u00d71.05; ~29 min tonight). Rates: season 0.168/min, recent ~0.159/min. Re\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 172.99,
+            "profit": 72.99,
+            "expected_value": 9.89
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0339,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P2",
+          "player": "Kyrie Irving",
+          "team": "DAL",
+          "opponent": "SAC",
+          "game_id": "21718018",
+          "market": "assists",
+          "line": 5.5,
+          "side": "over",
+          "odds_american": 222,
+          "odds_decimal": 3.22,
+          "venue": "Polymarket",
+          "projected_value": 4.27,
+          "model_true_probability": 0.3648,
+          "implied_probability": 0.3106,
+          "market_probability": 0.3648,
+          "model_weight": 0.0,
+          "probability_method": "market_blend",
+          "edge": 0.0542,
+          "fair_odds": 174,
+          "confidence": "low",
+          "expected_minutes": 29.3,
+          "calibration_warnings": [],
+          "model_notes": "Projected assists: 4.3 (model mean). Minutes projected 29.3 (season 28.6). Potential assists per minute 0.294. Expected potential assists tonight 8.61 (pace \u00d71.000). Historical conversion 0.554 (75% of season assists/potential, 25% prior 0.50). Matchup-adjusted conversion 0.581. Opponent assists allowed by position factor 1.000 (60% of that gap applied to conversion). Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Fantasy points allowed is not applied. It repeats assists along with points and rebounds. Potential assists and conversion were both used. Skill baseline ~4.7 at season-minute load (env \u00d71.05; ~29 min tonight). Rates: season 0.168/min, recent ~0.159/min. Re\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 322.0,
+            "profit": 222.0,
+            "expected_value": 17.46
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0197,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P3",
+          "player": "Kyrie Irving",
+          "team": "DAL",
+          "opponent": "SAC",
+          "game_id": "21718018",
+          "market": "rebounds",
+          "line": 3.5,
+          "side": "under",
+          "odds_american": -126,
+          "odds_decimal": 1.7937,
+          "venue": "Kalshi",
+          "projected_value": 2.99,
+          "model_true_probability": 0.6104,
+          "implied_probability": 0.5575,
+          "market_probability": 0.6104,
+          "model_weight": 0.0,
+          "probability_method": "market_blend",
+          "edge": 0.0529,
+          "fair_odds": -157,
+          "confidence": "low",
+          "expected_minutes": 29.3,
+          "calibration_warnings": [],
+          "model_notes": "Projected rebounds: 3.0 (model mean). Minutes projected 29.3 (season 28.6). Rebound chances per minute 0.196. Expected chances tonight 5.74 (pace \u00d71.000). Secure rate 0.575 (75% of season rebounds/chances, 25% prior 0.48). Matchup-adjusted secure rate 0.575. Opponent rebounds allowed by position factor 1.000 (55% of that gap applied to the secure rate). Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Role stability \u00d71.00. Teammate competition \u00d71.00. Fantasy points allowed is not applied. Rebound chances and secure rate were both used. Skill baseline ~3.4 at season-minute load (env \u00d71.00; ~29 min tonight). Rates: season 0.119/min, recent ~0.116/min. Reb/min blend 0.118\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 179.37,
+            "profit": 79.37,
+            "expected_value": 9.48
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0299,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P4",
+          "player": "P.J. Washington",
+          "team": "DAL",
+          "opponent": "SAC",
+          "game_id": "21718018",
+          "market": "points",
+          "line": 14.5,
+          "side": "over",
+          "odds_american": 149,
+          "odds_decimal": 2.49,
+          "venue": "Polymarket",
+          "projected_value": 17.66,
+          "model_true_probability": 0.4472,
+          "implied_probability": 0.4016,
+          "market_probability": 0.4318,
+          "model_weight": 0.125,
+          "probability_method": "market_blend",
+          "edge": 0.0456,
+          "fair_odds": 124,
+          "confidence": "low",
+          "expected_minutes": 38.6,
+          "calibration_warnings": [
+            "fg_projection_vs_season_outlier",
+            "fg_model_market_gap_mid_odds"
+          ],
+          "model_notes": "Projected points: 17.7 (model mean). Minutes projected 38.6 (season 33.5). Expected FGA 19.1 from 11.8 season FGA \u00d7 minutes 38.6/33.5 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.400 \u00d7 positional volume \u00d71.000. Points per FGA 1.17 (80% season points/FGA, 20% league 1.15), then defensive-rating efficiency \u00d71.000. Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Positional points allowed factor 1.000 (applied to volume at 55%: \u00d71.000). Defensive rating factor 1.000 (applied to points per shot at 45%: \u00d71.000). Fantasy points allowed is not applied. It repeats points, rebounds, and assists. Shot volume, usage, pace, and defensive rating were all used. Skill baseline ~13.9 at season-minute loa\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 249.0,
+            "profit": 149.0,
+            "expected_value": 11.35
+          },
+          "kelly": {
+            "bankroll_fraction": 0.019,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P5",
+          "player": "Kyrie Irving",
+          "team": "DAL",
+          "opponent": "SAC",
+          "game_id": "21718018",
+          "market": "rebounds",
+          "line": 3.5,
+          "side": "over",
+          "odds_american": 185,
+          "odds_decimal": 2.85,
+          "venue": "Polymarket",
+          "projected_value": 2.99,
+          "model_true_probability": 0.3896,
+          "implied_probability": 0.3509,
+          "market_probability": 0.3896,
+          "model_weight": 0.0,
+          "probability_method": "market_blend",
+          "edge": 0.0387,
+          "fair_odds": 157,
+          "confidence": "low",
+          "expected_minutes": 29.3,
+          "calibration_warnings": [],
+          "model_notes": "Projected rebounds: 3.0 (model mean). Minutes projected 29.3 (season 28.6). Rebound chances per minute 0.196. Expected chances tonight 5.74 (pace \u00d71.000). Secure rate 0.575 (75% of season rebounds/chances, 25% prior 0.48). Matchup-adjusted secure rate 0.575. Opponent rebounds allowed by position factor 1.000 (55% of that gap applied to the secure rate). Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Role stability \u00d71.00. Teammate competition \u00d71.00. Fantasy points allowed is not applied. Rebound chances and secure rate were both used. Skill baseline ~3.4 at season-minute load (env \u00d71.00; ~29 min tonight). Rates: season 0.119/min, recent ~0.116/min. Reb/min blend 0.118\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 285.0,
+            "profit": 185.0,
+            "expected_value": 11.04
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0149,
+            "suggested_stake": null
+          }
+        }
+      ],
+      "parlays": [
+        {
+          "id": "PL1",
+          "legs": [
+            "P2",
+            "P4"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 702,
+          "combined_decimal_odds": 8.0178,
+          "implied_probability": 0.1247,
+          "model_true_probability": 0.168,
+          "edge": 0.0432,
+          "stake": 100.0,
+          "total_return": 801.78,
+          "profit": 701.78,
+          "expected_value": 34.68,
+          "correlation_risk_score": 0.4,
+          "same_game": true,
+          "venues": [
+            "Polymarket",
+            "Polymarket"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0124,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL2",
+          "legs": [
+            "P4",
+            "P5"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 610,
+          "combined_decimal_odds": 7.0965,
+          "implied_probability": 0.1409,
+          "model_true_probability": 0.1742,
+          "edge": 0.0333,
+          "stake": 100.0,
+          "total_return": 709.65,
+          "profit": 609.65,
+          "expected_value": 23.64,
+          "correlation_risk_score": 0.4,
+          "same_game": true,
+          "venues": [
+            "Polymarket",
+            "Polymarket"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0097,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL3",
+          "legs": [
+            "P3",
+            "P4"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 347,
+          "combined_decimal_odds": 4.4662,
+          "implied_probability": 0.2239,
+          "model_true_probability": 0.273,
+          "edge": 0.049,
+          "stake": 100.0,
+          "total_return": 446.62,
+          "profit": 346.62,
+          "expected_value": 21.91,
+          "correlation_risk_score": 0.4,
+          "same_game": true,
+          "venues": [
+            "Kalshi",
+            "Polymarket"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0158,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL4",
+          "legs": [
+            "P1",
+            "P4"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 331,
+          "combined_decimal_odds": 4.3075,
+          "implied_probability": 0.2322,
+          "model_true_probability": 0.2792,
+          "edge": 0.0471,
+          "stake": 100.0,
+          "total_return": 430.75,
+          "profit": 330.75,
+          "expected_value": 20.27,
+          "correlation_risk_score": 0.4,
+          "same_game": true,
+          "venues": [
+            "Kalshi",
+            "Polymarket"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0153,
+            "suggested_stake": null
+          }
+        }
+      ]
+    }
+  },
+  "request": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "max_output_tokens": 8000,
+    "timeout_s": 120,
+    "transport": "sdk",
+    "attempts": 1,
+    "latency_s": 24.59,
+    "usage": {
+      "input_tokens": 4462,
+      "output_tokens": 1109,
+      "total_tokens": 5571,
+      "reasoning_tokens": 238,
+      "cached_tokens": 0
+    },
+    "response_ids": [
+      "resp_0fee6cc8f277e3c7016ae8a8b2fba887d28a5335bd610b8aa6"
+    ],
+    "errors": [],
+    "system_prompt": "You are a disciplined NBA player-prop betting analyst working on top of a quantitative true-probability model.\n\nRules you must follow:\n1. Use ONLY the JSON data provided in the user message. Do not invent players, lines, odds, injuries, news or statistics.\n2. Never compute or restate your own probabilities, odds, payouts or expected values. Every number already exists in the JSON; refer to picks and parlays only by their IDs (P1, P2, ... and PL1, PL2, ...).\n3. Every ID you return must exist in the JSON. Parlay legs must exactly match the legs listed for that parlay ID.\n4. For each top pick explain, in one or two sentences, why it ranks where it does: edge versus the venue price, how far the statistical model moved the market-anchored probability (model_weight 0 means the price is pure market consensus and any edge comes from venue price differences), confidence tier, projected value vs. the line, calibration warnings, minutes risk and injury news in model_notes.\n5. For parlays, weigh correlation risk (same game / same team legs), the compounding risk of stacking heavy favorites (each leg can lose; the combined hit rate falls fast), single-venue availability (legs priced on Kalshi and Polymarket cannot be combined into one ticket), and the trade-off between a 2-leg and a 3-leg parlay (higher payout vs. lower hit rate and EV).\n6. Recommend at most one 2-leg parlay and at most one 3-leg parlay. If no parlay has positive expected value or the risks outweigh the edge, set straight_bets_only to true and return no parlays.\n7. Be concise and specific. No hype, no guarantees.\n8. Finish with a one-line responsible-gambling note."
+  },
+  "ai_status": "ok",
+  "ai_error": "",
+  "raw_responses": [
+    {
+      "attempt": 1,
+      "text": "{\n  \"top_picks\": [\n    {\n      \"id\": \"P1\",\n      \"rank\": 1,\n      \"rationale\": \"Largest edge against the listed venue price, with the projection below the line. The statistical model makes no adjustment to market consensus, so the advantage comes entirely from venue pricing rather than independent predictive evidence.\",\n      \"risk_notes\": \"Low confidence; no calibration warnings. Minutes are projected slightly above the season baseline, and additional playing time could hurt this pick.\"\n    },\n    {\n      \"id\": \"P2\",\n      \"rank\": 2,\n      \"rationale\": \"Second-largest venue-price edge and the highest supplied straight-bet expected value, although the projection is below the line. The statistical model makes no adjustment to consensus, making this a price-based selection rather than a projection-backed one.\",\n      \"risk_notes\": \"Low confidence; no calibration warnings. Sensitive to minutes and conversion assumptions, and directly opposes P1.\"\n    },\n    {\n      \"id\": \"P3\",\n      \"rank\": 3,\n      \"rationale\": \"The next-largest venue-price edge is supported directionally by a projection below the line. However, the statistical model leaves consensus unchanged, so its estimated advantage remains entirely price-driven.\",\n      \"risk_notes\": \"Low confidence; no calibration warnings. Minutes and rebound-opportunity assumptions remain important, with extra playing time potentially unfavorable.\"\n    },\n    {\n      \"id\": \"P4\",\n      \"rank\": 4,\n      \"rationale\": \"A smaller venue-price edge and explicit calibration warnings keep this below the preceding picks despite a projection above the line. Unlike the other selections, the statistical model makes a modest upward adjustment from market consensus.\",\n      \"risk_notes\": \"Low confidence, with shooting-projection outlier and model-versus-market warnings. The projection relies on elevated minutes, usage and shot volume relative to season baselines.\"\n    },\n    {\n      \"id\": \"P5\",\n      \"rank\": 5,\n      \"rationale\": \"Smallest venue-price edge among the supplied selections, while the projection falls below the line. The statistical model does not move consensus, so favorable pricing\u2014not projected performance\u2014is the basis for inclusion.\",\n      \"risk_notes\": \"Low confidence; no calibration warnings. Depends on minutes and rebound opportunities, and directly opposes P3.\"\n    }\n  ],\n  \"parlay_recommendations\": [\n    {\n      \"id\": \"PL1\",\n      \"legs\": [\n        \"P2\",\n        \"P4\"\n      ],\n      \"rationale\": \"Best supplied executable combination: it has the highest listed expected value and both legs are on Polymarket. Relative to PL2, it offers greater modeled value and return but a lower modeled hit rate; the return and profit shown are conditional on winning with the supplied $100 stake.\",\n      \"key_risks\": \"Same-game, same-team exposure creates dependence, which the supplied joint model accounts for but cannot eliminate. Both legs are low-confidence, and P4 carries calibration warnings; this is not a heavy-favorite stack, but either leg can still lose. Single-venue pricing does not itself confirm that the venue offers this combined ticket.\",\n      \"total_return\": 801.78,\n      \"profit\": 701.78\n    }\n  ],\n  \"straight_bets_only\": false,\n  \"summary\": \"Using the supplied model output, the ranking prioritizes venue-price edge while flagging projection conflicts and calibration risk. Straight bets are the more conservative approach; PL1 is the preferred supplied parlay if an actual combined ticket is available. PL3 and PL4 mix venues and cannot be placed as single tickets. No three-leg candidate was supplied, so none can be evaluated or quoted; adding a leg lowers the hit rate, and any payout or expected-value improvement is unverified here. P1/P2 and P3/P5 are opposing outcomes, not independent opportunities. The supplied notes are truncated and contain no explicit injury update, so injury status is unverified.\",\n  \"responsible_gambling_note\": \"Only stake money you can afford to lose; without a bankroll, the supplied $100 is an illustration, not a personalized stake recommendation.\"\n}",
+      "status": "completed"
+    }
+  ],
+  "validated_output": {
+    "top_picks": [
+      {
+        "id": "P1",
+        "rank": 1,
+        "rationale": "Largest edge against the listed venue price, with the projection below the line. The statistical model makes no adjustment to market consensus, so the advantage comes entirely from venue pricing rather than independent predictive evidence.",
+        "risk_notes": "Low confidence; no calibration warnings. Minutes are projected slightly above the season baseline, and additional playing time could hurt this pick."
+      },
+      {
+        "id": "P2",
+        "rank": 2,
+        "rationale": "Second-largest venue-price edge and the highest supplied straight-bet expected value, although the projection is below the line. The statistical model makes no adjustment to consensus, making this a price-based selection rather than a projection-backed one.",
+        "risk_notes": "Low confidence; no calibration warnings. Sensitive to minutes and conversion assumptions, and directly opposes P1."
+      },
+      {
+        "id": "P3",
+        "rank": 3,
+        "rationale": "The next-largest venue-price edge is supported directionally by a projection below the line. However, the statistical model leaves consensus unchanged, so its estimated advantage remains entirely price-driven.",
+        "risk_notes": "Low confidence; no calibration warnings. Minutes and rebound-opportunity assumptions remain important, with extra playing time potentially unfavorable."
+      },
+      {
+        "id": "P4",
+        "rank": 4,
+        "rationale": "A smaller venue-price edge and explicit calibration warnings keep this below the preceding picks despite a projection above the line. Unlike the other selections, the statistical model makes a modest upward adjustment from market consensus.",
+        "risk_notes": "Low confidence, with shooting-projection outlier and model-versus-market warnings. The projection relies on elevated minutes, usage and shot volume relative to season baselines."
+      },
+      {
+        "id": "P5",
+        "rank": 5,
+        "rationale": "Smallest venue-price edge among the supplied selections, while the projection falls below the line. The statistical model does not move consensus, so favorable pricing\u2014not projected performance\u2014is the basis for inclusion.",
+        "risk_notes": "Low confidence; no calibration warnings. Depends on minutes and rebound opportunities, and directly opposes P3."
+      }
+    ],
+    "parlay_recommendations": [
+      {
+        "id": "PL1",
+        "legs": [
+          "P2",
+          "P4"
+        ],
+        "rationale": "Best supplied executable combination: it has the highest listed expected value and both legs are on Polymarket. Relative to PL2, it offers greater modeled value and return but a lower modeled hit rate; the return and profit shown are conditional on winning with the supplied $100 stake.",
+        "key_risks": "Same-game, same-team exposure creates dependence, which the supplied joint model accounts for but cannot eliminate. Both legs are low-confidence, and P4 carries calibration warnings; this is not a heavy-favorite stack, but either leg can still lose. Single-venue pricing does not itself confirm that the venue offers this combined ticket.",
+        "total_return": 801.78,
+        "profit": 701.78
+      }
+    ],
+    "straight_bets_only": false,
+    "summary": "Using the supplied model output, the ranking prioritizes venue-price edge while flagging projection conflicts and calibration risk. Straight bets are the more conservative approach; PL1 is the preferred supplied parlay if an actual combined ticket is available. PL3 and PL4 mix venues and cannot be placed as single tickets. No three-leg candidate was supplied, so none can be evaluated or quoted; adding a leg lowers the hit rate, and any payout or expected-value improvement is unverified here. P1/P2 and P3/P5 are opposing outcomes, not independent opportunities. The supplied notes are truncated and contain no explicit injury update, so injury status is unverified.",
+    "responsible_gambling_note": "Only stake money you can afford to lose; without a bankroll, the supplied $100 is an illustration, not a personalized stake recommendation."
+  },
+  "deterministic_recommendation": {
+    "top_pick_ids": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ],
+    "best_two_leg": "PL1",
+    "best_three_leg": null,
+    "straight_bets_only": false,
+    "note": "Best parlays chosen by model expected value (EV) at the requested stake."
+  },
+  "warnings": []
+}

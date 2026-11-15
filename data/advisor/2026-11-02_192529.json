@@ -1,0 +1,930 @@
+{
+  "generated_at": "2026-11-02T19:25:29",
+  "game_date": "2026-11-02",
+  "inputs": {
+    "options": {
+      "min_odds": -600,
+      "max_odds": 400,
+      "min_edge": 0.0,
+      "top_n": 5,
+      "stake": 100.0,
+      "bankroll": null,
+      "min_confidence": null,
+      "prompt": "Run the model to find the best positive-edge props with odds between 400 and -600. Give me the top 5 picks. Reason over them to decide whether I should combine them into a 2-leg or 3-leg parlay, which combination is best and why, and how much I get back if I put $100 on it",
+      "use_llm": true,
+      "save": true,
+      "output_dir": "C:\\git\\True_Prob_AI\\data\\advisor",
+      "is_playoff": false
+    },
+    "user_prompt": "Run the model to find the best positive-edge props with odds between 400 and -600. Give me the top 5 picks. Reason over them to decide whether I should combine them into a 2-leg or 3-leg parlay, which combination is best and why, and how much I get back if I put $100 on it",
+    "filter_counts": {
+      "total_props": 3418,
+      "positive_edge": 142,
+      "in_odds_band": 78,
+      "confidence_ok": 78,
+      "deduped": 73,
+      "selected": 5
+    },
+    "odds_source_counts": {
+      "kalshi": 2424,
+      "polymarket": 465
+    },
+    "pregame_games": null,
+    "payload": {
+      "date": "2026-11-02",
+      "settings": {
+        "odds_band_american": [
+          -600,
+          400
+        ],
+        "min_edge_exclusive": 0.0,
+        "stake": 100.0,
+        "bankroll": null
+      },
+      "odds_sources": {
+        "kalshi": 2424,
+        "polymarket": 465
+      },
+      "filter_counts": {
+        "total_props": 3418,
+        "positive_edge": 142,
+        "in_odds_band": 78,
+        "confidence_ok": 78,
+        "deduped": 73,
+        "selected": 5
+      },
+      "notes": [
+        "model_true_probability is market-anchored: it starts from the de-vigged consensus market probability (market_probability) and moves toward the statistical model only by model_weight, a weight fitted on graded backtests (0 means the model did not beat the market for that prop type)",
+        "implied_probability is the vig-included price at the listed venue; edge = model_true_probability - implied_probability",
+        "parlay model_true_probability is a Gaussian-copula joint probability using correlations fitted from backtest residuals; it is not a naive product",
+        "kelly.bankroll_fraction is quarter-Kelly capped at 5% of bankroll; suggested_stake is null when no bankroll was given",
+        "Kalshi and Polymarket are separate venues: a parlay mixing venues cannot be placed as one ticket"
+      ],
+      "picks": [
+        {
+          "id": "P1",
+          "player": "Devin Booker",
+          "team": "PHX",
+          "opponent": "GSW",
+          "game_id": "21718024",
+          "market": "points",
+          "line": 29.5,
+          "side": "over",
+          "odds_american": 280,
+          "odds_decimal": 3.8,
+          "venue": "Kalshi",
+          "projected_value": 25.7,
+          "model_true_probability": 0.3166,
+          "implied_probability": 0.2632,
+          "market_probability": 0.2651,
+          "model_weight": 0.5,
+          "probability_method": "market_blend",
+          "edge": 0.0534,
+          "fair_odds": 216,
+          "confidence": "low",
+          "expected_minutes": 38.3,
+          "calibration_warnings": [],
+          "model_notes": "Projected points: 25.7 (model mean). Minutes projected 38.3 (season 34.7). Expected FGA 19.8 from 16.0 season FGA \u00d7 minutes 38.3/34.7 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.120 \u00d7 positional volume \u00d71.000. Points per FGA 1.34 (80% season points/FGA, 20% league 1.15), then defensive-rating efficiency \u00d71.000. Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Positional points allowed factor 1.000 (applied to volume at 55%: \u00d71.000). Defensive rating factor 1.000 (applied to points per shot at 45%: \u00d71.000). Fantasy points allowed is not applied. It repeats points, rebounds, and assists. Shot volume, usage, pace, and defensive rating were all used. Skill baseline ~22.3 at season-minute loa\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 380.0,
+            "profit": 280.0,
+            "expected_value": 20.3
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0181,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P2",
+          "player": "Jalen Brunson",
+          "team": "NYK",
+          "opponent": "BKN",
+          "game_id": "21718015",
+          "market": "points",
+          "line": 24.5,
+          "side": "over",
+          "odds_american": 126,
+          "odds_decimal": 2.26,
+          "venue": "Polymarket",
+          "projected_value": 25.91,
+          "model_true_probability": 0.4931,
+          "implied_probability": 0.4425,
+          "market_probability": 0.4332,
+          "model_weight": 0.5,
+          "probability_method": "market_blend",
+          "edge": 0.0506,
+          "fair_odds": 103,
+          "confidence": "medium",
+          "expected_minutes": 35.2,
+          "calibration_warnings": [],
+          "model_notes": "Projected points: 25.9 (model mean). Minutes projected 35.2 (season 35.2). Expected FGA 21.5 from 21.5 season FGA \u00d7 minutes 35.2/35.2 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.000 \u00d7 positional volume \u00d71.000. Points per FGA 1.18 (80% season points/FGA, 20% league 1.15), then defensive-rating efficiency \u00d71.000. Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Positional points allowed factor 1.000 (applied to volume at 55%: \u00d71.000). Defensive rating factor 1.000 (applied to points per shot at 45%: \u00d71.000). Fantasy points allowed is not applied. It repeats points, rebounds, and assists. Shot volume, usage, pace, and defensive rating were all used. Skill baseline ~25.5 at season-minute loa\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 226.0,
+            "profit": 126.0,
+            "expected_value": 11.44
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0227,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P3",
+          "player": "Brandon Williams",
+          "team": "GSW",
+          "opponent": "PHX",
+          "game_id": "21718024",
+          "market": "points",
+          "line": 14.5,
+          "side": "over",
+          "odds_american": 252,
+          "odds_decimal": 3.52,
+          "venue": "Kalshi",
+          "projected_value": 13.78,
+          "model_true_probability": 0.3261,
+          "implied_probability": 0.2841,
+          "market_probability": 0.2737,
+          "model_weight": 0.5,
+          "probability_method": "market_blend",
+          "edge": 0.042,
+          "fair_odds": 207,
+          "confidence": "medium",
+          "expected_minutes": 20.1,
+          "calibration_warnings": [],
+          "model_notes": "Projected points: 13.8 (model mean). Minutes projected 20.1 (season 17.4). Expected FGA 13.1 from 9.0 season FGA \u00d7 minutes 20.1/17.4 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.260 \u00d7 positional volume \u00d71.000. Points per FGA 1.26 (80% season points/FGA, 20% league 1.15), then defensive-rating efficiency \u00d71.000. Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Positional points allowed factor 1.000 (applied to volume at 55%: \u00d71.000). Defensive rating factor 1.000 (applied to points per shot at 45%: \u00d71.000). Fantasy points allowed is not applied. It repeats points, rebounds, and assists. Shot volume, usage, pace, and defensive rating were all used. Skill baseline ~11.5 at season-minute load\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 352.0,
+            "profit": 252.0,
+            "expected_value": 14.8
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0147,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P4",
+          "player": "Tristan Da Silva",
+          "team": "ORL",
+          "opponent": "WAS",
+          "game_id": "21718016",
+          "market": "points",
+          "line": 14.5,
+          "side": "over",
+          "odds_american": 134,
+          "odds_decimal": 2.34,
+          "venue": "Kalshi",
+          "projected_value": 15.45,
+          "model_true_probability": 0.4671,
+          "implied_probability": 0.4274,
+          "market_probability": 0.4057,
+          "model_weight": 0.5,
+          "probability_method": "market_blend",
+          "edge": 0.0398,
+          "fair_odds": 114,
+          "confidence": "medium",
+          "expected_minutes": 26.0,
+          "calibration_warnings": [],
+          "model_notes": "Projected points: 15.5 (model mean). Minutes projected 26.0 (season 27.8). Expected FGA 13.1 from 10.0 season FGA \u00d7 minutes 26.0/27.8 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.400 \u00d7 positional volume \u00d71.000. Points per FGA 1.35 (80% season points/FGA, 20% league 1.15), then defensive-rating efficiency \u00d71.000. Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Positional points allowed factor 1.000 (applied to volume at 55%: \u00d71.000). Defensive rating factor 1.000 (applied to points per shot at 45%: \u00d71.000). Fantasy points allowed is not applied. It repeats points, rebounds, and assists. Shot volume, usage, pace, and defensive rating were all used. Skill baseline ~14.0 at season-minute loa\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 234.0,
+            "profit": 134.0,
+            "expected_value": 9.31
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0174,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "P5",
+          "player": "Naji Marshall",
+          "team": "DAL",
+          "opponent": "SAC",
+          "game_id": "21718018",
+          "market": "points",
+          "line": 19.5,
+          "side": "over",
+          "odds_american": 331,
+          "odds_decimal": 4.31,
+          "venue": "Kalshi",
+          "projected_value": 15.17,
+          "model_true_probability": 0.271,
+          "implied_probability": 0.232,
+          "market_probability": 0.2245,
+          "model_weight": 0.5,
+          "probability_method": "market_blend",
+          "edge": 0.0389,
+          "fair_odds": 269,
+          "confidence": "low",
+          "expected_minutes": 26.0,
+          "calibration_warnings": [],
+          "model_notes": "Projected points: 15.2 (model mean). Minutes projected 26.0 (season 27.7). Expected FGA 16.2 from 12.3 season FGA \u00d7 minutes 26.0/27.7 \u00d7 pace \u00d71.000 \u00d7 usage \u00d71.400 \u00d7 positional volume \u00d71.000. Points per FGA 1.12 (80% season points/FGA, 20% league 1.15), then defensive-rating efficiency \u00d71.000. Opponent pace: 100.3 (BALLDONTLIE team pace, near the league average). Positional points allowed factor 1.000 (applied to volume at 55%: \u00d71.000). Defensive rating factor 1.000 (applied to points per shot at 45%: \u00d71.000). Fantasy points allowed is not applied. It repeats points, rebounds, and assists. Shot volume, usage, pace, and defensive rating were all used. Skill baseline ~13.7 at season-minute loa\u2026",
+          "straight_bet": {
+            "stake": 100.0,
+            "total_return": 431.0,
+            "profit": 331.0,
+            "expected_value": 16.78
+          },
+          "kelly": {
+            "bankroll_fraction": 0.0127,
+            "suggested_stake": null
+          }
+        }
+      ],
+      "parlays": [
+        {
+          "id": "PL1",
+          "legs": [
+            "P1",
+            "P3",
+            "P5"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 5665,
+          "combined_decimal_odds": 57.6506,
+          "implied_probability": 0.0173,
+          "model_true_probability": 0.028,
+          "edge": 0.0106,
+          "stake": 100.0,
+          "total_return": 5765.06,
+          "profit": 5665.06,
+          "expected_value": 61.28,
+          "correlation_risk_score": 0.083,
+          "same_game": true,
+          "venues": [
+            "Kalshi",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0027,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL2",
+          "legs": [
+            "P1",
+            "P2",
+            "P5"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 3601,
+          "combined_decimal_odds": 37.0143,
+          "implied_probability": 0.027,
+          "model_true_probability": 0.0423,
+          "edge": 0.0153,
+          "stake": 100.0,
+          "total_return": 3701.43,
+          "profit": 3601.43,
+          "expected_value": 56.56,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Polymarket",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0039,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL3",
+          "legs": [
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 2923,
+          "combined_decimal_odds": 30.2298,
+          "implied_probability": 0.0331,
+          "model_true_probability": 0.0509,
+          "edge": 0.0178,
+          "stake": 100.0,
+          "total_return": 3022.98,
+          "profit": 2922.98,
+          "expected_value": 53.9,
+          "correlation_risk_score": 0.083,
+          "same_game": true,
+          "venues": [
+            "Kalshi",
+            "Polymarket",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0046,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL4",
+          "legs": [
+            "P1",
+            "P4",
+            "P5"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 3732,
+          "combined_decimal_odds": 38.3245,
+          "implied_probability": 0.0261,
+          "model_true_probability": 0.0401,
+          "edge": 0.014,
+          "stake": 100.0,
+          "total_return": 3832.45,
+          "profit": 3732.45,
+          "expected_value": 53.56,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0036,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL5",
+          "legs": [
+            "P1",
+            "P3",
+            "P4"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 3030,
+          "combined_decimal_odds": 31.2998,
+          "implied_probability": 0.0319,
+          "model_true_probability": 0.0482,
+          "edge": 0.0163,
+          "stake": 100.0,
+          "total_return": 3129.98,
+          "profit": 3029.98,
+          "expected_value": 50.96,
+          "correlation_risk_score": 0.083,
+          "same_game": true,
+          "venues": [
+            "Kalshi",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0042,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL6",
+          "legs": [
+            "P2",
+            "P3",
+            "P5"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 3329,
+          "combined_decimal_odds": 34.2869,
+          "implied_probability": 0.0292,
+          "model_true_probability": 0.0436,
+          "edge": 0.0144,
+          "stake": 100.0,
+          "total_return": 3428.69,
+          "profit": 3328.69,
+          "expected_value": 49.4,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Polymarket",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0037,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL7",
+          "legs": [
+            "P3",
+            "P4",
+            "P5"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 3450,
+          "combined_decimal_odds": 35.5006,
+          "implied_probability": 0.0282,
+          "model_true_probability": 0.0413,
+          "edge": 0.0131,
+          "stake": 100.0,
+          "total_return": 3550.06,
+          "profit": 3450.06,
+          "expected_value": 46.55,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0034,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL8",
+          "legs": [
+            "P1",
+            "P2",
+            "P4"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 1910,
+          "combined_decimal_odds": 20.0959,
+          "implied_probability": 0.0498,
+          "model_true_probability": 0.0729,
+          "edge": 0.0232,
+          "stake": 100.0,
+          "total_return": 2009.59,
+          "profit": 1909.59,
+          "expected_value": 46.54,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Polymarket",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0061,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL9",
+          "legs": [
+            "P2",
+            "P4",
+            "P5"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 2179,
+          "combined_decimal_odds": 22.793,
+          "implied_probability": 0.0439,
+          "model_true_probability": 0.0624,
+          "edge": 0.0185,
+          "stake": 100.0,
+          "total_return": 2279.3,
+          "profit": 2179.3,
+          "expected_value": 42.25,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Polymarket",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0048,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL10",
+          "legs": [
+            "P1",
+            "P5"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 1538,
+          "combined_decimal_odds": 16.378,
+          "implied_probability": 0.0611,
+          "model_true_probability": 0.0858,
+          "edge": 0.0247,
+          "stake": 100.0,
+          "total_return": 1637.8,
+          "profit": 1537.8,
+          "expected_value": 40.49,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0066,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL11",
+          "legs": [
+            "P2",
+            "P3",
+            "P4"
+          ],
+          "num_legs": 3,
+          "combined_american_odds": 1762,
+          "combined_decimal_odds": 18.6152,
+          "implied_probability": 0.0537,
+          "model_true_probability": 0.0751,
+          "edge": 0.0214,
+          "stake": 100.0,
+          "total_return": 1861.52,
+          "profit": 1761.52,
+          "expected_value": 39.84,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Polymarket",
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0057,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL12",
+          "legs": [
+            "P1",
+            "P3"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 1238,
+          "combined_decimal_odds": 13.376,
+          "implied_probability": 0.0748,
+          "model_true_probability": 0.1032,
+          "edge": 0.0285,
+          "stake": 100.0,
+          "total_return": 1337.6,
+          "profit": 1237.6,
+          "expected_value": 38.11,
+          "correlation_risk_score": 0.15,
+          "same_game": true,
+          "venues": [
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0077,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL13",
+          "legs": [
+            "P3",
+            "P5"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 1417,
+          "combined_decimal_odds": 15.1712,
+          "implied_probability": 0.0659,
+          "model_true_probability": 0.0884,
+          "edge": 0.0225,
+          "stake": 100.0,
+          "total_return": 1517.12,
+          "profit": 1417.12,
+          "expected_value": 34.07,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.006,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL14",
+          "legs": [
+            "P1",
+            "P2"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 759,
+          "combined_decimal_odds": 8.588,
+          "implied_probability": 0.1164,
+          "model_true_probability": 0.1561,
+          "edge": 0.0397,
+          "stake": 100.0,
+          "total_return": 858.8,
+          "profit": 758.8,
+          "expected_value": 34.06,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Polymarket"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0112,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL15",
+          "legs": [
+            "P1",
+            "P4"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 789,
+          "combined_decimal_odds": 8.892,
+          "implied_probability": 0.1125,
+          "model_true_probability": 0.1479,
+          "edge": 0.0354,
+          "stake": 100.0,
+          "total_return": 889.2,
+          "profit": 789.2,
+          "expected_value": 31.5,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.01,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL16",
+          "legs": [
+            "P2",
+            "P5"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 874,
+          "combined_decimal_odds": 9.7406,
+          "implied_probability": 0.1027,
+          "model_true_probability": 0.1336,
+          "edge": 0.0309,
+          "stake": 100.0,
+          "total_return": 974.06,
+          "profit": 874.06,
+          "expected_value": 30.14,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Polymarket",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0086,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL17",
+          "legs": [
+            "P2",
+            "P3"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 696,
+          "combined_decimal_odds": 7.9552,
+          "implied_probability": 0.1257,
+          "model_true_probability": 0.1608,
+          "edge": 0.0351,
+          "stake": 100.0,
+          "total_return": 795.52,
+          "profit": 695.52,
+          "expected_value": 27.93,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Polymarket",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.01,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL18",
+          "legs": [
+            "P4",
+            "P5"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 909,
+          "combined_decimal_odds": 10.0854,
+          "implied_probability": 0.0992,
+          "model_true_probability": 0.1266,
+          "edge": 0.0274,
+          "stake": 100.0,
+          "total_return": 1008.54,
+          "profit": 908.54,
+          "expected_value": 27.65,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0076,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL19",
+          "legs": [
+            "P3",
+            "P4"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 724,
+          "combined_decimal_odds": 8.2368,
+          "implied_probability": 0.1214,
+          "model_true_probability": 0.1523,
+          "edge": 0.0309,
+          "stake": 100.0,
+          "total_return": 823.68,
+          "profit": 723.68,
+          "expected_value": 25.49,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Kalshi",
+            "Kalshi"
+          ],
+          "single_venue": true,
+          "kelly": {
+            "bankroll_fraction": 0.0088,
+            "suggested_stake": null
+          }
+        },
+        {
+          "id": "PL20",
+          "legs": [
+            "P2",
+            "P4"
+          ],
+          "num_legs": 2,
+          "combined_american_odds": 429,
+          "combined_decimal_odds": 5.2884,
+          "implied_probability": 0.1891,
+          "model_true_probability": 0.2303,
+          "edge": 0.0412,
+          "stake": 100.0,
+          "total_return": 528.84,
+          "profit": 428.84,
+          "expected_value": 21.81,
+          "correlation_risk_score": 0.05,
+          "same_game": false,
+          "venues": [
+            "Polymarket",
+            "Kalshi"
+          ],
+          "single_venue": false,
+          "kelly": {
+            "bankroll_fraction": 0.0127,
+            "suggested_stake": null
+          }
+        }
+      ]
+    }
+  },
+  "request": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "max_output_tokens": 8000,
+    "timeout_s": 120,
+    "transport": "sdk",
+    "attempts": 1,
+    "latency_s": 21.705,
+    "usage": {
+      "input_tokens": 8059,
+      "output_tokens": 1159,
+      "total_tokens": 9218,
+      "reasoning_tokens": 251,
+      "cached_tokens": 0
+    },
+    "response_ids": [
+      "resp_03c6ba6e672cd13d016ae929e34cd087d2a00833ded7169661"
+    ],
+    "errors": [],
+    "system_prompt": "You are a disciplined NBA player-prop betting analyst working on top of a quantitative true-probability model.\n\nRules you must follow:\n1. Use ONLY the JSON data provided in the user message. Do not invent players, lines, odds, injuries, news or statistics.\n2. Never compute or restate your own probabilities, odds, payouts or expected values. Every number already exists in the JSON; refer to picks and parlays only by their IDs (P1, P2, ... and PL1, PL2, ...).\n3. Every ID you return must exist in the JSON. Parlay legs must exactly match the legs listed for that parlay ID.\n4. For each top pick explain, in one or two sentences, why it ranks where it does: edge versus the venue price, how far the statistical model moved the market-anchored probability (model_weight 0 means the price is pure market consensus and any edge comes from venue price differences), confidence tier, projected value vs. the line, calibration warnings, minutes risk and injury news in model_notes.\n5. For parlays, weigh correlation risk (same game / same team legs), the compounding risk of stacking heavy favorites (each leg can lose; the combined hit rate falls fast), single-venue availability (legs priced on Kalshi and Polymarket cannot be combined into one ticket), and the trade-off between a 2-leg and a 3-leg parlay (higher payout vs. lower hit rate and EV).\n6. Recommend at most one 2-leg parlay and at most one 3-leg parlay. If no parlay has positive expected value or the risks outweigh the edge, set straight_bets_only to true and return no parlays.\n7. Be concise and specific. No hype, no guarantees.\n8. Finish with a one-line responsible-gambling note."
+  },
+  "ai_status": "ok",
+  "ai_error": "",
+  "raw_responses": [
+    {
+      "attempt": 1,
+      "text": "{\n  \"top_picks\": [\n    {\n      \"id\": \"P1\",\n      \"rank\": 1,\n      \"rationale\": \"Ranks first by supplied edge over the Kalshi price; the half-weight statistical blend lifts the market anchor, but confidence is low and the projected mean remains below the line.\",\n      \"risk_notes\": \"Depends on minutes above the season baseline and increased usage. No calibration warnings or explicit injury updates are supplied.\"\n    },\n    {\n      \"id\": \"P2\",\n      \"rank\": 2,\n      \"rationale\": \"The next-largest venue edge comes with medium confidence, a projection above the line and a half-weight statistical adjustment upward from consensus.\",\n      \"risk_notes\": \"Projected minutes match the season baseline, making the minutes assumption less aggressive than P1's. No calibration warnings or explicit injury updates are supplied.\"\n    },\n    {\n      \"id\": \"P3\",\n      \"rank\": 3,\n      \"rationale\": \"Ranks next by venue edge with medium confidence; the half-weight statistical blend lifts consensus, although the projected mean is below the line.\",\n      \"risk_notes\": \"The case depends on increased minutes and usage relative to baseline. No calibration warnings or explicit injury updates are supplied.\"\n    },\n    {\n      \"id\": \"P4\",\n      \"rank\": 4,\n      \"rationale\": \"Its venue edge narrowly exceeds P5's, with medium confidence and a projected mean above the line; the half-weight statistical blend moves the market anchor upward.\",\n      \"risk_notes\": \"Projected minutes are below the season baseline, while a substantial usage increase supports the scoring projection. No calibration warnings or explicit injury updates are supplied.\"\n    },\n    {\n      \"id\": \"P5\",\n      \"rank\": 5,\n      \"rationale\": \"Has the smallest supplied venue edge among these selections, low confidence and a projected mean well below the line, despite an upward half-weight statistical adjustment from consensus.\",\n      \"risk_notes\": \"A substantial usage increase must offset projected minutes below the season baseline. No calibration warnings or explicit injury updates are supplied.\"\n    }\n  ],\n  \"parlay_recommendations\": [\n    {\n      \"id\": \"PL15\",\n      \"legs\": [\n        \"P1\",\n        \"P4\"\n      ],\n      \"rationale\": \"Preferred risk-conscious combination: both legs are priced on Kalshi, come from different games and have a low supplied correlation-risk score. Compared with PL10, it sacrifices payout and expected value for a higher modeled hit rate and avoids P5's low-confidence leg.\",\n      \"key_risks\": \"P1 remains low confidence, and either leg losing defeats the ticket. Single-venue pricing avoids the mixed-venue obstacle but does not independently establish that the venue offers this exact combined ticket.\",\n      \"total_return\": 889.2,\n      \"profit\": 789.2\n    },\n    {\n      \"id\": \"PL4\",\n      \"legs\": [\n        \"P1\",\n        \"P4\",\n        \"P5\"\n      ],\n      \"rationale\": \"Optional higher-risk alternative to PL15: adding P5 increases the supplied payout and expected value but lowers the modeled hit rate. All legs are priced on Kalshi across different games; compared with PL1, it accepts lower expected value to avoid shared-game exposure.\",\n      \"key_risks\": \"Includes two low-confidence selections whose projected means are below their lines. Every leg must win, so the extra leg compounds failure risk; this is not a stack of heavy favorites, and its larger payout does not make it safer.\",\n      \"total_return\": 3832.45,\n      \"profit\": 3732.45\n    }\n  ],\n  \"straight_bets_only\": false,\n  \"summary\": \"Using the supplied model outputs\u2014not a fresh model run\u2014all five picks meet the requested filters. Prefer straight bets overall; if combining, choose PL15 rather than PL4 for the higher modeled hit rate. The listed returns and profits apply to a winning $100 ticket, with total return including the stake. Mixed-venue combinations cannot form one ticket. Injury information is absent and the supplied model notes are truncated; no bankroll was provided to assess whether $100 is appropriate.\",\n  \"responsible_gambling_note\": \"Bet only what you can afford to lose; positive modeled edge does not guarantee a win.\"\n}",
+      "status": "completed"
+    }
+  ],
+  "validated_output": {
+    "top_picks": [
+      {
+        "id": "P1",
+        "rank": 1,
+        "rationale": "Ranks first by supplied edge over the Kalshi price; the half-weight statistical blend lifts the market anchor, but confidence is low and the projected mean remains below the line.",
+        "risk_notes": "Depends on minutes above the season baseline and increased usage. No calibration warnings or explicit injury updates are supplied."
+      },
+      {
+        "id": "P2",
+        "rank": 2,
+        "rationale": "The next-largest venue edge comes with medium confidence, a projection above the line and a half-weight statistical adjustment upward from consensus.",
+        "risk_notes": "Projected minutes match the season baseline, making the minutes assumption less aggressive than P1's. No calibration warnings or explicit injury updates are supplied."
+      },
+      {
+        "id": "P3",
+        "rank": 3,
+        "rationale": "Ranks next by venue edge with medium confidence; the half-weight statistical blend lifts consensus, although the projected mean is below the line.",
+        "risk_notes": "The case depends on increased minutes and usage relative to baseline. No calibration warnings or explicit injury updates are supplied."
+      },
+      {
+        "id": "P4",
+        "rank": 4,
+        "rationale": "Its venue edge narrowly exceeds P5's, with medium confidence and a projected mean above the line; the half-weight statistical blend moves the market anchor upward.",
+        "risk_notes": "Projected minutes are below the season baseline, while a substantial usage increase supports the scoring projection. No calibration warnings or explicit injury updates are supplied."
+      },
+      {
+        "id": "P5",
+        "rank": 5,
+        "rationale": "Has the smallest supplied venue edge among these selections, low confidence and a projected mean well below the line, despite an upward half-weight statistical adjustment from consensus.",
+        "risk_notes": "A substantial usage increase must offset projected minutes below the season baseline. No calibration warnings or explicit injury updates are supplied."
+      }
+    ],
+    "parlay_recommendations": [
+      {
+        "id": "PL15",
+        "legs": [
+          "P1",
+          "P4"
+        ],
+        "rationale": "Preferred risk-conscious combination: both legs are priced on Kalshi, come from different games and have a low supplied correlation-risk score. Compared with PL10, it sacrifices payout and expected value for a higher modeled hit rate and avoids P5's low-confidence leg.",
+        "key_risks": "P1 remains low confidence, and either leg losing defeats the ticket. Single-venue pricing avoids the mixed-venue obstacle but does not independently establish that the venue offers this exact combined ticket.",
+        "total_return": 889.2,
+        "profit": 789.2
+      },
+      {
+        "id": "PL4",
+        "legs": [
+          "P1",
+          "P4",
+          "P5"
+        ],
+        "rationale": "Optional higher-risk alternative to PL15: adding P5 increases the supplied payout and expected value but lowers the modeled hit rate. All legs are priced on Kalshi across different games; compared with PL1, it accepts lower expected value to avoid shared-game exposure.",
+        "key_risks": "Includes two low-confidence selections whose projected means are below their lines. Every leg must win, so the extra leg compounds failure risk; this is not a stack of heavy favorites, and its larger payout does not make it safer.",
+        "total_return": 3832.45,
+        "profit": 3732.45
+      }
+    ],
+    "straight_bets_only": false,
+    "summary": "Using the supplied model outputs\u2014not a fresh model run\u2014all five picks meet the requested filters. Prefer straight bets overall; if combining, choose PL15 rather than PL4 for the higher modeled hit rate. The listed returns and profits apply to a winning $100 ticket, with total return including the stake. Mixed-venue combinations cannot form one ticket. Injury information is absent and the supplied model notes are truncated; no bankroll was provided to assess whether $100 is appropriate.",
+    "responsible_gambling_note": "Bet only what you can afford to lose; positive modeled edge does not guarantee a win."
+  },
+  "deterministic_recommendation": {
+    "top_pick_ids": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5"
+    ],
+    "best_two_leg": "PL10",
+    "best_three_leg": "PL1",
+    "straight_bets_only": false,
+    "note": "Best parlays chosen by model expected value (EV) at the requested stake."
+  },
+  "warnings": []
+}
