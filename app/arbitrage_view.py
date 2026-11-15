@@ -35,7 +35,8 @@ def render_arbitrage_tab() -> None:
         return
     st.caption(" | ".join(f"{k.replace('_', ' ')}: {v:,}" for k, v in res["stats"].items()))
     for title, rows in (("Arbitrage (passes every filter)", res["arbs"]), ("Real but below your minimums", res["near"]),
-                        ("Resting-bid pairs (not locked: only if your Polymarket bid fills first)", res.get("maker", []))):
+                        ("Resting-bid pairs (not locked: only if your Polymarket bid fills first)", res.get("maker", [])),
+                        ("Player-prop pairs not covered if the player sits out", res.get("at_risk", []))):
         st.subheader(f"{title}: {len(rows)}")
         if rows:
             df = pd.DataFrame(rows)[["kind", "title", "contracts", "cost", "profit", "profit_if_slipped", "interest",

@@ -1,7 +1,7 @@
 {% extends "app.html" %}
 {% block title %}Arbitrage terminal: True Prob AI{% endblock %}
 {% block head %}{% if job and job.running and not arb %}<meta http-equiv="refresh" content="20">{% endif %}{% endblock %}
-{% macro match(title) %}{% if '[confirmed pair]' in title %}Rules reviewed by hand{% elif '[Kalshi+Polymarket]' in title %}Same game, both teams matched{% else %}Single venue{% endif %}{% endmacro %}
+{% macro match(title) %}{% if '[confirmed pair]' in title %}Rules reviewed by hand{% elif '[Kalshi+Polymarket prop]' in title %}Same player, stat, line and game{% elif '[Kalshi+Polymarket]' in title %}Same game, both teams matched{% else %}Single venue{% endif %}{% endmacro %}
 {% macro table(rows, conditional=False) %}
 <table class="data arb">
   <thead><tr><th scope="col">Market</th><th scope="col">Legs to buy</th><th scope="col">Contracts</th><th scope="col">Cost</th><th scope="col">Profit at book prices</th><th scope="col">If each bought leg fills 1¢ worse</th><th scope="col">Interest while held</th><th scope="col">Settles</th></tr></thead>
@@ -39,6 +39,7 @@
     <div><p class="num">{{ '{:,}'.format(arb.stats.kalshi_events) }}</p><p>Kalshi events</p></div>
     <div><p class="num">{{ '{:,}'.format(arb.stats.polymarket_events) }}</p><p>Polymarket events</p></div>
     <div><p class="num">{{ '{:,}'.format(arb.stats.matched_games) }}</p><p>games matched across venues</p></div>
+    <div><p class="num">{{ '{:,}'.format(arb.stats.matched_props or 0) }}</p><p>player lines matched across venues</p></div>
     <div><p class="num">{{ arb.stats.confirmed_pairs }}</p><p>non-sports pairs with reviewed rules</p></div>
     <div><p class="num">{{ arb.stats.candidates }}</p><p>gaps on listed prices</p></div>
     <div><p class="num">{{ arb.arbs | length }}</p><p>fillable after fees and slippage</p></div>
@@ -61,6 +62,11 @@
     <h2>Real but small: {{ arb.near | length }}</h2>
     <p class="muted">Profitable at book prices but below $5, or lost if a leg slips a cent.</p>
     {% if arb.near %}{{ table(arb.near) }}{% else %}<p class="zero">None.</p>{% endif %}
+  </section>
+  <section>
+    <h2>Not covered if the player sits out: {{ (arb.at_risk or []) | length }}</h2>
+    <p class="muted">Player-line pairs that buy YES on Polymarket and NO on Kalshi. If the player does not play, Polymarket settles "No" and Kalshi settles at a fair price, so this pair pays less than it cost. The covered direction (YES on Kalshi, NO on Polymarket) appears in the lists above.</p>
+    {% if arb.at_risk %}{{ table(arb.at_risk) }}{% else %}<p class="zero">None.</p>{% endif %}
   </section>
   <section>
     <h2>Conditional, not locked: {{ (arb.maker or []) | length }}</h2>

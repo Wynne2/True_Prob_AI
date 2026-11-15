@@ -528,7 +528,8 @@ def run_arb_command(args) -> None:
                   " | ".join(f"{k.replace('_', ' ')}: {v:,}" for k, v in res["stats"].items()))
     for title, rows in (("Arbitrage (passes every filter)", res["arbs"]),
                         ("Depth-real but below --min-profit/--min-annual", res["near"][: args.top]),
-                        ("Resting-bid pairs (NOT locked: only if your Polymarket bid fills first)", res["maker"][: args.top])):
+                        ("Resting-bid pairs (NOT locked: only if your Polymarket bid fills first)", res["maker"][: args.top]),
+                        ("Player-prop pairs NOT covered if the player sits out", res.get("at_risk", [])[: args.top])):
         t = Table(title=f"{title}: {len(rows)}", box=box.SIMPLE_HEAVY)
         money = {"Contracts", "Cost", "Locked $", "If slipped", "Interest", "ROI", "Annual"}
         for col in ("Kind", "Event", "Contracts", "Cost", "Locked $", "If slipped", "Interest", "ROI", "Annual", "Closes", "Legs"):

@@ -182,6 +182,61 @@ def test_propose_pairs_rejects_lookalike_questions():
     assert got == {("K0", "P0"), ("K1", "P1")}
 
 
+def _kalshi_prop(label="VJ Edgecombe: 4+", yes=0.55, no=0.47, ticker="KXNBAREB-26NOV15INDPHI-PHIVJ-4",
+                 event="KXNBAREB-26NOV15INDPHI"):
+    o = Outcome(label, [leg(yes, "kalshi", 0.07, f"{ticker}:yes")], [leg(no, "kalshi", 0.07, f"{ticker}:no")], ticker)
+    return Event("kalshi", event, "Indiana vs Philadelphia: Rebounds", NOW + timedelta(days=1), False, False, [o],
+                 league="KXNBAREB")
+
+
+def _poly_prop(title="VJ Edgecombe: Rebounds O/U 3.5", slug="nba-ind-phi-2026-11-15", yes=0.40, no=0.62, cid="0xabc"):
+    o = Outcome(title, [leg(yes, "polymarket", 0.05, f"{cid}y")], [leg(no, "polymarket", 0.05, f"{cid}n")], cid)
+    return Event("polymarket", cid, title, NOW + timedelta(days=1), False, False, [o], f"https://polymarket.com/event/{slug}")
+
+
+def test_match_props_needs_same_player_stat_line_and_game():
+    k = _kalshi_prop()
+    good = _poly_prop()
+    decoys = [
+        _poly_prop(title="VJ Edgecombe: Rebounds O/U 5.5", cid="0xline"),          # different line
+        _poly_prop(title="VJ Edgecombe: Points O/U 3.5", cid="0xstat"),            # different stat
+        _poly_prop(slug="nba-ind-phi-2026-11-16", cid="0xday"),                   # different date
+        _poly_prop(slug="nba-bos-nyk-2026-11-15", cid="0xgame"),                  # same name, other game
+    ]
+    (ev,) = finder.match_props([k], [good] + decoys)
+    assert ev.id == f"{k.outcomes[0].id}|0xabc" and finder.PROP_TAG in ev.title
+    assert not ev.complete  # never fed to the generic cross_pairs: the no-show rule differs
+    assert finder.match_props([k], [good, _poly_prop(cid="0xdup")]) == []        # ambiguous: skipped
+
+
+def test_prop_pairs_split_covered_and_no_show_directions():
+    (ev,) = finder.match_props([_kalshi_prop(yes=0.55, no=0.47)], [_poly_prop(yes=0.40, no=0.40)])
+    pairs = {c.kind: c for c in finder.prop_pairs(ev)}
+    covered, dnp = pairs["prop-pair"], pairs["prop-pair-dnp"]
+    # Covered: Kalshi YES + Polymarket NO (a no-show pays Kalshi's fair price plus Polymarket's "No").
+    assert [l.ref for l in covered.legs] == ["KXNBAREB-26NOV15INDPHI-PHIVJ-4:yes", "0xabcn"]
+    assert [l.ref for l in dnp.legs] == ["0xabcy", "KXNBAREB-26NOV15INDPHI-PHIVJ-4:no"]
+    assert covered.edge == pytest.approx(1 - leg(0.55, fee=0.07).cost() - leg(0.40, fee=0.05).cost())
+
+
+def test_scan_never_counts_the_no_show_direction_as_an_arb(monkeypatch, tmp_path):
+    from arbitrage import scanner, venues
+
+    k, p = _kalshi_prop(yes=0.62, no=0.30), _poly_prop(yes=0.30, no=0.62)
+    k.close = p.close = None  # never filtered as closing soon
+    monkeypatch.setattr(venues, "fetch_kalshi", lambda s: [k])
+    monkeypatch.setattr(venues, "fetch_polymarket", lambda s: [p])
+    monkeypatch.setattr(venues, "refresh_kalshi", lambda s, evs: None)
+    monkeypatch.setattr(venues, "refresh_polymarket", lambda s, evs: None)
+    books = {l.ref: [(l.ask, 1000)] for ev in (k, p) for o in ev.outcomes for l in o.yes + o.no}
+    monkeypatch.setattr(venues, "ladder", lambda s, l: books[l.ref])
+    monkeypatch.setattr(scanner, "PAIRS_FILE", tmp_path / "none.json")
+    res = scanner.scan(min_profit=5, min_annual=0, session=object(), log=False)
+    assert res["stats"]["matched_props"] == 1
+    assert [r["kind"] for r in res["at_risk"]] == ["prop-pair-dnp"]           # 0.30 + 0.30 on the risky side
+    assert all(r["kind"] != "prop-pair-dnp" for r in res["arbs"] + res["near"])
+
+
 class _Resp:
     status_code = 200
 

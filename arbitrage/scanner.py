@@ -47,8 +47,9 @@ def scan(
     session: requests.Session | None = None,
     log: bool = True,
 ) -> dict:
-    """Return {"arbs", "near", "maker", "stats"}: arbs pass every filter, near are depth-real but small,
-    maker are resting-bid pairs that lock a profit only if the bid fills and the other side has not moved."""
+    """Return {"arbs", "near", "maker", "at_risk", "stats"}: arbs pass every filter, near are depth-real but
+    small, maker are resting-bid pairs that lock a profit only if the bid fills and the other side has not
+    moved, at_risk are player-prop pairs that lose if the player does not play (different venue rules)."""
     s = session or requests.Session()
     which = set(which)
     now = datetime.now(timezone.utc)
@@ -56,19 +57,21 @@ def scan(
     poly = venues.fetch_polymarket(s) if "polymarket" in which else []
     games = finder.match_games(kalshi, poly)
     pairs = finder.confirmed_pairs(json.loads(PAIRS_FILE.read_text()) if PAIRS_FILE.exists() else [], kalshi, poly)
+    props = finder.match_props(kalshi, poly)
     # Listing prices lag the books by a few cents; cross-venue screens are re-priced from live books.
     for refresh in (venues.refresh_polymarket, venues.refresh_kalshi):
         try:
-            refresh(s, games + pairs)
+            refresh(s, games + pairs + props)
         except (requests.RequestException, ValueError):
             pass  # listing quotes are still usable; depth is re-read per candidate anyway
+    prop_cands = [c for ev in props for c in finder.prop_pairs(ev) if c.edge > 0]
     cands = [
-        c for c in finder.candidates(kalshi + poly + games + pairs)
+        c for c in finder.candidates(kalshi + poly + games + pairs) + prop_cands
         if not c.close or c.close > now + timedelta(minutes=10)
     ]
     cands.sort(key=lambda c: -c.edge)
 
-    rows, seen, errors = [], set(), 0
+    rows, at_risk, seen, errors = [], [], set(), 0
     with ThreadPoolExecutor(max_workers=8) as pool:
         for c in cands[:max_checks]:
             key = frozenset(leg.ref for leg in c.legs)
@@ -82,7 +85,8 @@ def scan(
                 continue
             contracts, cost, profit = finder.walk(ladders, c.legs, c.payout)
             if profit > 0 and contracts >= max(leg.min_size for leg in c.legs):
-                rows.append(_row(c, contracts, cost, profit, now))
+                # Not covered if the player sits out: never counted as an arb.
+                (at_risk if c.kind == "prop-pair-dnp" else rows).append(_row(c, contracts, cost, profit, now))
 
     # Resting-bid pairs: sized against the taker leg's book; the resting bid has no depth limit of its own.
     makers = sorted((c for ev in games + pairs for c in finder.maker_pairs(ev) if c.close is None or c.close > now + timedelta(minutes=10)),
@@ -112,12 +116,14 @@ def scan(
         "polymarket_events": len(poly),
         "matched_games": len(games),
         "confirmed_pairs": len(pairs),
+        "matched_props": len(props),
         "candidates": len(cands),
         "depth_checked": len(seen),
         "maker_pairs": len(maker_rows),
         "book_errors": errors,
     }
-    return {"arbs": arbs, "near": [r for r in rows if r not in arbs], "maker": maker_rows, "stats": stats}
+    at_risk.sort(key=lambda r: -r["profit"])
+    return {"arbs": arbs, "near": [r for r in rows if r not in arbs], "maker": maker_rows, "at_risk": at_risk, "stats": stats}
 
 
 def propose(session: requests.Session | None = None, limit: int = 30) -> list[dict]:

@@ -300,6 +300,72 @@ def match_games(kalshi: list[Event], poly: list[Event]) -> list[Event]:
 
 
 # ---------------------------------------------------------------------------
+# Cross-venue NBA player props (same player, stat, line and game)
+# ---------------------------------------------------------------------------
+
+# Both venues' rules (read 2026-11-15): Kalshi "N+" is Polymarket "O/U N-0.5", both settle on the
+# official box score including overtime. They differ when the player does not play: Kalshi settles
+# at a fair price, Polymarket resolves "No". So Kalshi YES + Polymarket NO pays at least $1 either
+# way, while Polymarket YES + Kalshi NO pays less than $1 if the player sits out.
+_K_PROP = {"KXNBAPTS": "points", "KXNBAREB": "rebounds", "KXNBAAST": "assists", "KXNBA3PT": "threes",
+           "KXNBABLK": "blocks", "KXNBASTL": "steals"}
+_P_PROP = {"points": "points", "rebounds": "rebounds", "assists": "assists", "3-pointers made": "threes",
+           "blocks": "blocks", "steals": "steals"}
+_K_LABEL = re.compile(r"^(.+?):\s*(\d+)\+")
+_P_TITLE = re.compile(r"^(.+?):\s*(.+?)\s+O/U\s*(\d+(?:\.\d+)?)$")
+_P_SLUG = re.compile(r"/event/nba-([a-z]+)-([a-z]+)-(\d{4}-\d{2}-\d{2})$")
+PROP_TAG = "[Kalshi+Polymarket prop]"
+
+
+def match_props(kalshi: list[Event], poly: list[Event]) -> list[Event]:
+    """One cross event per player line both venues list, keyed by date, player, stat, line and a shared team."""
+    from providers.kalshi_provider import parse_event_ticker
+    from utils.names import player_key
+
+    index = defaultdict(list)
+    for ev in poly:
+        m, slug = _P_TITLE.match(ev.title or ""), _P_SLUG.search(ev.url or "")
+        stat = _P_PROP.get(m.group(2).strip().lower()) if m else None
+        if stat and slug and len(ev.outcomes) == 1:
+            key = (slug.group(3), player_key(m.group(1)), stat, float(m.group(3)))
+            index[key].append((ev, {slug.group(1).upper(), slug.group(2).upper()}))
+    out = []
+    for ev in kalshi:
+        stat = _K_PROP.get(ev.league)
+        parsed = parse_event_ticker(ev.id) if stat else None
+        if not parsed:
+            continue
+        day, away, home = parsed
+        for o in ev.outcomes:
+            m = _K_LABEL.match(o.label or "")
+            if not m:
+                continue
+            line = int(m.group(2)) - 0.5
+            hits = [p for p, teams in index.get((day.isoformat(), player_key(m.group(1)), stat, line), []) if teams & {away, home}]
+            if len(hits) != 1:
+                continue  # none, or ambiguous: never guess
+            p = hits[0]
+            closes = [c for c in (ev.close, p.close) if c]
+            out.append(Event(
+                "cross", f"{o.id}|{p.id}", f"{m.group(1)} {stat} over {line:g} {PROP_TAG}", max(closes) if closes else None,
+                exclusive=False, complete=False,  # not complete: the DNP rule differs, see prop_pairs
+                outcomes=[Outcome(o.label, o.yes + p.outcomes[0].yes, o.no + p.outcomes[0].no, o.id)],
+                url=f"{ev.url} | {p.url}", league=ev.league,
+            ))
+    return out
+
+
+def prop_pairs(ev: Event) -> Iterable[Candidate]:
+    """Both directions: 'prop-pair' is covered if the player sits out, 'prop-pair-dnp' is not."""
+    o = ev.outcomes[0]
+    for kind, yes_venue in (("prop-pair", "kalshi"), ("prop-pair-dnp", "polymarket")):
+        ys = [leg for leg in o.yes if leg.venue == yes_venue]
+        ns = [leg for leg in o.no if leg.venue != yes_venue]
+        if ys and ns:
+            yield Candidate(kind, ev.title, [_best(ys), _best(ns)], 1.0, ev.close)
+
+
+# ---------------------------------------------------------------------------
 # Human-confirmed pairs (everything that is not a structured sports game)
 # ---------------------------------------------------------------------------
 
