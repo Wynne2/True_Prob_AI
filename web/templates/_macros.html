@@ -1,0 +1,56 @@
+{% macro csrf_field(csrf) %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}
+
+{# The probability rail. Default scale 0-100%; zoom=True fits a window around the values (labelled ticks). #}
+{% macro rail(implied=none, market=none, blended=none, own=none, lo=none, hi=none, label="", zoom=False) %}
+{% set vals = [implied, market, blended, own, lo, hi] | reject('none') | list %}
+{% if zoom and vals %}
+  {% set mid = ((vals | min) + (vals | max)) / 2 %}
+  {% set half = [((vals | max) - (vals | min)) / 2 + 0.03, 0.06] | max %}
+  {% set a = [[mid - half, 0] | max, 1 - 2 * half] | min %}{% set b = a + 2 * half %}
+{% else %}{% set a = 0 %}{% set b = 1 %}{% endif %}
+{% set w = b - a %}
+{% macro x(p) %}{{ '%.1f' % (8 + (p - a) / w * 384) }}{% endmacro %}
+<svg class="rail{{ ' zoomed' if zoom }}" viewBox="0 0 400 {{ 52 if zoom else 40 }}" role="img" aria-label="{{ label or 'Probability rail' }}">
+  <line class="rail-base" x1="8" y1="22" x2="392" y2="22"/>
+  {% set step = 0.25 if w > 0.5 else (0.05 if w > 0.15 else 0.02) %}
+  {% for i in range(((a / step) | round(0, 'ceil') | int), ((b / step) | round(0, 'floor') | int) + 1) %}{% set t = i * step %}
+    <line class="rail-tick" x1="{{ x(t) }}" y1="18" x2="{{ x(t) }}" y2="26"/>
+    {% if zoom %}<text class="rail-label" x="{{ x(t) }}" y="46" text-anchor="middle">{{ (t * 100) | round | int }}%</text>{% endif %}
+  {% endfor %}
+  {% if lo is not none and hi is not none %}<rect class="rail-range" x="{{ x(lo) }}" y="19" width="{{ '%.1f' % ([(hi - lo) / w * 384, 2] | max) }}" height="6" rx="3"/>{% endif %}
+  {% if implied is not none %}<path class="rail-price" d="M{{ x(implied) }} 22 l-6 -11 h12 z"/>{% endif %}
+  {% if own is not none %}<circle class="rail-own" cx="{{ x(own) }}" cy="22" r="4"/>{% endif %}
+  {% if market is not none %}<circle class="rail-market" cx="{{ x(market) }}" cy="22" r="5.5"/>{% endif %}
+  {% if blended is not none %}<rect class="rail-blend" x="{{ '%.1f' % (8 + (blended - a) / w * 384 - 1.5) }}" y="12" width="3" height="20" rx="1.5"/>{% endif %}
+</svg>
+{% endmacro %}
+
+{% macro rail_key(own=False) %}
+<ul class="rail-key">
+  <li><i class="k price"></i>Offered price (margin included)</li>
+  <li><i class="k market"></i>Market consensus, margin removed</li>
+  <li><i class="k blend"></i>Probability used for edge</li>
+  {% if own %}<li><i class="k own"></i>Statistical model alone</li>{% endif %}
+</ul>
+{% endmacro %}
+
+{% macro appnav(path, user, balance, plan, feature, csrf) %}
+<aside class="side">
+  <a class="brand" href="/app">True Prob <span>AI</span></a>
+  <nav aria-label="App">
+    <a href="/app" {% if path == '/app' %}aria-current="page"{% endif %}>Overview</a>
+    <a href="/app/explorer" {% if path.startswith('/app/explorer') or path.startswith('/app/prop') %}aria-current="page"{% endif %}>Probability explorer</a>
+    {% if feature.arbitrage %}<a href="/app/arbitrage" {% if path.startswith('/app/arbitrage') %}aria-current="page"{% endif %}>Arbitrage terminal</a>{% endif %}
+    {% if feature.advisor %}<a href="/app/advisor" {% if path.startswith('/app/advisor') %}aria-current="page"{% endif %}>AI Advisor</a>{% endif %}
+    <a href="/performance">Model performance</a>
+    <a href="/app/account" {% if path.startswith('/app/account') %}aria-current="page"{% endif %}>Account and billing</a>
+    {% if user.is_admin %}<a href="/admin" {% if path.startswith('/admin') %}aria-current="page"{% endif %}>Admin</a>{% endif %}
+  </nav>
+  <div class="wallet">
+    <p class="num">{{ balance }}</p>
+    <p>credits left on {{ {'free': 'Free', 'pro': 'Pro', 'power': 'Power'}[plan] }}</p>
+    {% if plan == 'free' %}<a class="btn small" href="/pricing">See plans</a>{% endif %}
+  </div>
+  <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Sign out</button></form>
+</aside>
+{% endmacro %}

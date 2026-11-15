@@ -9,3 +9,12 @@ pytest>=8.0.0
 pytest-cov>=4.1.0
 rich>=13.7.0
 openai>=1.66.0
+# Customer web app (web/)
+starlette>=1.10.0
+uvicorn>=0.54.0
+jinja2>=3.1.6
+itsdangerous>=2.2.0
+python-multipart>=0.0.32
+markdown-it-py>=4.2.0
+stripe>=16.1.0
+httpx2>=2.16.0

@@ -1,0 +1,61 @@
+{% extends "app.html" %}
+{% block title %}Account and billing: True Prob AI{% endblock %}
+{% block content %}
+<header class="work-head"><h1>Account and billing</h1></header>
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Plan</h2>
+    <p class="big">{{ plans[plan].name }}</p>
+    {% if plan != 'free' %}
+      <p>${{ plans[plan].price }} a month, {{ plans[plan].credits }} credits per period.
+      {% if user.cancel_at_period_end %}Cancelled: it stays active until {{ user.period_end | when }} and will not renew.
+      {% elif user.period_end %}Renews on {{ user.period_end | when }}.{% endif %}</p>
+    {% elif user.plan != 'free' and user.sub_status %}
+      <p class="flash warn">Your {{ plans[user.plan].name }} subscription is {{ user.sub_status | replace('_', ' ') }}. Update your payment method in billing to restore it.</p>
+    {% else %}
+      <p>{{ plans.free.credits }} credits every 30 days.</p>
+    {% endif %}
+    {% if user.stripe_customer_id and billing_on %}
+      <form method="post" action="/billing/portal"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn">Manage billing</button></form>
+      <p class="muted">Change or cancel your plan, update your card, and download invoices and receipts.</p>
+    {% elif plan == 'free' %}<a class="btn" href="/pricing">See paid plans</a>{% endif %}
+  </section>
+  <section class="panel">
+    <h2>Credits</h2>
+    <p class="big">{{ balance }}</p>
+    <p>Credits reset at the start of each period to your plan's allowance. Unused credits do not roll over and have no cash value. Reopening anything you already unlocked is free, and failed analyses are refunded automatically.</p>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Usage history</h2>
+  {% if history %}
+  <table class="data"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Credits</th></tr></thead><tbody>
+    {% for h in history %}<tr><td>{{ h.created_at | when }}</td><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '%+d' % h.delta }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p>No activity yet.</p>{% endif %}
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Profile and security</h2>
+    <p>{{ user.email }}{% if user.verified_at %}, confirmed{% else %}, <strong>not confirmed</strong>{% endif %}. Region: {{ user.region or 'not set' }}. Member since {{ user.created_at | when }}.</p>
+    <form method="post" action="/app/account/password" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Current password<input type="password" name="current" autocomplete="current-password" required></label>
+      <label>New password<input type="password" name="new" minlength="10" autocomplete="new-password" required><small>Changing it signs out every other device.</small></label>
+      <button class="btn small ghost">Change password</button>
+    </form>
+  </section>
+  <section class="panel danger">
+    <h2>Privacy</h2>
+    <p>We keep your email, plan, credit history, watchlist and Advisor analyses. We do not sell data or use advertising trackers. <a href="/legal/privacy">Privacy policy</a>.</p>
+    <h3>Delete your account</h3>
+    <p>This cancels any subscription immediately, without a refund for the current period, and erases your email, watchlist and analyses. It cannot be undone.</p>
+    <form method="post" action="/app/account/delete" class="stack" data-confirm="Delete your account for good? This cannot be undone."><input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn small danger">Delete my account</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

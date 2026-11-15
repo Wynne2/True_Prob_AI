@@ -1,0 +1,45 @@
+{% extends "app.html" %}
+{% from "_macros.html" import rail, rail_key %}
+{% block title %}{{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}: True Prob AI{% endblock %}
+{% block content %}
+<header class="work-head">
+  <p><a href="/app/explorer">Back to the explorer</a></p>
+  <h1>{{ r.player }}: {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</h1>
+  <p class="muted">{{ r.team }} vs {{ r.opponent }}. Board read {{ board.scanned_at | ago }} ({{ board.scanned_at | when }}).</p>
+  <form method="post" action="/app/watch" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="player" value="{{ r.player }}">
+    <input type="hidden" name="back" value="/app/prop/{{ r.id }}">{% if watching %}<input type="hidden" name="remove" value="1">{% endif %}
+    <button class="btn small ghost">{{ 'Stop watching' if watching else 'Watch' }} {{ r.player }}</button></form>
+</header>
+
+{% if not open %}
+<section class="panel unlock">
+  <div>
+    <h2>Open this line</h2>
+    <p>Best price now: <strong>{{ r.odds | american }}</strong> at {{ r.venue }} ({{ r.implied | pct }} including the margin), quoted by {{ r.venues }} venues. Opening shows the consensus, gap, projection and the other side.</p>
+  </div>
+  <form method="post" action="/app/prop/{{ r.id }}/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Open for {{ costs.prop }} credit</button><small>You have {{ balance }}.</small></form>
+</section>
+{% else %}
+<section class="panel feature">
+  {{ rail(r.implied, r.market, r.blended, r.model_own, r.market_lo, r.market_hi, 'Probability rail for this line', zoom=True) }}
+  {{ rail_key(own=r.model_own is not none) }}
+  <dl class="facts">
+    <div><dt>Offered price</dt><dd>{{ r.odds | american }} at {{ r.venue }}</dd><dd class="muted">{{ r.implied | pct }} with the margin included</dd></div>
+    <div><dt>Market consensus</dt><dd>{{ r.market | pct }}</dd><dd class="muted">Median across {{ r.venues }} venues, margin removed{% if r.market_lo is not none %}; venues range {{ r.market_lo | pct }} to {{ r.market_hi | pct }}{% endif %}</dd></div>
+    <div><dt>Model alone</dt><dd>{{ r.model_own | pct }}</dd><dd class="muted">{% if r.method == 'candidate' %}Candidate model{% if r.cand_projection is not none %}, projection {{ '%g' % r.cand_projection }}{% endif %}{% else %}Production model, projection {{ '%g' % r.projection }} in {{ '%g' % r.minutes }} minutes{% endif %}</dd></div>
+    <div><dt>Probability used for edge</dt><dd>{{ r.blended | pct }}</dd><dd class="muted">{% if r.weight <= 0 %}Model weight 0: this is the market consensus, not an independent estimate{% else %}Consensus moved toward the model with weight {{ '%.2f' % r.weight }}{% endif %}</dd></div>
+    <div><dt>Gap</dt><dd class="{{ 'pos' if r.edge > 0 else 'neg' }}">{{ '%+.1f' % (r.edge * 100) }} points</dd><dd class="muted">Expected value per $100 at this price: {{ '%+.2f' % r.ev_per_100 }} before any account fees, if that probability is right</dd></div>
+    <div><dt>Confidence</dt><dd>{{ r.confidence | replace('_', ' ') }}</dd><dd class="muted">{{ 'The model backs the gap' if r.model_agrees else 'The model alone puts this side below the price, so the gap is not model-backed' }}</dd></div>
+  </dl>
+  {% if r.weight <= 0 and r.edge > 0 %}<p class="flash note">This gap comes only from {{ r.venue }} pricing differently from the other venues. Our model has not beaten the market on this kind of line in testing, so treat it as a price difference, not a prediction.</p>{% endif %}
+  {% if r.warnings %}<h2>Checks that fired</h2><ul class="plain">{% for w in r.warnings %}<li>{{ w | replace('_', ' ') }}</li>{% endfor %}</ul>{% endif %}
+  {% if r.notes %}<h2>Production model notes</h2><p class="notes">{{ r.notes }}</p>{% endif %}
+  {% if other %}
+  <h2>The other side</h2>
+  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ '%+.1f' % (other.edge * 100) }} points. <a href="/app/prop/{{ other.id }}">View</a></p>
+  {% endif %}
+</section>
+<p class="muted">Research only. Prices move; check the venue before acting. <a href="/legal/risk">Risk disclosure</a>.</p>
+{% endif %}
+{% endblock %}

@@ -1,5 +1,11 @@
 # NBA Prop AI — True Probability Parlay Builder
 
+> **Customer web app.** `web/` is the commercial True Prob AI product: accounts, credits, Stripe
+> subscriptions, the probability explorer, arbitrage terminal, AI Advisor, performance and legal
+> pages, and an admin page. Run it with `uvicorn web.app:app --port 8000`. Deployment, environment
+> variables and Stripe setup: [docs/DEPLOY.md](docs/DEPLOY.md). What is done, what is blocked and the
+> launch checklist: [docs/LAUNCH.md](docs/LAUNCH.md). The rest of this README covers the research engine.
+
 Estimates the **true probability** of NBA player prop outcomes, compares it against the sportsbook-implied probability, and surfaces positive-edge plays. Valid edges are assembled into ranked parlays with correlation protection, payout calculation, and line shopping across major books.
 
 ---

@@ -214,3 +214,10 @@ data/arbs/
 data/cache/*
 !data/cache/balldontlie_history/
 !data/cache/odds_history/
+
+# Customer web app runtime data (never commit)
+data/app.db*
+data/boards/
+data/outbox.log
+data/.secret_key
+data/_local_backup/

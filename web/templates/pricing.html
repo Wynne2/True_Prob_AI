@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Pricing: True Prob AI{% endblock %}
+{% block description %}Free, Pro ($29/month) and Power ($79/month) plans for True Prob AI. Credits reset each period; cancel any time.{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>Plans</h1>
+  {% set need = request.query_params.get('need') %}
+  {% if need in costs %}<p class="flash warn">That needs {{ costs[need] }} credits and you have {{ balance or 0 }}. Nothing was charged. Pick a plan to keep going, or wait for your free credits to reset.</p>{% endif %}
+  <p class="lede">Every plan has every tool. Plans differ only in how many credits you get each period.</p>
+</section>
+<div class="plans">
+  {% for key, p in plans.items() %}
+  <div class="plan{% if key == 'pro' %} featured{% endif %}">
+    <h2>{{ p.name }}</h2>
+    <p class="price">{% if p.price %}${{ p.price }}<small>/month</small>{% else %}$0{% endif %}</p>
+    <p class="credits">{{ p.credits }} credits {{ 'every 30 days' if key == 'free' else 'per billing period' }}</p>
+    <ul>
+      {% if key == 'free' %}<li>Try every feature</li><li>About 4 full boards, or 20 single lines</li>
+      {% elif key == 'pro' %}<li>A full board every day of the month</li><li>Room left for Advisor reviews</li>
+      {% else %}<li>Full boards, arbitrage and Advisor every day</li><li>For heavy daily research</li>{% endif %}
+    </ul>
+    {% if key == 'free' %}
+      {% if not user %}<a class="btn ghost" href="/register">Create free account</a>{% else %}<p class="muted">Included with every account</p>{% endif %}
+    {% elif not billing_on %}
+      <p class="muted">Payments open soon.</p>
+    {% elif not user %}
+      <a class="btn" href="/register">Create an account to subscribe</a>
+    {% elif plan == key %}
+      <p class="muted">Your current plan</p>
+    {% elif plan != 'free' %}
+      <form method="post" action="/billing/portal"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn ghost">Change plan in billing</button></form>
+    {% elif not user.verified_at %}
+      <p class="muted">Confirm your email to subscribe.</p>
+    {% else %}
+      <form method="post" action="/billing/checkout"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="plan" value="{{ key }}"><button class="btn">Subscribe to {{ p.name }}</button></form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div class="plan">
+    <h2>Teams</h2>
+    <p class="price">Custom</p>
+    <p class="credits">Shared credits and invoicing</p>
+    <ul><li>Several seats</li><li>Annual billing</li></ul>
+    <a class="btn ghost" href="mailto:{{ support_email }}?subject=True%20Prob%20AI%20for%20teams">Email us</a>
+  </div>
+</div>
+
+<section class="band">
+  <h2>What credits buy</h2>
+  <table class="costs">
+    <thead><tr><th scope="col">Action</th><th scope="col">Credits</th><th scope="col">What you get</th></tr></thead>
+    <tbody>
+      <tr><td>Open one line</td><td>{{ costs.prop }}</td><td>Full analysis of one prop for today, both sides</td></tr>
+      <tr><td>Open today's full board</td><td>{{ costs.board }}</td><td>Every line on today's slate, all day</td></tr>
+      <tr><td>AI Advisor analysis</td><td>{{ costs.advisor }}</td><td>One written review; refunded automatically if it fails</td></tr>
+      <tr><td>Arbitrage terminal</td><td>{{ costs.arbitrage }}</td><td>All scans for the day</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">You see the cost before anything is charged, and reopening something you already unlocked is free. Credits reset at the start of each period, do not roll over and have no cash value. Paid plans renew monthly until you cancel; cancel any time in Account and keep your plan until the period ends. See the <a href="/legal/subscription">subscription</a> and <a href="/legal/refunds">refund</a> policies.</p>
+</section>
+<section class="band faq">
+  <h2>Questions</h2>
+  {% for q, a in faq %}<details><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}
+</section>
+{% endblock %}

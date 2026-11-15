@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import rail, rail_key %}
+{% block title %}True Prob AI: the probability behind every price{% endblock %}
+{% block head %}
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"True Prob AI","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free"},{"@type":"Offer","price":"29","priceCurrency":"USD","name":"Pro"},{"@type":"Offer","price":"79","priceCurrency":"USD","name":"Power"}]}</script>
+{% endblock %}
+{% block content %}
+{% set ex = none %}
+{% if board and board.rows %}{% set ex = (board.rows | selectattr('market') | selectattr('market_lo') | sort(attribute='venues', reverse=True) | list | first) %}{% endif %}
+<section class="hero">
+  <div class="hero-copy">
+    <h1>See the probability behind every price.</h1>
+    <p class="lede">True Prob AI gathers prices for the same NBA prop from several venues, strips out each one's margin, and puts the consensus probability on one line next to the price you are offered. You see at a glance whether a price is generous, fair or expensive against the rest of the market.</p>
+    <p class="cta-row"><a class="btn" href="/register">Create a free account</a><a class="btn ghost" href="/performance">See our graded results</a></p>
+    <p class="fine">20 free credits a month. No card needed. 21+.</p>
+  </div>
+  <figure class="hero-demo">
+    {% if ex %}
+      <p class="demo-head">{{ ex.player }}, {{ ex.prop }} {{ ex.side }} {{ '%g' % ex.line }}</p>
+      <p class="demo-sub">From today's board, read {{ board.scanned_at | ago }} from {{ ex.venues }} venues</p>
+      {{ rail(ex.implied, ex.market, ex.blended, none, ex.market_lo, ex.market_hi, 'Example probability rail', zoom=True) }}
+      <dl class="demo-nums">
+        <div><dt>Offered at {{ ex.venue }}</dt><dd>{{ ex.implied | pct }}<small>{{ ex.odds | american }}</small></dd></div>
+        <div><dt>Market consensus</dt><dd>{{ ex.market | pct }}</dd></div>
+        <div><dt>Gap to consensus</dt><dd class="{{ 'pos' if ex.edge > 0 else 'neg' }}">{{ '%+.1f' % (ex.edge * 100) }} pts</dd></div>
+      </dl>
+    {% else %}
+      <p class="demo-head">Example: a player points line, over 24.5</p>
+      <p class="demo-sub">Illustration, not live data</p>
+      {{ rail(0.524, 0.497, 0.497, none, 0.471, 0.512, 'Example probability rail', zoom=True) }}
+      <dl class="demo-nums">
+        <div><dt>Offered at one venue</dt><dd>52.4%<small>-110</small></dd></div>
+        <div><dt>Market consensus</dt><dd>49.7%</dd></div>
+        <div><dt>Gap to consensus</dt><dd class="neg">-2.7 pts</dd></div>
+      </dl>
+    {% endif %}
+    {{ rail_key() }}
+  </figure>
+</section>
+
+<section id="how" class="band">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><h3>Collect every price</h3><p>Kalshi, Polymarket and, where available, US sportsbooks, for every NBA player prop on the slate. Each read is timestamped.</p></li>
+    <li><h3>Remove the margin</h3><p>Every two-sided price includes the venue's cut. We remove it and take the median across venues, so one stale quote cannot move the consensus.</p></li>
+    <li><h3>Compare and explain</h3><p>Each line shows the offered price against that consensus, our statistical projection, and how much weight the model has earned in testing. For most markets that weight is zero today, and the page says so.</p></li>
+  </ol>
+</section>
+
+<section class="band split">
+  <div>
+    <h2>Honest about what the model can do</h2>
+    <p>Most prediction products claim an edge. We publish every graded date instead. On the lines graded so far, the market consensus has been at least as accurate as our own model, so the market leads and our projection sits beside it, clearly labelled. When a gap appears, you can see whether it comes from the model or only from one venue being priced differently from the others.</p>
+    <a class="btn ghost" href="/performance">Read the full performance record</a>
+  </div>
+  <ul class="ticks">
+    <li><strong>Probability explorer.</strong> Every line with its venues, margin-free consensus, projection, minutes and warnings.</li>
+    <li><strong>Arbitrage terminal.</strong> Kalshi and Polymarket checked against live order books after fees, with conditional pairs kept apart from fillable ones.</li>
+    <li><strong>AI Advisor.</strong> A written review of the day's strongest lines that passes on weak ones and says why.</li>
+    <li><strong>Watchlists.</strong> Follow players and see their lines first.</li>
+  </ul>
+</section>
+
+<section class="band">
+  <h2>Pricing</h2>
+  <div class="plans compact">
+    {% for key, p in plans.items() %}
+    <div class="plan{% if key == 'pro' %} featured{% endif %}">
+      <h3>{{ p.name }}</h3>
+      <p class="price">{% if p.price %}${{ p.price }}<small>/month</small>{% else %}Free{% endif %}</p>
+      <p>{{ p.credits }} credits {{ 'every 30 days' if key == 'free' else 'each month' }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  <p><a href="/pricing">Compare plans and credit costs</a></p>
+</section>
+
+<section class="band faq">
+  <h2>Questions</h2>
+  {% for q, a in faq %}<details><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "app.html" %}
+{% block title %}Arbitrage terminal: True Prob AI{% endblock %}
+{% block head %}{% if job and job.running and not arb %}<meta http-equiv="refresh" content="20">{% endif %}{% endblock %}
+{% macro match(title) %}{% if '[confirmed pair]' in title %}Rules reviewed by hand{% elif '[Kalshi+Polymarket]' in title %}Same game, both teams matched{% else %}Single venue{% endif %}{% endmacro %}
+{% macro table(rows, conditional=False) %}
+<table class="data arb">
+  <thead><tr><th scope="col">Market</th><th scope="col">Legs to buy</th><th scope="col">Contracts</th><th scope="col">Cost</th><th scope="col">Profit at book prices</th><th scope="col">If each bought leg fills 1¢ worse</th><th scope="col">Interest while held</th><th scope="col">Settles</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <th scope="row">{{ r.title }}<small>{{ match(r.title) }}{% if conditional %}; needs your resting order to fill{% endif %}</small></th>
+      <td><ul class="plain legs">{% for l in r.legs %}<li>{{ l }}</li>{% endfor %}</ul></td>
+      <td class="num">{{ '{:,.0f}'.format(r.contracts) }}</td>
+      <td class="num">${{ '{:,.2f}'.format(r.cost) }}</td>
+      <td class="num pos">${{ '{:,.2f}'.format(r.profit) }}</td>
+      <td class="num {{ 'pos' if r.profit_if_slipped > 0 else 'neg' }}">${{ '{:,.2f}'.format(r.profit_if_slipped) }}</td>
+      <td class="num">${{ '{:,.2f}'.format(r.interest or 0) }}</td>
+      <td>{{ (r.closes or '')[:10] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+{% block content %}
+<header class="work-head">
+  <h1>Arbitrage terminal</h1>
+  <p class="muted">Every open Kalshi and Polymarket market, checked against live order books after fees. Nothing here places orders.</p>
+</header>
+{% if off %}
+  <section class="panel empty"><h2>The arbitrage terminal is switched off</h2><p>It is unavailable right now. Nothing is charged while it is off.</p></section>
+{% elif not arb %}
+  <section class="panel empty">
+    {% if job.running %}<h2>Scanning both venues</h2><p>Reading over 150,000 markets and their order books. This takes three to five minutes; the page refreshes itself.</p>
+    {% elif job.error %}<h2>The scan did not finish</h2><p>{{ job.error }}</p><p>Reload to try again. Nothing was charged.</p>
+    {% else %}<h2>Confirm your email to scan</h2><p>Scans start once your email is confirmed.</p>{% endif %}
+  </section>
+{% else %}
+  <section class="stats-row">
+    <div><p class="num">{{ '{:,}'.format(arb.stats.kalshi_events) }}</p><p>Kalshi events</p></div>
+    <div><p class="num">{{ '{:,}'.format(arb.stats.polymarket_events) }}</p><p>Polymarket events</p></div>
+    <div><p class="num">{{ '{:,}'.format(arb.stats.matched_games) }}</p><p>games matched across venues</p></div>
+    <div><p class="num">{{ arb.stats.confirmed_pairs }}</p><p>non-sports pairs with reviewed rules</p></div>
+    <div><p class="num">{{ arb.stats.candidates }}</p><p>gaps on listed prices</p></div>
+    <div><p class="num">{{ arb.arbs | length }}</p><p>fillable after fees and slippage</p></div>
+  </section>
+  <p class="muted">Scanned {{ arb.scanned_at | ago }} in {{ arb.seconds }} seconds{% if job.running %}; a new scan is running{% endif %}. Most gaps on listed prices vanish against the real books: quotes go stale and depth is thin.</p>
+
+  {% if not unlocked %}
+  <section class="panel unlock">
+    <div><h2>Open today's terminal</h2><p>See every pair, its legs, the depth the books support, fees, the one-cent slippage test and settlement dates, for every scan today.</p></div>
+    <form method="post" action="/app/arbitrage/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Open for {{ costs.arbitrage }} credits</button><small>You have {{ balance }}.</small></form>
+  </section>
+  {% else %}
+  <section>
+    <h2>Fillable now: {{ arb.arbs | length }}</h2>
+    <p class="muted">Both legs can be bought now at these sizes from the live books, after fees, and still clear $5 if every leg fills a cent worse. Risk remains: the venues might settle differently, and prices move between your two orders.</p>
+    {% if arb.arbs %}{{ table(arb.arbs) }}{% else %}<p class="zero">None right now. That is the usual answer: the two venues usually agree to within their fees.</p>{% endif %}
+  </section>
+  <section>
+    <h2>Real but small: {{ arb.near | length }}</h2>
+    <p class="muted">Profitable at book prices but below $5, or lost if a leg slips a cent.</p>
+    {% if arb.near %}{{ table(arb.near) }}{% else %}<p class="zero">None.</p>{% endif %}
+  </section>
+  <section>
+    <h2>Conditional, not locked: {{ (arb.maker or []) | length }}</h2>
+    <p class="muted">These need a Polymarket bid that you post and someone else fills, and then the Kalshi side bought before it moves. Until both fill you hold one side of a bet.</p>
+    {% if arb.maker %}{{ table(arb.maker, True) }}{% else %}<p class="zero">None.</p>{% endif %}
+  </section>
+  <p class="muted">Interest is the venues' variable rate (Kalshi APY, Polymarket holding rewards) and is not locked. Read both venues' rules before trading across them. <a href="/legal/risk">Risk disclosure</a>.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

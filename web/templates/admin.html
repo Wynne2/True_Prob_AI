@@ -1,0 +1,66 @@
+{% extends "app.html" %}
+{% block title %}Admin: True Prob AI{% endblock %}
+{% block content %}
+<header class="work-head"><h1>Admin</h1><p class="muted">Every change here is written to the audit log.</p></header>
+
+<section class="stats-row">
+  <div><p class="num">{{ total_users }}</p><p>accounts</p></div>
+  <div><p class="num">${{ '{:,}'.format(mrr) }}</p><p>monthly recurring revenue</p></div>
+  <div><p class="num">{{ paying.get('pro', 0) }}</p><p>Pro</p></div>
+  <div><p class="num">{{ paying.get('power', 0) }}</p><p>Power</p></div>
+  <div><p class="num">{{ past_due | length }}</p><p>failed or unpaid</p></div>
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Last 30 days</h2>
+    <table class="data compact"><tbody>
+      {% for k in ['visit_landing', 'visit_pricing', 'registered', 'verified', 'prop_unlocked', 'board_unlocked', 'advisor_run', 'arbitrage_unlocked', 'limit_hit', 'checkout_started', 'checkout_completed', 'invoice_paid', 'payment_failed', 'subscription_cancel_scheduled', 'subscription_ended'] %}
+        <tr><td>{{ k | replace('_', ' ') }}</td><td class="num">{{ funnel.get(k, 0) }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+    <p class="muted">Free-to-paid: {{ '%.1f%%' % (100 * funnel.get('checkout_completed', 0) / funnel.get('registered')) if funnel.get('registered') else '–' }} of sign-ups.</p>
+    <h3>Credits spent</h3>
+    <ul class="plain">{% for s in spend_30d %}<li>{{ s.ref }}: {{ s.credits }} credits in {{ s.n }} actions</li>{% else %}<li>None</li>{% endfor %}</ul>
+  </section>
+  <section class="panel">
+    <h2>System</h2>
+    <p>Board: {{ (board.rows | length) if board else 0 }} lines, read {{ board.scanned_at | ago if board else 'never' }}. Arbitrage scan: {{ arb.scanned_at | ago if arb else 'never' }}.</p>
+    <p>Running jobs: {{ health.running or 'none' }}.</p>
+    {% if health.errors %}<p class="flash warn">Errors: {{ health.errors }}</p>{% endif %}
+    <h3>Feature switches</h3>
+    {% for k, v in flags.items() %}
+    <form method="post" action="/admin/flag" class="inline-row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="key" value="{{ k }}"><input type="hidden" name="value" value="{{ '0' if v else '1' }}">
+      <span>{{ {'scan': 'Board scans', 'arbitrage': 'Arbitrage terminal', 'advisor': 'AI Advisor', 'legal_reviewed': 'Legal pages reviewed by a lawyer'}[k] }}: <strong>{{ 'on' if v else 'off' }}</strong></span>
+      <button class="btn small ghost">Turn {{ 'off' if v else 'on' }}</button></form>
+    {% endfor %}
+    <h3>Announcement</h3>
+    <form method="post" action="/admin/announce" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Shown to signed-in customers<input name="body" maxlength="300"></label><button class="btn small ghost">Publish</button></form>
+    <ul class="plain">{% for n in notes %}<li>{{ n.body }} {% if n.active %}<form method="post" action="/admin/announce" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="hide" value="{{ n.id }}"><button class="link">Hide</button></form>{% else %}<span class="muted">hidden</span>{% endif %}</li>{% endfor %}</ul>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Customers</h2>
+  <form method="get" class="filters"><label>Email contains<input type="search" name="q" value="{{ search }}"></label><button class="btn small ghost">Search</button></form>
+  <table class="data">
+    <thead><tr><th scope="col">ID</th><th scope="col">Email</th><th scope="col">Plan</th><th scope="col">Status</th><th scope="col">Credits</th><th scope="col">Joined</th><th scope="col">Adjust credits</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr><td class="num">{{ u.id }}</td><td>{{ u.email }}{% if u.is_admin %} <small>admin</small>{% endif %}{% if not u.verified_at %} <small>unconfirmed</small>{% endif %}</td>
+      <td>{{ u.plan }}</td><td>{{ u.sub_status or '–' }}{% if u.cancel_at_period_end %}, cancelling{% endif %}</td><td class="num">{{ u.balance }}</td><td>{{ u.created_at | when }}</td>
+      <td><form method="post" action="/admin/credits" class="inline-row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="user_id" value="{{ u.id }}">
+        <input type="number" name="delta" aria-label="Credits to add or remove" required><input name="note" placeholder="Reason" aria-label="Reason" required><button class="btn small ghost">Apply</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if past_due %}<h3>Failed payments</h3><ul class="plain">{% for p in past_due %}<li>{{ p.email }}: {{ p.sub_status }}</li>{% endfor %}</ul>{% endif %}
+</section>
+
+<section class="panel">
+  <h2>Audit log</h2>
+  <table class="data compact"><tbody>
+    {% for a in audit %}<tr><td>{{ a.at | when }}</td><td>user {{ a.actor_id or '–' }}</td><td>{{ a.action }}</td><td>{{ a.target or '' }}</td><td class="muted">{{ a.detail or '' }}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}

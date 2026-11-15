@@ -1,0 +1,63 @@
+{% extends "app.html" %}
+{% from "_macros.html" import rail, rail_key %}
+{% block title %}Probability explorer: True Prob AI{% endblock %}
+{% block head %}{% if job.running and not board %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
+{% block content %}
+<header class="work-head">
+  <h1>Probability explorer</h1>
+  {% if board %}<p class="muted">{{ board.slate }}: {{ board.rows | length }} lines, {{ board.pregame_games }} pregame games, read {{ board.scanned_at | ago }}{% if job.running %}; refreshing now{% endif %}.</p>{% endif %}
+</header>
+
+{% if not board %}
+  <section class="panel empty">
+    {% if job.running %}<h2>Scanning today's slate</h2><p>Pulling prices from every venue and pricing each line. This takes a few minutes; the page refreshes itself.</p>
+    {% elif job.error %}<h2>The scan did not finish</h2><p>{{ job.error }}</p><p>Reload to try again. Nothing was charged.</p>
+    {% elif not user.verified_at %}<h2>Confirm your email to start</h2><p>The first scan of the day starts once your email is confirmed.</p>
+    {% else %}<h2>No lines yet</h2><p>No pregame games have prices right now. Lines usually appear the morning of game day.</p>{% endif %}
+  </section>
+{% else %}
+  {% if not unlocked %}
+  <section class="panel unlock">
+    <div>
+      <h2>Open today's full board</h2>
+      <p>See the consensus, gap and projection for all {{ board.rows | length }} lines for the rest of the day, or open single lines for {{ costs.prop }} credit each.</p>
+    </div>
+    <form method="post" action="/app/explorer/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Open board for {{ costs.board }} credits</button>
+      <small>You have {{ balance }}.</small></form>
+  </section>
+  {% endif %}
+
+  <form class="filters" method="get">
+    <label>Player or team<input type="search" name="q" value="{{ q.get('q', '') }}"></label>
+    <label>Market<select name="prop"><option value="">All</option>{% for p in props %}<option {% if q.get('prop') == p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></label>
+    <label>Odds from<input type="number" name="min_odds" value="{{ q.get('min_odds', '') }}" placeholder="-600"></label>
+    <label>to<input type="number" name="max_odds" value="{{ q.get('max_odds', '') }}" placeholder="400"></label>
+    {% set sorts = [('edge', 'Largest gap'), ('player', 'Player'), ('price', 'Price')] if unlocked else [('player', 'Player'), ('price', 'Price')] %}
+    <label>Sort<select name="sort">{% for k, v in sorts %}<option value="{{ k }}" {% if q.get('sort', 'edge' if unlocked else 'player') == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+    {% if unlocked %}<label class="check"><input type="checkbox" name="backed" value="1" {% if q.get('backed') == '1' %}checked{% endif %}> Only lines the model backs</label>{% endif %}
+    <button class="btn small ghost">Apply</button>
+  </form>
+
+  {{ rail_key(own=True) }}
+  <p class="muted">{{ total }} lines match. The gap is the probability used for edge minus the offered price's own probability. When the model's weight is 0, that probability is the market consensus, so a gap only means this venue is priced differently from the others.</p>
+
+  <table class="data board">
+    <thead><tr><th scope="col">Line</th><th scope="col">Best price</th><th scope="col" class="railcol">Probability, 0 to 100%</th><th scope="col">Gap</th><th scope="col">Model weight</th><th scope="col"></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      {% set open = unlocked or r.id in mine %}
+      <tr>
+        <th scope="row"><a href="/app/prop/{{ r.id }}">{{ r.player }}</a><small>{{ r.team }} vs {{ r.opponent }}, {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</small></th>
+        <td class="num">{{ r.odds | american }}<small>{{ r.venue }}</small></td>
+        <td class="railcol">{% if open %}{{ rail(r.implied, r.market, r.blended, r.model_own, r.market_lo, r.market_hi, r.player ~ ' probability rail') }}{% else %}{{ rail(r.implied, none, none, none, none, none, r.player ~ ' price only') }}{% endif %}</td>
+        <td class="num">{% if open %}<span class="{{ 'pos' if r.edge > 0 else 'neg' }}">{{ '%+.1f' % (r.edge * 100) }}</span>{% else %}<span class="muted">Locked</span>{% endif %}</td>
+        <td class="num">{% if open %}{{ '%.2f' % r.weight }}{% if not r.model_agrees %}<small class="warn-text">model disagrees</small>{% endif %}{% else %}–{% endif %}</td>
+        <td><a href="/app/prop/{{ r.id }}">{{ 'Details' if open else 'Open, ' ~ costs.prop ~ ' credit' }}</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if total > rows | length %}<p class="muted">Showing the first {{ rows | length }}. Narrow the filters to see the rest.</p>{% endif %}
+{% endif %}
+{% endblock %}

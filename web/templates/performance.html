@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Model performance: True Prob AI{% endblock %}
+{% block description %}Every graded True Prob AI board: accuracy against the market, calibration and flat-stake results, including losing dates.{% endblock %}
+{% block content %}
+{% set wf = perf.slope.walk_forward if perf.slope else none %}
+<section class="page-head">
+  <h1>Model performance</h1>
+  <p class="lede">Every board we publish is saved before tip-off and graded against box scores the next day. Nothing is left out. The short version: the no-vig market consensus has been as accurate as anything we have tested, so the market leads and our model only moves it where it has earned that in testing.</p>
+</section>
+
+<section class="band">
+  <h2>Accuracy on graded live boards</h2>
+  {% if perf.dates %}
+  <table class="data">
+    <thead><tr><th scope="col">Date</th><th scope="col">Final games</th><th scope="col">Lines graded</th><th scope="col">Our Brier</th><th scope="col">Market Brier</th><th scope="col">Flagged positive gaps</th><th scope="col">Their hit rate</th><th scope="col">Their flat-stake return</th></tr></thead>
+    <tbody>
+    {% for d in perf.dates %}
+      <tr><td>{{ d.date }}</td><td class="num">{{ d.games }}</td><td class="num">{{ '{:,}'.format(d.all.decided or 0) }}</td>
+      <td class="num">{{ '%.4f' % d.all.brier_model if d.all.brier_model else '–' }}</td><td class="num">{{ '%.4f' % d.all.brier_market if d.all.brier_market else '–' }}</td>
+      <td class="num">{{ '{:,}'.format(d.positive_edge.decided or 0) }}</td><td class="num">{{ d.positive_edge.hit_rate | pct }}</td>
+      <td class="num {{ 'neg' if (d.positive_edge.flat_roi_per_bet or 0) < 0 else 'pos' }}">{{ ('%+.1f%%' % (d.positive_edge.flat_roi_per_bet * 100)) if d.positive_edge.flat_roi_per_bet is not none else '–' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">Brier score is the mean squared error of a probability; lower is better, and 0.25 is what always guessing 50% scores. "Flat-stake return" is the average profit per $1 if every flagged positive gap had been bought at the listed price. Lines for one player and game are correlated, so a single night is a small sample. These early boards used earlier model versions, before the fixes that anchor every probability to the market.</p>
+  {% else %}<p>No graded boards yet.</p>{% endif %}
+</section>
+
+{% if wf %}
+<section class="band split">
+  <div>
+    <h2>Walk-forward test: can we correct the market?</h2>
+    <p>We tested a one-number correction for the favourite/long-shot bias on {{ '{:,}'.format(wf.test_rows) }} graded lines over {{ wf.test_dates }} dates. Each date is scored with a correction fitted only on earlier dates.</p>
+    <dl class="facts">
+      <div><dt>Market as it stands</dt><dd>{{ '%.5f' % wf.brier_market }}</dd><dd class="muted">Brier, all test dates</dd></div>
+      <div><dt>With the correction</dt><dd>{{ '%.5f' % wf.brier_corrected }}</dd><dd class="muted">Better on {{ wf.dates_improved }} of {{ wf.test_dates }} dates</dd></div>
+    </dl>
+    <p><strong>{{ perf.slope.decision }}</strong></p>
+  </div>
+  <figure class="calib">
+    <svg viewBox="0 0 320 320" role="img" aria-label="Calibration of the no-vig market price">
+      <rect class="calib-bg" x="40" y="10" width="270" height="270"/>
+      <line class="calib-diag" x1="40" y1="280" x2="310" y2="10"/>
+      {% for t in (0, 0.25, 0.5, 0.75, 1) %}
+        <text class="calib-label" x="{{ 40 + t * 270 }}" y="300" text-anchor="middle">{{ (t * 100) | int }}%</text>
+        <text class="calib-label" x="32" y="{{ 284 - t * 270 }}" text-anchor="end">{{ (t * 100) | int }}%</text>
+      {% endfor %}
+      {% for c in perf.slope.calibration_market %}
+        <circle class="calib-dot" cx="{{ 40 + c.predicted * 270 }}" cy="{{ 280 - c.realized * 270 }}" r="{{ [3, (c.n ** 0.5) / 6] | max }}"><title>{{ c.bin }}: priced {{ c.predicted | pct }}, happened {{ c.realized | pct }} ({{ c.n }} lines)</title></circle>
+      {% endfor %}
+    </svg>
+    <figcaption>Market price (across) against how often it happened (up), {{ '{:,}'.format(perf.slope.rows) }} lines. Dots on the diagonal are perfectly calibrated; dot size shows how many lines.</figcaption>
+  </figure>
+</section>
+{% endif %}
+
+{% if perf.scorecard and perf.scorecard.brier_same_props.n %}
+{% set sc = perf.scorecard %}
+<section class="band">
+  <h2>Candidate model on live boards since {{ sc.since }}</h2>
+  <p>Same lines, three probabilities, lower is better: candidate model {{ sc.brier_same_props.candidate }}, production blend {{ sc.brier_same_props.production }}, no-vig market {{ sc.brier_same_props.market_novig }} ({{ '{:,}'.format(sc.brier_same_props.n) }} lines).</p>
+  <table class="data"><thead><tr><th scope="col">Candidate's own gap</th><th scope="col">Lines</th><th scope="col">Hit rate</th><th scope="col">Price implied</th><th scope="col">Flat-stake return</th></tr></thead><tbody>
+  {% for name, b in sc.candidate_edge_bets.items() %}{% if b.n %}
+    <tr><td>{{ name }}</td><td class="num">{{ b.n }}</td><td class="num">{{ b.hit_rate | pct }}</td><td class="num">{{ b.avg_implied | pct }}</td><td class="num {{ 'neg' if b.flat_roi_per_bet < 0 else 'pos' }}">{{ '%+.1f%%' % (b.flat_roi_per_bet * 100) }}</td></tr>
+  {% endif %}{% endfor %}
+  </tbody></table>
+  <p class="muted">This is why the candidate model's weight is zero on the board today: its own gaps have not paid.</p>
+</section>
+{% endif %}
+
+<section class="band">
+  <h2>What this means for you</h2>
+  <p>True Prob AI is a fast, transparent way to see where one venue's price sits against the whole market, with our projection alongside. It is not a system that beats the market, and we will say so on this page until the evidence says otherwise. <a href="/legal/risk">Risk disclosure</a>.</p>
+</section>
+{% endblock %}

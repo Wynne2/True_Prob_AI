@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set heading = {'register': 'Create your account', 'login': 'Sign in', 'forgot': 'Reset your password', 'reset': 'Choose a new password'}[mode] %}
+{% block title %}{{ heading }}: True Prob AI{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>{{ heading }}</h1>
+  {% if error %}<p class="flash warn" role="alert">{{ error }}</p>{% endif %}
+  {% if mode == 'forgot' and sent %}
+    <p>If an account uses that address, a reset link is on its way. It works once and expires in an hour.</p>
+    {% if dev_link %}<p class="flash note">Development mode, no mail server: <a href="{{ dev_link }}">open the reset link</a></p>{% endif %}
+  {% else %}
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if mode in ('register', 'login', 'forgot') %}
+    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="email" required></label>
+    {% endif %}
+    {% if mode in ('register', 'login', 'reset') %}
+    <label>{{ 'New password' if mode == 'reset' else 'Password' }}<input type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required>
+      {% if mode != 'login' %}<small>At least 10 characters.</small>{% endif %}</label>
+    {% endif %}
+    {% if mode == 'reset' %}<input type="hidden" name="token" value="{{ token }}">{% endif %}
+    {% if mode == 'register' %}
+    <label>Where you live
+      <select name="region" required><option value="">Choose one</option>{% for r in regions %}<option>{{ r }}</option>{% endfor %}</select>
+    </label>
+    <label class="check"><input type="checkbox" name="age" value="yes" required> I am 21 or older</label>
+    <label class="check"><input type="checkbox" name="terms" value="yes" required> I accept the <a href="/legal/terms">terms</a> and have read the <a href="/legal/risk">risk disclosure</a> and <a href="/legal/privacy">privacy policy</a></label>
+    {% endif %}
+    <button class="btn">{{ {'register': 'Create account', 'login': 'Sign in', 'forgot': 'Email me a reset link', 'reset': 'Save new password'}[mode] }}</button>
+  </form>
+  {% endif %}
+  <p class="muted">
+  {% if mode == 'register' %}Already have an account? <a href="/login">Sign in</a>
+  {% elif mode == 'login' %}New here? <a href="/register">Create a free account</a>. <a href="/forgot">Forgot your password?</a>
+  {% else %}<a href="/login">Back to sign in</a>{% endif %}
+  </p>
+</section>
+{% endblock %}
