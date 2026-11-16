@@ -167,6 +167,45 @@ def run(root: Path = ROOT, save: bool = True) -> dict:
     return result
 
 
+BY_PROP_PATH = ROOT / "data" / "backtests" / "market_slope_by_prop.json"
+
+
+def run_by_prop(root: Path = ROOT, save: bool = True) -> dict:
+    """
+    Offline experiment: the same walk-forward test run separately for each stat.
+
+    Never read by the board. With one test per stat, one of them clearing two standard
+    errors by luck is likely, so a pass here is a lead for a pre-registered retest on
+    later dates, not grounds to apply it.
+    """
+    rows = load_rows(root)
+    stats = {}
+    for prop in sorted({r["prop"] for r in rows}):
+        sub = [r for r in rows if r["prop"] == prop]
+        wf = walk_forward(sub)
+        se = wf["date_se"]
+        stats[prop] = {
+            "rows": len(sub), "dates": len({r["date"] for r in sub}), "slope_all_rows": fit_slope(sub),
+            "test_rows": wf["test_rows"], "test_dates": wf["test_dates"],
+            "brier_market": wf["brier_market"], "brier_corrected": wf["brier_corrected"],
+            "mean_date_brier_delta": wf["mean_date_brier_delta"], "date_se": se, "dates_improved": wf["dates_improved"],
+            "passes_two_se": bool(wf["folds"]) and se is not None and wf["mean_date_brier_delta"] < -2 * se,
+        }
+    result = {
+        "fitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "method": "engine.market_slope walk-forward, run separately per stat; offline only, not used by the board",
+        "rows": len(rows),
+        "dates": sorted({r["date"] for r in rows}),
+        "tests": len(stats),
+        "by_prop": stats,
+        "passing": sorted(k for k, v in stats.items() if v["passes_two_se"]),
+    }
+    if save:
+        BY_PROP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        BY_PROP_PATH.write_text(json.dumps(result, indent=1), encoding="utf-8")
+    return result
+
+
 def load_slope(path: Path = PARAMS_PATH) -> float:
     """The slope the engine should apply: 1.0 unless a saved fit passed its walk-forward test."""
     try:
@@ -177,6 +216,16 @@ def load_slope(path: Path = PARAMS_PATH) -> float:
 
 
 if __name__ == "__main__":
+    import sys
+
+    if "--by-prop" in sys.argv:
+        r = run_by_prop()
+        for prop, s in r["by_prop"].items():
+            print(f"{prop:<9} rows {s['rows']:<5} test {s['test_rows']:<5} on {s['test_dates']} dates  slope {s['slope_all_rows']:.2f}  "
+                  f"Brier {s['brier_market']} -> {s['brier_corrected']}  delta {s['mean_date_brier_delta']} +/- {s['date_se']}  "
+                  f"{'PASSES' if s['passes_two_se'] else 'no'}")
+        print(f"passing: {r['passing'] or 'none'} of {r['tests']} tests")
+        sys.exit(0)
     r = run()
     wf = r["walk_forward"]
     print(f"{r['rows']} rows on {len(r['dates'])} dates; walk-forward on {wf['test_dates']} dates, {wf['test_rows']} rows")

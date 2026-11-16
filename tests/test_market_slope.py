@@ -55,3 +55,25 @@ def test_saved_result_matches_the_data():
         pytest.skip("new graded dates since the last fit; rerun: python -m engine.market_slope")
     assert fresh["walk_forward"]["brier_market"] == saved["walk_forward"]["brier_market"]
     assert fresh["in_use"] == saved["in_use"]
+
+
+def test_by_prop_experiment_tests_each_stat_alone_and_stays_offline():
+    rows = _rows([f"2026-01-{d:02d}" for d in range(1, 7)], 1.0)
+    for r in rows[::2]:
+        r["prop"] = "rebounds"
+    stats = {p: ms.walk_forward([r for r in rows if r["prop"] == p]) for p in ("points", "rebounds")}
+    assert all(s["test_rows"] == sum(r["prop"] == p and r["date"] >= "2026-01-04" for r in rows) for p, s in stats.items())
+    import inspect
+
+    from engine import market_blend
+    assert "market_slope_by_prop" not in inspect.getsource(market_blend)
+    assert "BY_PROP_PATH" not in inspect.getsource(ms.load_slope)
+
+
+def test_saved_by_prop_report_matches_the_data():
+    saved = json.loads(ms.BY_PROP_PATH.read_text(encoding="utf-8"))
+    fresh = ms.run_by_prop(save=False)
+    if fresh["dates"] != saved["dates"]:
+        pytest.skip("new graded dates since the last run; rerun: python -m engine.market_slope --by-prop")
+    assert fresh["passing"] == saved["passing"]
+    assert {k: v["brier_market"] for k, v in fresh["by_prop"].items()} == {k: v["brier_market"] for k, v in saved["by_prop"].items()}

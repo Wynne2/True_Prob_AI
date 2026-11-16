@@ -1,0 +1,113 @@
+{
+ "fitted_at": "2026-11-16T02:39:21+00:00",
+ "method": "engine.market_slope walk-forward, run separately per stat; offline only, not used by the board",
+ "rows": 11052,
+ "dates": [
+  "2026-01-05",
+  "2026-01-08",
+  "2026-01-12",
+  "2026-01-15",
+  "2026-01-19",
+  "2026-01-22",
+  "2026-01-26",
+  "2026-01-29",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06"
+ ],
+ "tests": 7,
+ "by_prop": {
+  "assists": {
+   "rows": 1915,
+   "dates": 11,
+   "slope_all_rows": 1.0,
+   "test_rows": 1621,
+   "test_dates": 8,
+   "brier_market": 0.226311,
+   "brier_corrected": 0.227271,
+   "mean_date_brier_delta": 0.000709,
+   "date_se": 0.000899,
+   "dates_improved": 3,
+   "passes_two_se": false
+  },
+  "blocks": {
+   "rows": 293,
+   "dates": 3,
+   "slope_all_rows": 1.03,
+   "test_rows": 0,
+   "test_dates": 0,
+   "brier_market": null,
+   "brier_corrected": null,
+   "mean_date_brier_delta": 0.0,
+   "date_se": null,
+   "dates_improved": 0,
+   "passes_two_se": false
+  },
+  "points": {
+   "rows": 3007,
+   "dates": 11,
+   "slope_all_rows": 1.27,
+   "test_rows": 2705,
+   "test_dates": 8,
+   "brier_market": 0.217073,
+   "brier_corrected": 0.216703,
+   "mean_date_brier_delta": 0.000104,
+   "date_se": 0.00028,
+   "dates_improved": 3,
+   "passes_two_se": false
+  },
+  "pra": {
+   "rows": 1222,
+   "dates": 3,
+   "slope_all_rows": 1.03,
+   "test_rows": 0,
+   "test_dates": 0,
+   "brier_market": null,
+   "brier_corrected": null,
+   "mean_date_brier_delta": 0.0,
+   "date_se": null,
+   "dates_improved": 0,
+   "passes_two_se": false
+  },
+  "rebounds": {
+   "rows": 2475,
+   "dates": 11,
+   "slope_all_rows": 1.3,
+   "test_rows": 2175,
+   "test_dates": 8,
+   "brier_market": 0.20984,
+   "brier_corrected": 0.209605,
+   "mean_date_brier_delta": 0.000193,
+   "date_se": 0.00043,
+   "dates_improved": 4,
+   "passes_two_se": false
+  },
+  "steals": {
+   "rows": 527,
+   "dates": 3,
+   "slope_all_rows": 1.11,
+   "test_rows": 0,
+   "test_dates": 0,
+   "brier_market": null,
+   "brier_corrected": null,
+   "mean_date_brier_delta": 0.0,
+   "date_se": null,
+   "dates_improved": 0,
+   "passes_two_se": false
+  },
+  "threes": {
+   "rows": 1613,
+   "dates": 11,
+   "slope_all_rows": 1.23,
+   "test_rows": 1335,
+   "test_dates": 8,
+   "brier_market": 0.222711,
+   "brier_corrected": 0.222162,
+   "mean_date_brier_delta": -0.001372,
+   "date_se": 0.0012,
+   "dates_improved": 6,
+   "passes_two_se": false
+  }
+ },
+ "passing": []
+}
