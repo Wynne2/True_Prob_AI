@@ -166,6 +166,18 @@ def test_pricing_translates_credits_into_usage(client, env):
     assert all(f"costs {db.COSTS[k]}" in credits_answer for k in ("prop", "board", "advisor", "arbitrage"))
 
 
+def test_paid_plans_show_what_a_board_works_out_to(client):
+    from web import db
+
+    page = client.get("/pricing").text
+    pro, power = db.PLANS["pro"], db.PLANS["power"]
+    per_board = lambda p: "%.2f" % (p["price"] * db.COSTS["board"] / p["credits"])
+    assert f"Works out to about ${per_board(pro)} per full-day board</li>" in page
+    saving = "%.0f" % (100 - 100 * (power["price"] / power["credits"]) / (pro["price"] / pro["credits"]))
+    assert f"Works out to about ${per_board(power)} per full-day board, {saving}% less than on Pro" in page
+    assert page.count("Works out to") == 2          # not on Free or Teams
+
+
 def test_registration_rules(client):
     def attempt(**over):
         data = {"csrf": _csrf(client), "email": "kid@example.com", "password": "long enough 1", "region": "Ohio",

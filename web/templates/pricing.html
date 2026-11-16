@@ -16,6 +16,7 @@
     <p class="credits">{{ p.credits }} credits {{ 'every 30 days' if key == 'free' else 'per billing period' }}</p>
     <ul>
       <li>Up to {{ p.credits // costs.board }} full-day boards, or {{ p.credits // costs.advisor }} Advisor reviews, or {{ p.credits // costs.prop }} single lines</li>
+      {% if p.price %}<li>Works out to about ${{ '%.2f' % (p.price * costs.board / p.credits) }} per full-day board{% if not loop.first %}{% set prev = (plans.values() | list)[loop.index0 - 1] %}{% if prev.price %}, {{ '%.0f' % (100 - 100 * (p.price / p.credits) / (prev.price / prev.credits)) }}% less than on {{ prev.name }}{% endif %}{% endif %}</li>{% endif %}
       {% if key == 'free' %}<li>Try every feature, no card needed</li>
       {% elif key == 'pro' %}{% set month = 30 * costs.board %}<li>A full board every day of a 30-day month uses {{ month }}, leaving {{ p.credits - month }}</li>
       {% else %}{% set month = 30 * (costs.board + costs.arbitrage + costs.advisor) %}<li>Board, arbitrage and one Advisor review every day uses {{ month }}, leaving {{ p.credits - month }}</li>{% endif %}
