@@ -385,6 +385,25 @@ def test_every_charge_shows_a_receipt(client, env):
     assert "Charged 5 credits for today&#39;s full board (2026-11-15). You have 14 left." in client.get("/app/explorer").text
 
 
+def test_customers_see_when_their_credits_reset_and_to_what(client, env):
+    from web import app as webapp, db
+
+    user = register(client)
+    when = webapp.day(float(user["credits_reset_at"]) + db.PERIOD_SECONDS)
+    assert f"Back to 20 on {when}." in client.get("/app").text
+    assert f"Your balance becomes 20 on {when}" in client.get("/app/account").text
+    assert f"or wait until {when}, when your balance becomes 20" in client.get("/pricing?need=board").text
+
+    end = time.time() + 10 * 86400
+    db.update_user(user["id"], plan="pro", sub_status="active", period_end=end)
+    assert db.next_reset(db.get_user(user["id"])) == (end, 200)
+    db.update_user(user["id"], cancel_at_period_end=1)       # cancelled: drops to the free allowance
+    assert db.next_reset(db.get_user(user["id"])) == (end, 20)
+    db.update_user(user["id"], period_end=None)
+    assert db.next_reset(db.get_user(user["id"])) is None
+    assert "Back to" not in client.get("/app").text
+
+
 def test_insufficient_credits_charge_nothing(client, env):
     from web import db
 

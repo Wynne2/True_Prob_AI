@@ -24,6 +24,7 @@
   <section class="panel">
     <h2>Credits</h2>
     <p class="big">{{ balance }}</p>
+    {% if reset %}<p><strong>Your balance becomes {{ reset[1] }} on {{ reset[0] | day }}</strong>{% if plan == 'free' %} (on your first visit from that day){% endif %}.</p>{% endif %}
     <p>Credits reset at the start of each period to your plan's allowance. Unused credits do not roll over and have no cash value. Reopening anything you already unlocked is free, and failed analyses are refunded automatically.</p>
   </section>
 </div>

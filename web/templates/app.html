@@ -3,7 +3,7 @@
 {% block body_class %}in-app{% endblock %}
 {% block shell %}
 <div class="app">
-  {{ appnav(path, user, balance, plan, feature, csrf) }}
+  {{ appnav(path, user, balance, plan, feature, csrf, reset) }}
   <main id="main" class="work">
     {% for a in announcements %}<p class="flash note" role="status">{{ a.body }}</p>{% endfor %}
     {% if flash %}<p class="flash {{ flash[0] }}" role="status">{{ flash[1] }}</p>{% endif %}

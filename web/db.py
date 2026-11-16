@@ -330,6 +330,16 @@ def refresh_free_credits(user) -> None:
         grant_period(user["id"], "free", f"free:{user['id']}:{period}")
 
 
+def next_reset(user) -> Optional[tuple[float, int]]:
+    """(when, credits): the next time the balance is set to an allowance, or None when that date is not known yet."""
+    if effective_plan(user) != "free":
+        if not user["period_end"]:
+            return None
+        plan = "free" if user["cancel_at_period_end"] else user["plan"]
+        return float(user["period_end"]), PLANS[plan]["credits"]
+    return float(user["credits_reset_at"]) + PERIOD_SECONDS, PLANS["free"]["credits"]
+
+
 def adjust_credits(admin_id: int, user_id: int, delta: int, note: str) -> None:
     with transaction() as conn:
         now = time.time()

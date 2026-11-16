@@ -152,6 +152,7 @@ def render(request: Request, name: str, status_code: int = 200, **ctx) -> Respon
     ctx.setdefault("noindex", status_code >= 400 or request.url.path.startswith(PRIVATE_PREFIXES))
     ctx.update(
         user=user, plan=db.effective_plan(user) if user else None, balance=db.balance(user["id"]) if user else None,
+        reset=db.next_reset(user) if user else None,
         csrf=csrf_token(request), flash=request.session.pop("flash", None), plans=db.PLANS, costs=db.COSTS, theme_script=THEME_SCRIPT,
         billing_on=billing.enabled(), legal_reviewed=db.flag("legal_reviewed", False), path=request.url.path,
         support_email=os.environ.get("SUPPORT_EMAIL") or "support@example.com", canonical=base_url(request) + request.url.path,
@@ -184,6 +185,10 @@ def when(ts) -> str:
     return "–" if not ts else time.strftime("%b %d, %Y %H:%M UTC", time.gmtime(float(ts)))
 
 
+def day(ts) -> str:
+    return "–" if not ts else time.strftime("%b %d, %Y", time.gmtime(float(ts))).replace(" 0", " ")
+
+
 def ago(ts) -> str:
     if not ts:
         return "never"
@@ -199,7 +204,7 @@ def venue_links(urls) -> list[tuple[str, str]]:
     return [(u, name) for u in urls or [] if isinstance(u, str) for host, name in VENUE_SITES if u.startswith(host)]
 
 
-templates.env.filters.update(pct=pct, american=american, when=when, ago=ago, venue_links=venue_links)
+templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links)
 
 
 # ---------------------------------------------------------------------------
