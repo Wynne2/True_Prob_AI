@@ -214,6 +214,26 @@ def test_login_rate_limit(client):
     assert codes[-1] == 429
 
 
+def test_login_limit_per_account_survives_changing_networks(client, monkeypatch):
+    from web import app as webapp, db
+
+    register(client, verify=False)
+    codes = [client.post("/login", headers={"x-forwarded-for": f"10.0.0.{i}"},
+                         data={"csrf": _csrf(client, "/login"), "email": "ann@example.com", "password": "nope"}).status_code
+             for i in range(12)]
+    assert codes[:10] == [400] * 10 and codes[-1] == 429
+    other = client.post("/login", headers={"x-forwarded-for": "10.0.1.1"},
+                        data={"csrf": _csrf(client, "/login"), "email": "bob@example.com", "password": "nope"})
+    assert other.status_code == 400      # other accounts are unaffected
+
+    checked = []
+    monkeypatch.setattr(db, "check_password", lambda pw, stored: checked.append(stored) or False)
+    client.post("/login", headers={"x-forwarded-for": "10.0.2.1"},
+                data={"csrf": _csrf(client, "/login"), "email": "nobody@example.com", "password": "nope"})
+    assert checked and checked[0].startswith("scrypt$")    # unknown email still pays for one hash
+    assert webapp._dummy_hash
+
+
 # ---------------------------------------------------------------------------
 # Credits
 # ---------------------------------------------------------------------------

@@ -92,15 +92,32 @@ async def checked_form(request: Request):
 _hits: dict[str, deque] = defaultdict(deque)
 
 
-def limited(request: Request, bucket: str, n: int, per: int) -> bool:
-    """True when this client has made more than ``n`` requests to ``bucket`` in ``per`` seconds."""
+def _over(key: str, n: int, per: int) -> bool:
     # shortcut: per-process memory; use a shared store when there is more than one web instance.
-    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
-    q, now = _hits[f"{bucket}:{ip}"], time.time()
+    q, now = _hits[key], time.time()
     while q and q[0] < now - per:
         q.popleft()
     q.append(now)
     return len(q) > n
+
+
+def limited(request: Request, bucket: str, n: int, per: int) -> bool:
+    """True when this client has made more than ``n`` requests to ``bucket`` in ``per`` seconds."""
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    return _over(f"{bucket}:{ip}", n, per)
+
+
+_dummy_hash: list[str] = []
+
+
+def _password_matches(user, password: str) -> bool:
+    """Checks a password with the same scrypt work whether or not the account exists."""
+    if user is None:
+        if not _dummy_hash:
+            _dummy_hash.append(db.hash_password(secrets.token_urlsafe(16)))
+        db.check_password(password, _dummy_hash[0])
+        return False
+    return db.check_password(password, user["pw_hash"])
 
 
 def flash(request: Request, message: str, kind: str = "ok") -> None:
@@ -294,8 +311,11 @@ async def login(request: Request):
     if limited(request, "login", 10, 600):
         raise HTTPException(429, "Too many sign-in attempts. Wait ten minutes and try again.")
     email = str(form.get("email") or "").strip().lower()
+    # Per account as well as per network, so spreading guesses over many addresses does not help.
+    if _over(f"login-account:{email}", 10, 900):
+        raise HTTPException(429, "Too many sign-in attempts. Wait fifteen minutes and try again, or reset your password.")
     user = db.get_user(email=email)
-    if user is None or not db.check_password(str(form.get("password") or ""), user["pw_hash"]):
+    if not _password_matches(user, str(form.get("password") or "")):
         db.audit(user["id"] if user else None, "login.failed")
         return render(request, "auth.html", 400, mode="login", next=nxt, email=email, error="That email and password do not match.")
     if email in db.admin_emails() and not user["is_admin"]:
