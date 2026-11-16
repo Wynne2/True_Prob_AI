@@ -6,6 +6,19 @@
   <p class="muted">Signed in as {{ user.email }}</p>
 </header>
 
+{% if steps %}
+<section class="panel start" aria-labelledby="start-h">
+  <h2 id="start-h">Getting started</h2>
+  <p class="muted">{{ steps | selectattr(1) | list | length }} of {{ steps | length }} done. Opening a single line costs {{ costs.prop }} credit and shows exactly what you are paying for.</p>
+  <ol class="checklist">
+    {% for label, done, href in steps %}
+    <li class="{{ 'done' if done }}">{% if done %}<span class="visually-hidden">Done: </span>{{ label }}{% else %}<a href="{{ href }}">{{ label }}</a>{% endif %}</li>
+    {% endfor %}
+  </ol>
+  <p class="muted">New to the numbers? The <a href="/performance">performance page</a> shows how every published board has graded, including the losing nights.</p>
+</section>
+{% endif %}
+
 <div class="grid-3">
   <section class="panel">
     <h2>Today's board</h2>

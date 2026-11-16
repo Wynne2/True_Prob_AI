@@ -165,6 +165,19 @@ def test_free_credits_and_verification_gate(client, env):
     assert db.balance(user["id"]) == 20
 
 
+def test_first_run_checklist_tracks_progress_then_disappears(client, env):
+    register(client, verify=False)
+    page = client.get("/app").text
+    assert "Getting started" in page and "0 of 3 done" in page
+    link = re.search(r'href="[^"]*(/verify\?token=[^"]+)"', page).group(1)
+    client.get(link)
+    write_board(env)
+    post(client, "/app/prop/p0/unlock")
+    assert "2 of 3 done" in client.get("/app").text
+    post(client, "/app/watch", player="Player 0")
+    assert "Getting started" not in client.get("/app").text
+
+
 def test_login_logout_and_open_redirect(client):
     register(client, verify=False)
     client.post("/logout", data={"csrf": _csrf(client, "/app")})

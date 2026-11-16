@@ -417,7 +417,12 @@ async def dashboard(request: Request):
     watched = {w["key"] for w in watch}
     hits = [r for r in (board or {}).get("rows", []) if r["player"].lower() in watched][:12]
     perf = await run_in_threadpool(_performance)
+    steps = [("Confirm your email", bool(user["verified_at"]), "/app/account"),
+             ("Open your first line or today's board", bool(db.query("SELECT 1 FROM unlocks WHERE user_id=? LIMIT 1", (user["id"],))),
+              "/app/explorer"),
+             ("Watch a player from any line's page", bool(watch), "/app/explorer")]
     return render(request, "dashboard.html", user=user, board=board, arb=arb, watch=watch, watch_hits=hits,
+                  steps=None if all(done for _, done, _ in steps) else steps,
                   history=db.history(user["id"], 8), perf_dates=perf["dates"][-3:],
                   runs=db.query("SELECT id, slate, status, created_at FROM advisor_runs WHERE user_id=? ORDER BY id DESC LIMIT 5", (user["id"],)),
                   dev_verify=request.session.get("dev_verify"))

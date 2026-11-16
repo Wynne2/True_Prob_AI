@@ -156,6 +156,11 @@ table.costs { border-collapse: collapse; width: 100%; max-width: 760px; margin-b
 .chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
 .chips li { background: var(--raise); border-radius: 999px; padding: .25rem .8rem; display: flex; gap: .5rem; align-items: center; }
 .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
+.checklist { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: .5rem; }
+.checklist li { display: flex; gap: .6rem; align-items: center; }
+.checklist li::before { content: ""; flex: none; width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 2px solid var(--line); }
+.checklist li.done { color: var(--muted); text-decoration: line-through; }
+.checklist li.done::before { border-color: var(--pos); background: var(--pos); }
 .notes { color: var(--muted); font-size: .92rem; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 24px; margin: 20px 0; }
 .facts dt { color: var(--muted); font-size: .85rem; }
