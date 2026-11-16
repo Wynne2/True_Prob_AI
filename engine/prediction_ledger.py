@@ -75,11 +75,12 @@ def _candidate_version(prop) -> str | None:
         return None
 
 
-def save_pregame_predictions(game_date: date, props: list, directory: str | Path = DEFAULT_DIR) -> Path:
+def save_pregame_predictions(game_date: date, props: list, directory: str | Path | None = None) -> Path:
     """
     Add new pregame rows. An existing key keeps its original odds and probabilities.
+    ``directory`` defaults to DEFAULT_DIR as it is at call time, so tests can redirect it.
     """
-    folder = Path(directory)
+    folder = Path(directory or DEFAULT_DIR)
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{game_date.isoformat()}.json"
     saved_at = datetime.now(timezone.utc).isoformat()

@@ -664,6 +664,28 @@ def test_locked_board_does_not_leak_gap_order(client, env):
     assert order(client.get("/app/explorer?sort=edge").text) == ["Zed", "Max", "Amy"]           # by gap once paid
 
 
+def test_tests_never_write_to_the_real_prediction_ledger(tmp_path):
+    from datetime import date
+    from pathlib import Path
+
+    import engine.prediction_ledger as ledger
+    from tests.test_advisor import make_prop
+
+    real = Path(ledger.__file__).resolve().parents[1] / "data" / "predictions"
+    path = ledger.save_pregame_predictions(date(2030, 1, 1), [make_prop("Fixture Player")])
+    assert path.parent == tmp_path / "predictions" and not (real / "2030-01-01.json").exists()
+
+
+def test_committed_pregame_ledgers_from_nov_15_hold_no_test_fixtures():
+    from pathlib import Path
+
+    folder = Path(__file__).resolve().parents[1] / "data" / "predictions"
+    for path in folder.glob("????-??-??.json"):
+        if path.name >= "2026-11-15":
+            rows = json.loads(path.read_text(encoding="utf-8"))
+            assert not [r for r in rows if str(r.get("game_id")) in {"g1", "g2", "g3"}], path.name
+
+
 def test_prop_row_keeps_every_probability_separate():
     from tests.test_advisor import make_prop
     from web.jobs import prop_row
