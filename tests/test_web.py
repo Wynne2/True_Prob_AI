@@ -120,6 +120,25 @@ def test_public_pages_render_with_disclosures(client):
     assert client.get("/legal/nope").status_code == 404
 
 
+def test_structured_data_and_indexing_hints(client):
+    from web import db
+
+    home = client.get("/").text
+    ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S).group(1))
+    assert {d["@type"] for d in ld} == {"WebSite", "Organization", "SoftwareApplication"}
+    offers = next(d for d in ld if d["@type"] == "SoftwareApplication")["offers"]
+    assert [(o["name"], o["price"]) for o in offers] == [(p["name"], str(p["price"])) for p in db.PLANS.values()]
+    assert 'property="og:site_name"' in home and 'name="twitter:card"' in home and "/static/favicon.svg" in home
+    for path in ("/", "/pricing", "/performance", "/legal/terms"):
+        assert 'name="robots" content="noindex"' not in client.get(path).text, path
+    for path in ("/login", "/register", "/forgot", "/legal/nope"):
+        assert 'name="robots" content="noindex"' in client.get(path).text, path
+    register(client)
+    assert 'name="robots" content="noindex"' in client.get("/app").text
+    assert client.get("/favicon.ico", follow_redirects=False).headers["location"] == "/static/favicon.svg"
+    assert client.get("/static/favicon.svg").status_code == 200
+
+
 def test_pricing_translates_credits_into_usage(client, env):
     from web import content, db
 

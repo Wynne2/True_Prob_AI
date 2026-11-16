@@ -6,11 +6,15 @@
 <title>{% block title %}True Prob AI{% endblock %}</title>
 <meta name="description" content="{% block description %}True Prob AI removes the bookmaker's margin from sports and event-market prices and shows the consensus probability next to every offered price. Research tool, 21+.{% endblock %}">
 <link rel="canonical" href="{{ canonical }}">
+{% if noindex %}<meta name="robots" content="noindex">{% endif %}
+<meta property="og:site_name" content="True Prob AI">
 <meta property="og:title" content="{{ self.title() }}">
 <meta property="og:description" content="{{ self.description() }}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ canonical }}">
+<meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0F1626">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 {% block head %}{% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

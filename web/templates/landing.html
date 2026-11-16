@@ -2,7 +2,7 @@
 {% from "_macros.html" import rail, rail_key %}
 {% block title %}True Prob AI: the probability behind every price{% endblock %}
 {% block head %}
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"True Prob AI","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":[{"@type":"Offer","price":"0","priceCurrency":"USD","name":"Free"},{"@type":"Offer","price":"29","priceCurrency":"USD","name":"Pro"},{"@type":"Offer","price":"79","priceCurrency":"USD","name":"Power"}]}</script>
+<script type="application/ld+json">{{ structured_data | tojson }}</script>
 {% endblock %}
 {% block content %}
 {% set ex = none %}

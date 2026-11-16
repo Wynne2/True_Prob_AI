@@ -134,8 +134,12 @@ def receipt(request: Request, user, result: str, kind: str, what: str) -> None:
         flash(request, f"You already opened {what}. Nothing was charged.")
 
 
+PRIVATE_PREFIXES = ("/app", "/admin", "/login", "/register", "/forgot", "/reset", "/verify", "/billing")
+
+
 def render(request: Request, name: str, status_code: int = 200, **ctx) -> Response:
     user = ctx.pop("user", None) or current_user(request)
+    ctx.setdefault("noindex", status_code >= 400 or request.url.path.startswith(PRIVATE_PREFIXES))
     ctx.update(
         user=user, plan=db.effective_plan(user) if user else None, balance=db.balance(user["id"]) if user else None,
         csrf=csrf_token(request), flash=request.session.pop("flash", None), plans=db.PLANS, costs=db.COSTS,
@@ -216,9 +220,27 @@ def _performance() -> dict:
     return out
 
 
+def structured_data(base: str) -> list[dict]:
+    """Home-page JSON-LD: site name, organisation and the real plan prices (from PLANS, so never stale)."""
+    home = base + "/"
+    return [
+        {"@context": "https://schema.org", "@type": "WebSite", "name": "True Prob AI", "url": home},
+        {"@context": "https://schema.org", "@type": "Organization", "name": "True Prob AI", "url": home},
+        {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "True Prob AI", "url": home,
+         "applicationCategory": "BusinessApplication", "operatingSystem": "Web",
+         "offers": [{"@type": "Offer", "name": p["name"], "price": str(p["price"]), "priceCurrency": "USD",
+                     "url": base + "/pricing"} for p in db.PLANS.values()]},
+    ]
+
+
 async def landing(request: Request):
     db.track("visit_landing")
-    return render(request, "landing.html", faq=content.FAQ, board=jobs.load_board())
+    return render(request, "landing.html", faq=content.FAQ, board=jobs.load_board(),
+                  structured_data=structured_data(base_url(request)))
+
+
+async def favicon(request: Request):
+    return RedirectResponse("/static/favicon.svg", 301)
 
 
 async def pricing(request: Request):
@@ -825,7 +847,7 @@ def P(path, endpoint, methods=("GET",)):
 
 routes = [
     P("/", landing), P("/pricing", pricing), P("/performance", performance), P("/legal/{slug}", legal),
-    P("/healthz", healthz), P("/robots.txt", robots), P("/sitemap.xml", sitemap),
+    P("/healthz", healthz), P("/robots.txt", robots), P("/sitemap.xml", sitemap), P("/favicon.ico", favicon),
     P("/register", register, ("GET", "POST")), P("/login", login, ("GET", "POST")), P("/logout", logout, ("POST",)),
     P("/verify", verify), P("/verify/resend", resend, ("POST",)),
     P("/forgot", forgot, ("GET", "POST")), P("/reset", reset, ("GET", "POST")),
