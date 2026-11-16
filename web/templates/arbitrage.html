@@ -2,13 +2,14 @@
 {% block title %}Arbitrage terminal: True Prob AI{% endblock %}
 {% block head %}{% if job and job.running and not arb %}<meta http-equiv="refresh" content="20">{% endif %}{% endblock %}
 {% macro match(title) %}{% if '[confirmed pair]' in title %}Rules reviewed by hand{% elif '[Kalshi+Polymarket prop]' in title %}Same player, stat, line and game{% elif '[Kalshi+Polymarket]' in title %}Same game, both teams matched{% else %}Single venue{% endif %}{% endmacro %}
+{% macro rules(urls) %}{% set links = urls | venue_links %}{% if links %}<span class="rules">Read the settlement rules on {% for u, name in links %}<a href="{{ u }}" rel="noopener noreferrer nofollow" target="_blank">{{ name }}<span class="visually-hidden"> (opens in a new tab)</span></a>{% if not loop.last %} and {% endif %}{% endfor %}</span>{% endif %}{% endmacro %}
 {% macro table(rows, conditional=False) %}
 <table class="data arb">
   <thead><tr><th scope="col">Market</th><th scope="col">Legs to buy</th><th scope="col">Contracts</th><th scope="col">Cost</th><th scope="col">Profit at book prices</th><th scope="col">If each bought leg fills 1¢ worse</th><th scope="col">Interest while held</th><th scope="col">Settles</th></tr></thead>
   <tbody>
   {% for r in rows %}
     <tr>
-      <th scope="row">{{ r.title }}<small>{{ match(r.title) }}{% if conditional %}; needs your resting order to fill{% endif %}</small></th>
+      <th scope="row">{{ r.title }}<small>{{ match(r.title) }}{% if conditional %}; needs your resting order to fill{% endif %}</small>{{ rules(r.urls) }}</th>
       <td><ul class="plain legs">{% for l in r.legs %}<li>{{ l }}</li>{% endfor %}</ul></td>
       <td class="num">{{ '{:,.0f}'.format(r.contracts) }}</td>
       <td class="num">${{ '{:,.2f}'.format(r.cost) }}</td>
@@ -73,7 +74,7 @@
     <p class="muted">These need a Polymarket bid that you post and someone else fills, and then the Kalshi side bought before it moves. Until both fill you hold one side of a bet.</p>
     {% if arb.maker %}{{ table(arb.maker, True) }}{% else %}<p class="zero">None.</p>{% endif %}
   </section>
-  <p class="muted">Interest is the venues' variable rate (Kalshi APY, Polymarket holding rewards) and is not locked. Read both venues' rules before trading across them. <a href="/legal/risk">Risk disclosure</a>.</p>
+  <p class="muted">Interest is the venues' variable rate (Kalshi APY, Polymarket holding rewards) and is not locked. Read both venues' rules before trading across them: two markets with the same headline can settle on different sources, deadlines or definitions, and then a pair is not an arbitrage at any price. <a href="/legal/risk">Risk disclosure</a>.</p>
   {% endif %}
 {% endif %}
 {% endblock %}

@@ -540,6 +540,24 @@ def test_explorer_and_arbitrage_render_real_rows(client, env):
     assert "None right now" in client.get("/app/arbitrage").text and db.balance(user["id"]) == 10
 
 
+def test_arbitrage_rows_link_to_both_venues_rules(client, env):
+    from web import db, jobs
+
+    user = register(client)
+    row = {"title": "Player X points over 20.5 [Kalshi+Polymarket prop]", "legs": ["kalshi: YES", "polymarket: NO"],
+           "contracts": 100, "cost": 90.0, "profit": 8.0, "profit_if_slipped": 6.0, "interest": 0.1,
+           "closes": "2026-11-16T03:00:00+00:00",
+           "urls": ["https://kalshi.com/markets/kxnbapts", "https://polymarket.com/event/nba-x", "javascript:alert(1)"]}
+    jobs.ARB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    jobs.ARB_PATH.write_text(json.dumps({"arbs": [row], "near": [], "maker": [], "scanned_at": time.time(), "seconds": 100,
+                                         "stats": {"kalshi_events": 1, "polymarket_events": 1, "matched_games": 0,
+                                                   "confirmed_pairs": 0, "candidates": 1}}), encoding="utf-8")
+    db.spend(user["id"], "arbitrage", "2026-11-15")
+    page = client.get("/app/arbitrage").text
+    assert 'href="https://kalshi.com/markets/kxnbapts"' in page and 'href="https://polymarket.com/event/nba-x"' in page
+    assert "javascript:" not in page and "Read the settlement rules on" in page
+
+
 def test_locked_board_does_not_leak_gap_order(client, env):
     from web import db
 

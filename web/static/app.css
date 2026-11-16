@@ -176,6 +176,8 @@ table.data { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .data.compact td { padding: .35rem .4rem; }
 .board .railcol { width: 38%; min-width: 220px; }
 .arb .legs li { font-size: .82rem; color: var(--muted); }
+.arb .rules { display: block; font-weight: 400; font-size: .82rem; margin-top: .2rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .panel > table.data, section > table.data { display: block; overflow-x: auto; }
 
 /* The probability rail */

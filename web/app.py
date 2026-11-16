@@ -177,7 +177,15 @@ def ago(ts) -> str:
     return "just now" if mins < 1 else f"{mins} min ago" if mins < 90 else f"{mins // 60} h ago"
 
 
-templates.env.filters.update(pct=pct, american=american, when=when, ago=ago)
+VENUE_SITES = (("https://kalshi.com/", "Kalshi"), ("https://polymarket.com/", "Polymarket"))
+
+
+def venue_links(urls) -> list[tuple[str, str]]:
+    """(url, venue) for market pages on the venues we scan; anything else is dropped."""
+    return [(u, name) for u in urls or [] if isinstance(u, str) for host, name in VENUE_SITES if u.startswith(host)]
+
+
+templates.env.filters.update(pct=pct, american=american, when=when, ago=ago, venue_links=venue_links)
 
 
 # ---------------------------------------------------------------------------
