@@ -223,6 +223,17 @@ def test_credits_charge_once_and_never_for_reopening(client, env):
     assert "Locked" not in client.get("/app/explorer").text
 
 
+def test_every_charge_shows_a_receipt(client, env):
+    register(client)
+    write_board(env)
+    post(client, "/app/prop/p0/unlock")
+    assert "Charged 1 credit for Player 0 points over 20.5. You have 19 left." in client.get("/app/prop/p0").text
+    post(client, "/app/prop/p0/unlock")
+    assert "already opened Player 0 points over 20.5. Nothing was charged." in client.get("/app/prop/p0").text
+    post(client, "/app/explorer/unlock")
+    assert "Charged 5 credits for today&#39;s full board (2026-11-15). You have 14 left." in client.get("/app/explorer").text
+
+
 def test_insufficient_credits_charge_nothing(client, env):
     from web import db
 

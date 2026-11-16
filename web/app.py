@@ -107,6 +107,16 @@ def flash(request: Request, message: str, kind: str = "ok") -> None:
     request.session["flash"] = [kind, message]
 
 
+def receipt(request: Request, user, result: str, kind: str, what: str) -> None:
+    """Say what a spend cost and what is left, so no credit disappears without a line on screen."""
+    if result == "ok":
+        n = db.COSTS[kind]
+        flash(request, f"Charged {n} credit{'s' if n != 1 else ''} for {what}. "
+                       f"You have {db.balance(user['id'])} left.")
+    elif result == "already":
+        flash(request, f"You already opened {what}. Nothing was charged.")
+
+
 def render(request: Request, name: str, status_code: int = 200, **ctx) -> Response:
     user = ctx.pop("user", None) or current_user(request)
     ctx.update(
@@ -435,6 +445,7 @@ async def unlock_board(request: Request):
         return RedirectResponse("/pricing?need=board", 303)
     if result == "ok":
         db.track("board_unlocked", user["id"])
+    receipt(request, user, result, "board", f"today's full board ({slate})")
     return RedirectResponse("/app/explorer", 303)
 
 
@@ -474,6 +485,7 @@ async def unlock_prop(request: Request):
         return RedirectResponse("/pricing?need=prop", 303)
     if result == "ok":
         db.track("prop_unlocked", user["id"])
+    receipt(request, user, result, "prop", f"{row['player']} {row['prop']} {row['side']} {row['line']:g}")
     return RedirectResponse(f"/app/prop/{row['id']}", 303)
 
 
@@ -518,6 +530,7 @@ async def unlock_arb(request: Request):
         return RedirectResponse("/pricing?need=arbitrage", 303)
     if result == "ok":
         db.track("arbitrage_unlocked", user["id"])
+    receipt(request, user, result, "arbitrage", "today's arbitrage terminal")
     return RedirectResponse("/app/arbitrage", 303)
 
 
@@ -554,6 +567,7 @@ async def advisor_run(request: Request):
         flash(request, "The analysis could not start. Nothing was charged.", "warn")
         return RedirectResponse("/app/advisor", 303)
     db.track("advisor_run", user["id"])
+    receipt(request, user, "ok", "advisor", "an AI Advisor analysis (refunded automatically if it fails)")
     return RedirectResponse(f"/app/advisor/{run_id}", 303)
 
 
