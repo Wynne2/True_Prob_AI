@@ -29,8 +29,9 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "boss@example.com")
     monkeypatch.delenv("SMTP_HOST", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    from web import app as webapp, db, jobs
+    from web import app as webapp, db, jobs, mailer
 
+    monkeypatch.setattr(mailer, "OUTBOX", tmp_path / "outbox.log")
     db.init()
     monkeypatch.setattr(jobs, "BOARD_DIR", tmp_path / "boards")
     monkeypatch.setattr(jobs, "ARB_PATH", tmp_path / "boards" / "arbitrage.json")
@@ -195,6 +196,55 @@ def test_first_run_checklist_tracks_progress_then_disappears(client, env):
     assert "2 of 3 done" in client.get("/app").text
     post(client, "/app/watch", player="Player 0")
     assert "Getting started" not in client.get("/app").text
+
+
+def test_mail_without_smtp_goes_to_the_outbox_with_the_disclosures(env):
+    from web import mailer
+
+    assert mailer.send("a@example.com", "Hello", "Body text") is False
+    logged = mailer.OUTBOX.read_text(encoding="utf-8")
+    assert "to=a@example.com subject=Hello" in logged and "Body text" in logged
+    assert "21+" in logged and "1-800-GAMBLER" in logged
+
+
+def test_mail_over_smtp_sends_the_footer_and_never_raises(env, monkeypatch):
+    import smtplib
+
+    from web import mailer
+
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            sent.append(("connect", host, port))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def starttls(self):
+            pass
+
+        def login(self, user, password):
+            sent.append(("login", user))
+
+        def send_message(self, msg):
+            sent.append(("msg", msg["To"], msg.get_content()))
+
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("SMTP_USER", "mailer")
+    monkeypatch.setattr(smtplib, "SMTP", FakeSMTP)
+    assert mailer.send("b@example.com", "Hi", "Body") is True
+    assert sent[0] == ("connect", "smtp.example.com", 587) and sent[1] == ("login", "mailer")
+    assert sent[2][1] == "b@example.com" and "1-800-GAMBLER" in sent[2][2] and "21+" in sent[2][2]
+
+    def down(*a, **k):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(smtplib, "SMTP", down)
+    assert mailer.send("b@example.com", "Hi", "Body") is False
 
 
 def test_login_logout_and_open_redirect(client):
