@@ -282,12 +282,25 @@ async def healthz(request: Request):
 
 
 async def robots(request: Request):
-    return PlainTextResponse(f"User-agent: *\nDisallow: /app\nDisallow: /admin\nSitemap: {base_url(request)}/sitemap.xml\n")
+    return PlainTextResponse(f"User-agent: *\nDisallow: /app\nDisallow: /admin\nDisallow: /billing\n"
+                             f"Sitemap: {base_url(request)}/sitemap.xml\n")
+
+
+def performance_lastmod() -> str | None:
+    """The day /performance last got new numbers: the newest graded board or slope fit. None if unknown."""
+    days = [p.name[:10] for p in (db.ROOT / "data" / "predictions").glob("????-??-??.graded.json")]
+    try:
+        days.append(str(json.loads((db.ROOT / "data" / "models" / "market_slope.json").read_text(encoding="utf-8"))["fitted_at"])[:10])
+    except (OSError, ValueError, KeyError):
+        pass
+    days = [d for d in days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d)]
+    return max(days) if days else None
 
 
 async def sitemap(request: Request):
-    urls = ["/", "/pricing", "/performance"] + [f"/legal/{s}" for s in content.LEGAL]
-    body = "".join(f"<url><loc>{base_url(request)}{u}</loc></url>" for u in urls)
+    # lastmod only where the date is real; Google ignores a sitemap whose dates are not.
+    urls = [("/", None), ("/pricing", None), ("/performance", performance_lastmod())] + [(f"/legal/{s}", None) for s in content.LEGAL]
+    body = "".join(f"<url><loc>{base_url(request)}{u}</loc>{f'<lastmod>{d}</lastmod>' if d else ''}</url>" for u, d in urls)
     return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>',
                     media_type="application/xml")
 

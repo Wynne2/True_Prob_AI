@@ -166,6 +166,31 @@ def test_pricing_translates_credits_into_usage(client, env):
     assert all(f"costs {db.COSTS[k]}" in credits_answer for k in ("prop", "board", "advisor", "arbitrage"))
 
 
+def test_sitemap_dates_only_the_page_whose_change_date_is_known(client, env, monkeypatch, tmp_path):
+    import xml.etree.ElementTree as ET
+
+    from web import db
+
+    (tmp_path / "data" / "predictions").mkdir(parents=True)
+    (tmp_path / "data" / "models").mkdir(parents=True)
+    for d in ("2026-11-04", "2026-11-06"):
+        (tmp_path / "data" / "predictions" / f"{d}.graded.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "data" / "predictions" / "2026-11-09.json").write_text("[]", encoding="utf-8")   # pregame, not graded
+    (tmp_path / "data" / "models" / "market_slope.json").write_text(json.dumps({"fitted_at": "2026-11-05T10:00:00+00:00"}),
+                                                                    encoding="utf-8")
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    urls = ET.fromstring(client.get("/sitemap.xml").content).findall("s:url", ns)
+    dated = {u.find("s:loc", ns).text.split("testserver")[1]: u.find("s:lastmod", ns) for u in urls}
+    assert dated["/performance"].text == "2026-11-06"
+    assert all(v is None for k, v in dated.items() if k != "/performance") and "/legal/terms" in dated
+    (tmp_path / "data" / "models" / "market_slope.json").write_text(json.dumps({"fitted_at": "2026-11-16T01:00:00+00:00"}),
+                                                                    encoding="utf-8")
+    assert "<lastmod>2026-11-16</lastmod>" in client.get("/sitemap.xml").text
+    robots = client.get("/robots.txt").text
+    assert "Disallow: /billing" in robots and "Disallow: /app" in robots and "Sitemap: " in robots
+
+
 def test_paid_plans_show_what_a_board_works_out_to(client):
     from web import db
 
