@@ -1,0 +1,124 @@
+{
+ "fitted_at": "2026-11-16T11:24:56+00:00",
+ "method": "four parameter-free de-vig methods on the same single-venue over/under pairs; Brier per date against multiplicative, date-clustered standard errors; offline only, not used by the board",
+ "pairs": 3296,
+ "dates": [
+  "2026-01-05",
+  "2026-01-08",
+  "2026-01-12",
+  "2026-01-15",
+  "2026-01-19",
+  "2026-01-22",
+  "2026-01-26",
+  "2026-01-29",
+  "2026-10-31",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06"
+ ],
+ "venues": {
+  "kalshi": 929,
+  "fanduel": 504,
+  "betmgm": 376,
+  "draftkings": 376,
+  "betparx": 309,
+  "betonlineag": 198,
+  "fliff": 167,
+  "bovada": 155,
+  "betrivers": 85,
+  "rebet": 52,
+  "polymarket": 41,
+  "williamhill_us": 39,
+  "courtside": 23,
+  "hardrockbet": 20,
+  "fanatics": 12,
+  "espnbet": 10
+ },
+ "all_pairs": {
+  "multiplicative": {
+   "brier": 0.221832,
+   "log_loss": 0.631109,
+   "mean_date_brier_delta": 0.0,
+   "date_se": 0.0,
+   "dates_better": 0,
+   "passes_two_se": false,
+   "passes_bonferroni": false
+  },
+  "additive": {
+   "brier": 0.221481,
+   "log_loss": 0.629926,
+   "mean_date_brier_delta": -0.0002339,
+   "date_se": 0.0001063,
+   "dates_better": 8,
+   "passes_two_se": true,
+   "passes_bonferroni": false
+  },
+  "power": {
+   "brier": 0.221319,
+   "log_loss": 0.629272,
+   "mean_date_brier_delta": -0.00034,
+   "date_se": 0.0001616,
+   "dates_better": 8,
+   "passes_two_se": true,
+   "passes_bonferroni": false
+  },
+  "shin": {
+   "brier": 0.221481,
+   "log_loss": 0.629926,
+   "mean_date_brier_delta": -0.0002341,
+   "date_se": 0.0001063,
+   "dates_better": 8,
+   "passes_two_se": true,
+   "passes_bonferroni": false
+  }
+ },
+ "lopsided_pairs": {
+  "pairs": 517,
+  "dates": 7,
+  "by_method": {
+   "multiplicative": {
+    "brier": 0.118873,
+    "log_loss": 0.396266,
+    "mean_date_brier_delta": 0.0,
+    "date_se": 0.0,
+    "dates_better": 0,
+    "passes_two_se": false,
+    "passes_bonferroni": false
+   },
+   "additive": {
+    "brier": 0.117485,
+    "log_loss": 0.39059,
+    "mean_date_brier_delta": -0.003033,
+    "date_se": 0.0021633,
+    "dates_better": 6,
+    "passes_two_se": false,
+    "passes_bonferroni": false
+   },
+   "power": {
+    "brier": 0.116832,
+    "log_loss": 0.387278,
+    "mean_date_brier_delta": -0.0046519,
+    "date_se": 0.0034251,
+    "dates_better": 6,
+    "passes_two_se": false,
+    "passes_bonferroni": false
+   },
+   "shin": {
+    "brier": 0.117484,
+    "log_loss": 0.390587,
+    "mean_date_brier_delta": -0.0030343,
+    "date_se": 0.0021631,
+    "dates_better": 6,
+    "passes_two_se": false,
+    "passes_bonferroni": false
+   }
+  }
+ },
+ "passing": [
+  "additive",
+  "power",
+  "shin"
+ ],
+ "passing_bonferroni": [],
+ "decision": "additive, power, shin beat multiplicative by more than two date-clustered standard errors, but none clears the Bonferroni bar for three tests. The pairs are single-venue prices, not the cross-venue median the board uses, so this is a lead for a retest on later graded boards at the consensus level, not grounds to change the board."
+}
