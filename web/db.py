@@ -134,19 +134,44 @@ def init() -> None:
 # Passwords and one-time tokens
 # ---------------------------------------------------------------------------
 
+# OWASP's scrypt row with the same 16 MiB as before: N=2^14, r=8, p=5. Stored as scrypt$N$r$p$salt$digest.
+SCRYPT_PARAMS = (2**14, 8, 5)
+_LEGACY_PARAMS = (2**14, 8, 1)  # hashes written as scrypt$salt$digest
+
+
 def hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
-    digest = hashlib.scrypt(password.encode(), salt=salt, n=2**14, r=8, p=1)
-    return f"scrypt${salt.hex()}${digest.hex()}"
+    n, r, p = SCRYPT_PARAMS
+    digest = hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p)
+    return f"scrypt${n}${r}${p}${salt.hex()}${digest.hex()}"
+
+
+def _parse_hash(stored: str) -> tuple[tuple[int, int, int], str, str]:
+    parts = stored.split("$")
+    if len(parts) == 3:
+        return _LEGACY_PARAMS, parts[1], parts[2]
+    _, n, r, p, salt, digest = parts
+    params = (int(n), int(r), int(p))
+    if params[0] > 2**15 or params[1] > 8 or params[2] > 16:  # a tampered row must not cost unbounded memory or time
+        raise ValueError("scrypt parameters out of range")
+    return params, salt, digest
 
 
 def check_password(password: str, stored: str) -> bool:
     try:
-        _, salt, digest = stored.split("$")
-        got = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=2**14, r=8, p=1)
+        (n, r, p), salt, digest = _parse_hash(stored)
+        got = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=n, r=r, p=p)
     except (ValueError, TypeError):
         return False
     return hmac.compare_digest(got.hex(), digest)
+
+
+def needs_rehash(stored: str) -> bool:
+    """True for a hash made with older parameters; it is replaced at the next successful sign-in."""
+    try:
+        return _parse_hash(stored)[0] != SCRYPT_PARAMS
+    except (ValueError, TypeError):
+        return False
 
 
 def _token_hash(token: str) -> str:

@@ -259,6 +259,29 @@ def test_login_logout_and_open_redirect(client):
     assert ok.headers["location"] == "/app"
 
 
+def test_old_password_hashes_still_work_and_are_upgraded_at_sign_in(client, env):
+    import hashlib
+    import secrets
+
+    from web import db
+
+    salt = secrets.token_bytes(16)
+    legacy = f"scrypt${salt.hex()}${hashlib.scrypt(b'old password 1', salt=salt, n=2**14, r=8, p=1).hex()}"
+    uid = db.create_user("legacy@example.com", "placeholder pw")
+    db.update_user(uid, pw_hash=legacy)
+    assert db.check_password("old password 1", legacy) and db.needs_rehash(legacy)
+    fresh = db.hash_password("new password 1")
+    assert fresh.startswith("scrypt$16384$8$5$") and not db.needs_rehash(fresh)
+
+    r = client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "legacy@example.com",
+                                    "password": "old password 1"}, follow_redirects=False)
+    assert r.status_code == 303
+    upgraded = db.get_user(uid)["pw_hash"]
+    assert upgraded.startswith("scrypt$16384$8$5$") and db.check_password("old password 1", upgraded)
+    # A row edited to demand huge memory is refused instead of computed.
+    assert not db.check_password("x", f"scrypt${2**20}$8$1${salt.hex()}$00")
+
+
 def test_csrf_required_on_every_post(client, env):
     register(client)
     write_board(env)

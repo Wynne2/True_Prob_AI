@@ -348,6 +348,8 @@ async def login(request: Request):
     if not _password_matches(user, str(form.get("password") or "")):
         db.audit(user["id"] if user else None, "login.failed")
         return render(request, "auth.html", 400, mode="login", next=nxt, email=email, error="That email and password do not match.")
+    if db.needs_rehash(user["pw_hash"]):
+        db.update_user(user["id"], pw_hash=db.hash_password(str(form.get("password") or "")))
     if email in db.admin_emails() and not user["is_admin"]:
         db.update_user(user["id"], is_admin=1)
         user = db.get_user(user["id"])
