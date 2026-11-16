@@ -242,6 +242,8 @@ def ensure_arb() -> dict:
 # ---------------------------------------------------------------------------
 
 ADVISOR_GRACE = 120  # seconds a new run may take to appear in _running
+EMPTY_REVIEW = ("No line on today's board in the range you chose passed the Advisor's filters (a price in range and a "
+                "gap the model itself backs), so no analysis was written.")
 
 
 def reap_advisor_runs(user_id: int) -> None:
@@ -288,11 +290,15 @@ def start_advisor(user_id: int, slate: str, min_odds: int, max_odds: int) -> Opt
             from datetime import date as _date
 
             from engine.advisor.report import to_markdown
-            from engine.advisor.run import AI_OK, AdvisorOptions, run_advisor
+            from engine.advisor.run import AI_OK, AI_SKIPPED, AdvisorOptions, run_advisor
 
             result = run_advisor(_date.fromisoformat(slate), AdvisorOptions(min_odds=min_odds, max_odds=max_odds, min_edge=0.0),
                                  props=props)
-            if result.ai_status != AI_OK and result.picks:
+            if result.ai_status == AI_SKIPPED or not result.picks:
+                db.execute("UPDATE advisor_runs SET status='empty', body=? WHERE id=?", (EMPTY_REVIEW, run_id))
+                db.refund(user_id, "advisor", str(run_id), "no lines in that price range to review")
+                return
+            if result.ai_status != AI_OK:
                 raise RuntimeError(result.ai_error or "the AI step did not complete")
             db.execute("UPDATE advisor_runs SET status='done', body=? WHERE id=?", (to_markdown(result), run_id))
         except Exception as exc:
