@@ -752,3 +752,27 @@ def test_prop_row_keeps_every_probability_separate():
     assert row["implied"] == pytest.approx(0.40) and row["market"] == 0.42 and row["blended"] == 0.42
     assert row["model_own"] == 0.30 and row["weight"] == 0.0 and row["model_agrees"] is False
     assert row["ev_per_100"] == pytest.approx(100 * (0.42 * 2.5 - 1))
+
+
+def test_arbitrage_shows_both_close_dates_and_flags_reviewed_pairs_with_different_deadlines(client, env):
+    from web import db, jobs
+
+    user = register(client)
+    base = {"legs": ["kalshi: YES", "polymarket: NO"], "contracts": 100, "cost": 90.0, "profit": 8.0,
+            "profit_if_slipped": 6.0, "interest": 0.1, "urls": []}
+    game = {**base, "title": "A vs B [Kalshi+Polymarket]: A", "closes": "2026-11-29T00:00:00+00:00", "close_gap_days": 13.0,
+            "close_by_venue": {"Kalshi": "2026-11-29T00:00:00+00:00", "Polymarket": "2026-11-16T00:00:00+00:00"}}
+    reviewed = {**base, "title": "Leaves office? [confirmed pair]", "closes": "2027-12-31T00:00:00+00:00", "close_gap_days": 365.0,
+                "close_by_venue": {"Kalshi": "2027-12-31T00:00:00+00:00", "Polymarket": "2026-12-31T00:00:00+00:00"}}
+    same_day = {**base, "title": "C vs D [Kalshi+Polymarket]: C", "closes": "2026-11-16T05:00:00+00:00", "close_gap_days": 0.1,
+                "close_by_venue": {"Kalshi": "2026-11-16T05:00:00+00:00", "Polymarket": "2026-11-16T03:00:00+00:00"}}
+    jobs.ARB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    jobs.ARB_PATH.write_text(json.dumps({"arbs": [game, reviewed], "near": [same_day], "maker": [], "scanned_at": time.time(),
+                                         "seconds": 100, "stats": {"kalshi_events": 1, "polymarket_events": 1, "matched_games": 1,
+                                                                   "confirmed_pairs": 1, "candidates": 3}}), encoding="utf-8")
+    db.spend(user["id"], "arbitrage", "2026-11-15")
+    page = client.get("/app/arbitrage").text
+    assert "Kalshi 2026-11-29, Polymarket 2026-11-16" in page
+    assert "Kalshi 2027-12-31, Polymarket 2026-12-31" in page
+    assert page.count("Deadlines 365 days apart") == 1 and "Deadlines 13 days" not in page
+    assert "Kalshi 2026-11-16" not in page        # same calendar day: one date only

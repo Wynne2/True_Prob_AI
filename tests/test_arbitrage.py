@@ -314,3 +314,21 @@ def test_polymarket_named_market_maps_second_outcome_to_one_minus_bid():
     assert cavs.yes[0].ref == "t1" and cavs.yes[0].ask == pytest.approx(0.61) and cavs.no[0].ref == "t0"
     raw["markets"][0]["feeSchedule"]["exponent"] = 2  # unknown fee curve: skipped, not guessed
     assert polymarket_events(raw) == []
+
+
+def test_cross_pairs_keep_each_venues_close_date():
+    from arbitrage.scanner import _row
+
+    k = _kalshi(["Galatasaray", "Tie", "Stuttgart"], [0.44, 0.24, 0.33])
+    k.close = NOW + timedelta(days=14)          # Kalshi: settlement deadline
+    real = _poly("real", ["Galatasaray SK", "Draw (Galatasaray SK vs. VfB Stuttgart)", "VfB Stuttgart"], [0.45, 0.24, 0.30])
+    real.close = NOW + timedelta(days=1)        # Polymarket: kick-off
+    merged = finder.match_games([k], [real])
+    assert merged[0].close == k.close
+    assert merged[0].leg_closes == (("Kalshi", k.close), ("Polymarket", real.close))
+    c = next(c for c in finder.candidates(merged) if c.kind == "cross-pair")
+    row = _row(c, 10, 9.0, 1.0, NOW)
+    assert row["close_by_venue"] == {"Kalshi": k.close.isoformat(), "Polymarket": real.close.isoformat()}
+    assert row["close_gap_days"] == 13.0
+    single = finder.Candidate("all-no", "One venue", [leg(0.30), leg(0.30)], 1.0, NOW)
+    assert _row(single, 1, 0.6, 0.4, NOW)["close_by_venue"] == {} and _row(single, 1, 0.6, 0.4, NOW)["close_gap_days"] is None

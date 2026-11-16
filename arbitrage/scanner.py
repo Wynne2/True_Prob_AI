@@ -20,6 +20,11 @@ LOG_DIR = ROOT / "data" / "arbs"
 SLIP_PER_LEG = 0.01  # legs fill one after another; each may fill one tick (1 cent) worse than the book read
 
 
+def _gap_days(leg_closes) -> float | None:
+    closes = [close for _, close in leg_closes if close]
+    return round(abs((closes[0] - closes[1]).total_seconds()) / 86400, 1) if len(closes) == 2 else None
+
+
 def _row(c: finder.Candidate, contracts: float, cost: float, profit: float, now: datetime) -> dict:
     return {
         "kind": c.kind,
@@ -34,6 +39,8 @@ def _row(c: finder.Candidate, contracts: float, cost: float, profit: float, now:
         "roi": round(profit / cost, 4) if cost else 0.0,
         "annualized": round(finder.annualized(profit, cost, c.close, now, c.carry), 4),
         "closes": c.close.isoformat() if c.close else None,
+        "close_by_venue": {venue: close.isoformat() for venue, close in c.leg_closes if close},
+        "close_gap_days": _gap_days(c.leg_closes),
         "legs": [f"{leg.venue}: {leg.label} @ {leg.ask:.3f} (fee rate {leg.fee_rate:g})" for leg in c.legs],
         "urls": sorted({leg.url for leg in c.legs}),
     }

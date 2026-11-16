@@ -60,6 +60,7 @@ class Event:
     url: str = ""
     league: str = ""
     game_date: Optional[date] = None  # set only for moneyline game events
+    leg_closes: tuple = ()  # ((venue, close), ...) for cross events; close is the later of the two
 
 
 @dataclass
@@ -69,6 +70,7 @@ class Candidate:
     legs: list[Leg]
     payout: float
     close: Optional[datetime]
+    leg_closes: tuple = ()
 
     @property
     def unit_cost(self) -> float:
@@ -83,6 +85,12 @@ class Candidate:
         """Yearly interest on the capital, weighted by what each leg costs."""
         unit = self.unit_cost
         return sum(leg.cost() * leg.apy for leg in self.legs) / unit if unit > 0 else 0.0
+
+
+def _cross_close(kalshi: Event, poly: Event) -> tuple[Optional[datetime], tuple]:
+    """The later close of a Kalshi/Polymarket pair, and each venue's own close (they can mean different things)."""
+    closes = [c for c in (kalshi.close, poly.close) if c]
+    return (max(closes) if closes else None), (("Kalshi", kalshi.close), ("Polymarket", poly.close))
 
 
 def _best(legs: list[Leg]) -> Optional[Leg]:
@@ -113,7 +121,7 @@ def cross_pairs(ev: Event) -> Iterable[Candidate]:
         pairs = [(y, n) for y in o.yes for n in o.no if y.venue != n.venue]
         if pairs:
             y, n = min(pairs, key=lambda p: p[0].cost() + p[1].cost())
-            yield Candidate("cross-pair", f"{ev.title}: {o.label}", [y, n], 1.0, ev.close)
+            yield Candidate("cross-pair", f"{ev.title}: {o.label}", [y, n], 1.0, ev.close, ev.leg_closes)
 
 
 def maker_pairs(ev: Event) -> Iterable[Candidate]:
@@ -139,7 +147,7 @@ def maker_pairs(ev: Event) -> Iterable[Candidate]:
                 for take in others:
                     if take.venue == "polymarket":
                         continue
-                    c = Candidate("maker-pair", f"{ev.title}: {o.label}", [maker, take], 1.0, ev.close)
+                    c = Candidate("maker-pair", f"{ev.title}: {o.label}", [maker, take], 1.0, ev.close, ev.leg_closes)
                     if best is None or c.edge > best.edge:
                         best = c
         if best and best.edge > 0:
@@ -290,11 +298,11 @@ def match_games(kalshi: list[Event], poly: list[Event]) -> list[Event]:
             Outcome(ko.label, ko.yes + p.outcomes[j].yes, ko.no + p.outcomes[j].no, ko.id)
             for ko, j in zip(k.outcomes, mapping)
         ]
-        closes = [c for c in (k.close, p.close) if c]
+        close, legs = _cross_close(k, p)
         merged.append(Event(
-            "cross", f"{k.id}|{p.id}", f"{k.title} [Kalshi+Polymarket]", max(closes) if closes else None,
+            "cross", f"{k.id}|{p.id}", f"{k.title} [Kalshi+Polymarket]", close,
             exclusive=True, complete=k.complete and p.complete, outcomes=outcomes,
-            url=f"{k.url} | {p.url}", league=k.league, game_date=k.game_date,
+            url=f"{k.url} | {p.url}", league=k.league, game_date=k.game_date, leg_closes=legs,
         ))
     return merged
 
@@ -345,12 +353,12 @@ def match_props(kalshi: list[Event], poly: list[Event]) -> list[Event]:
             if len(hits) != 1:
                 continue  # none, or ambiguous: never guess
             p = hits[0]
-            closes = [c for c in (ev.close, p.close) if c]
+            close, legs = _cross_close(ev, p)
             out.append(Event(
-                "cross", f"{o.id}|{p.id}", f"{m.group(1)} {stat} over {line:g} {PROP_TAG}", max(closes) if closes else None,
+                "cross", f"{o.id}|{p.id}", f"{m.group(1)} {stat} over {line:g} {PROP_TAG}", close,
                 exclusive=False, complete=False,  # not complete: the DNP rule differs, see prop_pairs
                 outcomes=[Outcome(o.label, o.yes + p.outcomes[0].yes, o.no + p.outcomes[0].no, o.id)],
-                url=f"{ev.url} | {p.url}", league=ev.league,
+                url=f"{ev.url} | {p.url}", league=ev.league, leg_closes=legs,
             ))
     return out
 
@@ -362,7 +370,7 @@ def prop_pairs(ev: Event) -> Iterable[Candidate]:
         ys = [leg for leg in o.yes if leg.venue == yes_venue]
         ns = [leg for leg in o.no if leg.venue != yes_venue]
         if ys and ns:
-            yield Candidate(kind, ev.title, [_best(ys), _best(ns)], 1.0, ev.close)
+            yield Candidate(kind, ev.title, [_best(ys), _best(ns)], 1.0, ev.close, ev.leg_closes)
 
 
 # ---------------------------------------------------------------------------
@@ -380,10 +388,10 @@ def confirmed_pairs(pairs: list[dict], kalshi: list[Event], poly: list[Event]) -
         (kev, ko), (pev, po) = k, p
         same = pair.get("yes_maps_to", "yes") == "yes"
         outcome = Outcome(ko.label, ko.yes + (po.yes if same else po.no), ko.no + (po.no if same else po.yes), ko.id)
-        closes = [c for c in (kev.close, pev.close) if c]
+        close, legs = _cross_close(kev, pev)
         # complete=True: the reviewer confirmed YES/NO are exact complements on both venues.
         out.append(Event("cross", f"{ko.id}|{po.id}", f"{kev.title}: {ko.label} [confirmed pair]",
-                         max(closes) if closes else None, True, True, [outcome], f"{kev.url} | {pev.url}"))
+                         close, True, True, [outcome], f"{kev.url} | {pev.url}", leg_closes=legs))
     return out
 
 
