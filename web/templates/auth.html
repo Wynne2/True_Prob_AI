@@ -12,21 +12,28 @@
   <form method="post" class="stack">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     {% if mode in ('register', 'login', 'forgot') %}
-    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="email" required></label>
+    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="email" autocapitalize="none" spellcheck="false" required></label>
     {% endif %}
     {% if mode in ('register', 'login', 'reset') %}
-    <label>{{ 'New password' if mode == 'reset' else 'Password' }}<input type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required>
-      {% if mode != 'login' %}<small>At least 10 characters.</small>{% endif %}</label>
+    <div class="pw">
+      <label for="pw">{{ 'New password' if mode == 'reset' else 'Password' }}</label>
+      <div class="pw-row">
+        <input id="pw" type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required{% if mode != 'login' %} aria-describedby="pw-rule"{% endif %}>
+        <button type="button" class="btn ghost small" data-reveal="pw" aria-controls="pw" aria-pressed="false" hidden>Show</button>
+      </div>
+      {% if mode != 'login' %}<small id="pw-rule">At least 10 characters.</small>{% endif %}
+    </div>
     {% endif %}
     {% if mode == 'reset' %}<input type="hidden" name="token" value="{{ token }}">{% endif %}
     {% if mode == 'register' %}
     <label>Where you live
-      <select name="region" required><option value="">Choose one</option>{% for r in regions %}<option>{{ r }}</option>{% endfor %}</select>
+      <select name="region" required><option value="">Choose one</option>{% for r in regions %}<option{% if r == region %} selected{% endif %}>{{ r }}</option>{% endfor %}</select>
     </label>
-    <label class="check"><input type="checkbox" name="age" value="yes" required> I am 21 or older</label>
-    <label class="check"><input type="checkbox" name="terms" value="yes" required> I accept the <a href="/legal/terms">terms</a> and have read the <a href="/legal/risk">risk disclosure</a> and <a href="/legal/privacy">privacy policy</a></label>
+    <label class="check"><input type="checkbox" name="age" value="yes" required> <span>I am 21 or older</span></label>
+    <label class="check"><input type="checkbox" name="terms" value="yes" required> <span>I accept the <a href="/legal/terms">terms</a> and have read the <a href="/legal/risk">risk disclosure</a> and <a href="/legal/privacy">privacy policy</a></span></label>
     {% endif %}
-    <button class="btn">{{ {'register': 'Create account', 'login': 'Sign in', 'forgot': 'Email me a reset link', 'reset': 'Save new password'}[mode] }}</button>
+    <button class="btn">{{ {'register': 'Create free account', 'login': 'Sign in', 'forgot': 'Email me a reset link', 'reset': 'Save new password'}[mode] }}</button>
+    {% if mode == 'register' %}<small>{{ plans.free.credits }} free credits every 30 days. No card needed.</small>{% endif %}
   </form>
   {% endif %}
   <p class="muted">

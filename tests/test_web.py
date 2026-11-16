@@ -192,6 +192,21 @@ def test_registration_rules(client):
     assert attempt().status_code == 400                  # email already taken
 
 
+def test_sign_up_form_has_a_password_toggle_and_keeps_answers_after_an_error(client):
+    page = client.get("/register").text
+    assert re.search(r'<label for="pw">Password</label>', page)
+    assert re.search(r'<input id="pw" type="password"[^>]*aria-describedby="pw-rule"', page)
+    # Hidden until app.js runs, so without JavaScript there is no dead button.
+    assert re.search(r'<button type="button"[^>]*data-reveal="pw" aria-controls="pw" aria-pressed="false" hidden>Show</button>', page)
+    assert "Create free account</button>" in page and "20 free credits every 30 days. No card needed." in page
+    assert 'autocapitalize="none" spellcheck="false"' in page
+
+    r = client.post("/register", data={"csrf": _csrf(client), "email": "kim@example.com", "password": "short",
+                                       "region": "New Jersey", "age": "yes", "terms": "yes"})
+    assert r.status_code == 400 and "<option selected>New Jersey</option>" in r.text and 'value="kim@example.com"' in r.text
+    assert "autocomplete=\"current-password\"" in client.get("/login").text
+
+
 def test_blocked_region_cannot_register(client, monkeypatch):
     monkeypatch.setenv("BLOCKED_REGIONS", "Washington")
     r = client.post("/register", data={"csrf": _csrf(client), "email": "w@example.com", "password": "long enough 1",

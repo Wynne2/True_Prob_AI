@@ -18,6 +18,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--ink); color: var(--text); font: 400 16px/1.6 var(--body); font-variant-numeric: tabular-nums; }
 h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 .5em; }
@@ -51,6 +52,9 @@ input:focus, select:focus { border-color: var(--market); outline: none; }
 label.check { display: flex; gap: .6em; align-items: flex-start; font-weight: 400; }
 label.check input { width: auto; margin-top: .3em; }
 .stack { display: grid; gap: 1rem; max-width: 420px; }
+.pw-row { display: flex; gap: .5rem; align-items: stretch; margin-top: .35em; }
+.pw-row input { margin-top: 0; flex: 1; min-width: 0; }
+.pw-row .btn { flex: none; min-width: 4.5rem; }
 .inline { display: inline; }
 .inline-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .4rem 0; }
 .inline-row input { width: auto; margin: 0; max-width: 9rem; }

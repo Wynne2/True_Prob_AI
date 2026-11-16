@@ -328,13 +328,13 @@ async def register(request: Request):
     elif region in content.blocked_regions():
         error = "True Prob AI is not available where you live."
     if error:
-        return render(request, "auth.html", 400, mode="register", regions=content.REGIONS, error=error, email=email)
+        return render(request, "auth.html", 400, mode="register", regions=content.REGIONS, error=error, email=email, region=region)
     # Counts only sign-ups that pass validation, so typos never lock anyone out.
     if limited(request, "register", 5, 3600):
         raise HTTPException(429, "Too many sign-ups from this network. Try again in an hour.")
     uid = db.create_user(email, password, region)
     if uid is None:
-        return render(request, "auth.html", 400, mode="register", regions=content.REGIONS, email=email,
+        return render(request, "auth.html", 400, mode="register", regions=content.REGIONS, email=email, region=region,
                       error="An account with that email already exists. Sign in instead.")
     user = db.get_user(uid)
     link = _send_verification(request, user)

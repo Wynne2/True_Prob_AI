@@ -25,6 +25,21 @@
     if (light && light.addEventListener) light.addEventListener("change", function () {
       if (!stored()) { root.setAttribute("data-theme", system()); label(); }
     });
+    document.querySelectorAll("[data-reveal]").forEach(function (toggle) {
+      var input = document.getElementById(toggle.getAttribute("data-reveal"));
+      if (!input) return;
+      toggle.hidden = false;
+      toggle.addEventListener("click", function () {
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        toggle.textContent = show ? "Hide" : "Show";
+        toggle.setAttribute("aria-pressed", show ? "true" : "false");
+        toggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      });
+      toggle.setAttribute("aria-label", "Show password");
+      // Password managers recognise the field only if it is type=password when the form is sent.
+      if (input.form) input.form.addEventListener("submit", function () { input.type = "password"; });
+    });
     document.querySelectorAll("form[data-confirm]").forEach(function (form) {
       form.addEventListener("submit", function (ev) {
         if (!window.confirm(form.getAttribute("data-confirm"))) ev.preventDefault();
