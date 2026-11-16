@@ -121,6 +121,19 @@ def test_public_pages_render_with_disclosures(client):
     assert client.get("/legal/nope").status_code == 404
 
 
+def test_theme_is_set_before_first_paint_by_a_csp_allowed_script(client):
+    import base64
+
+    r = client.get("/pricing")
+    script = re.search(r"<script>(.*?)</script>", r.text, re.S).group(1)
+    assert "prefers-color-scheme: light" in script and "tp-theme" in script
+    digest = "sha256-" + base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
+    csp = r.headers["Content-Security-Policy"]
+    assert f"script-src 'self' '{digest}';" in csp and "unsafe-inline" not in csp
+    # It runs before the stylesheet loads, so there is no flash of the other theme.
+    assert r.text.index("<script>") < r.text.index('rel="stylesheet" href="/static/app.css"')
+
+
 def test_structured_data_and_indexing_hints(client):
     from web import db
 

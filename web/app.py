@@ -7,6 +7,8 @@ Environment:   see docs/DEPLOY.md. Nothing here places a bet or a trade.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import logging
 import os
@@ -42,6 +44,14 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,}$")
 ADVISOR_BANDS = {"favorites": (-600, -200, "Favourites (-600 to -200)"),
                  "balanced": (-250, 250, "Near even (-250 to +250)"),
                  "wide": (-600, 400, "Everything (-600 to +400)")}
+
+
+# Runs before the stylesheet so the first paint already has the right theme: the stored choice, else the OS
+# preference. Inline and synchronous on purpose; the CSP allows exactly this text by its hash.
+THEME_SCRIPT = ('(function(){var t=null;try{t=localStorage.getItem("tp-theme")}catch(e){}'
+                'if(t!=="light"&&t!=="dark")t=window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";'
+                'document.documentElement.setAttribute("data-theme",t)})();')
+THEME_SCRIPT_HASH = "sha256-" + base64.b64encode(hashlib.sha256(THEME_SCRIPT.encode()).digest()).decode()
 
 
 def _secret_key() -> str:
@@ -142,7 +152,7 @@ def render(request: Request, name: str, status_code: int = 200, **ctx) -> Respon
     ctx.setdefault("noindex", status_code >= 400 or request.url.path.startswith(PRIVATE_PREFIXES))
     ctx.update(
         user=user, plan=db.effective_plan(user) if user else None, balance=db.balance(user["id"]) if user else None,
-        csrf=csrf_token(request), flash=request.session.pop("flash", None), plans=db.PLANS, costs=db.COSTS,
+        csrf=csrf_token(request), flash=request.session.pop("flash", None), plans=db.PLANS, costs=db.COSTS, theme_script=THEME_SCRIPT,
         billing_on=billing.enabled(), legal_reviewed=db.flag("legal_reviewed", False), path=request.url.path,
         support_email=os.environ.get("SUPPORT_EMAIL") or "support@example.com", canonical=base_url(request) + request.url.path,
         feature={k: db.flag(k) for k in ("arbitrage", "advisor", "scan")},
@@ -816,7 +826,7 @@ class SecurityHeaders(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers.update({
             "Content-Security-Policy": "default-src 'self'; style-src 'self' https://fonts.googleapis.com; "
-                                       "font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self'; "
+                                       f"font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' '{THEME_SCRIPT_HASH}'; "
                                        "frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",

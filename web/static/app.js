@@ -1,9 +1,13 @@
-// Theme switch (remembered per browser) and confirmation for destructive forms.
+// Theme switch and confirmation for destructive forms. The theme itself is applied by a small inline
+// script in <head> before first paint (web/app.py THEME_SCRIPT); this file only handles changes.
 (function () {
   var root = document.documentElement;
-  var stored = null;
-  try { stored = localStorage.getItem("tp-theme"); } catch (e) {}
-  if (stored) root.setAttribute("data-theme", stored);
+  var KEY = "tp-theme";
+  var light = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
+  function system() { return light && light.matches ? "light" : "dark"; }
+  function stored() {
+    try { var t = localStorage.getItem(KEY); return t === "light" || t === "dark" ? t : null; } catch (e) { return null; }
+  }
 
   document.addEventListener("DOMContentLoaded", function () {
     var btn = document.querySelector("[data-theme-toggle]");
@@ -14,8 +18,12 @@
     if (btn) btn.addEventListener("click", function () {
       var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
       root.setAttribute("data-theme", next);
-      try { localStorage.setItem("tp-theme", next); } catch (e) {}
+      // Picking what the OS already shows means "follow the OS" again.
+      try { if (next === system()) localStorage.removeItem(KEY); else localStorage.setItem(KEY, next); } catch (e) {}
       label();
+    });
+    if (light && light.addEventListener) light.addEventListener("change", function () {
+      if (!stored()) { root.setAttribute("data-theme", system()); label(); }
     });
     document.querySelectorAll("form[data-confirm]").forEach(function (form) {
       form.addEventListener("submit", function (ev) {

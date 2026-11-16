@@ -13,8 +13,10 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ canonical }}">
 <meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#0F1626">
+<meta name="theme-color" content="#0F1626" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F6FA" media="(prefers-color-scheme: light)">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<script>{{ theme_script | safe }}</script>
 {% block head %}{% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
