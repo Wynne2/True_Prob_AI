@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import os
 
+from web.db import COSTS
+
 REGIONS = (
     "Alabama,Alaska,Arizona,Arkansas,California,Colorado,Connecticut,Delaware,District of Columbia,Florida,Georgia,Hawaii,"
     "Idaho,Illinois,Indiana,Iowa,Kansas,Kentucky,Louisiana,Maine,Maryland,Massachusetts,Michigan,Minnesota,Mississippi,"
@@ -39,9 +41,14 @@ FAQ = [
      "No. True Prob AI is a research and information tool. It does not take bets, hold funds, place trades or tell "
      "you what to do with your money. Any decision you make is yours."),
     ("What are credits?",
-     "Credits are usage units for this service. Opening one line's analysis costs 1 credit, the full board for a "
-     "day costs 5, an AI Advisor analysis costs 3 and the arbitrage terminal costs 5 a day. Opening something you "
-     "already unlocked is free. Credits reset each billing period, do not roll over, and have no cash value."),
+     f"Credits are usage units for this service. Opening one line's analysis costs {COSTS['prop']} credit, the full "
+     f"board for a day costs {COSTS['board']}, an AI Advisor analysis costs {COSTS['advisor']} and the arbitrage "
+     f"terminal costs {COSTS['arbitrage']} a day. Opening something you already unlocked is free. Credits reset "
+     "each billing period, do not roll over, and have no cash value."),
+    ("What happens when I run out of credits?",
+     "Nothing is charged automatically and there are no overage fees. Actions that need credits stop and tell you "
+     "so, and everything you already opened stays open for its day. You get a fresh allowance when your period "
+     "resets, or straight away if you subscribe to a paid plan."),
     ("Can I cancel?",
      "Yes, any time, from Account > Manage billing. You keep your plan until the end of the period you paid for, "
      "and you are not charged again."),

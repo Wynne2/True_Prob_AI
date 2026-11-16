@@ -120,6 +120,19 @@ def test_public_pages_render_with_disclosures(client):
     assert client.get("/legal/nope").status_code == 404
 
 
+def test_pricing_translates_credits_into_usage(client, env):
+    from web import content, db
+
+    page = client.get("/pricing").text
+    for key, plan in db.PLANS.items():
+        c = plan["credits"]
+        assert (f"Up to {c // db.COSTS['board']} full-day boards, or {c // db.COSTS['advisor']} Advisor reviews, "
+                f"or {c // db.COSTS['prop']} single lines") in page, key
+    assert "no overage fees" in page and "What happens when I run out of credits?" in page
+    credits_answer = dict(content.FAQ)["What are credits?"]
+    assert all(f"costs {db.COSTS[k]}" in credits_answer for k in ("prop", "board", "advisor", "arbitrage"))
+
+
 def test_registration_rules(client):
     def attempt(**over):
         data = {"csrf": _csrf(client), "email": "kid@example.com", "password": "long enough 1", "region": "Ohio",

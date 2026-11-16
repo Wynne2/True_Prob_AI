@@ -15,9 +15,10 @@
     <p class="price">{% if p.price %}${{ p.price }}<small>/month</small>{% else %}$0{% endif %}</p>
     <p class="credits">{{ p.credits }} credits {{ 'every 30 days' if key == 'free' else 'per billing period' }}</p>
     <ul>
-      {% if key == 'free' %}<li>Try every feature</li><li>About 4 full boards, or 20 single lines</li>
-      {% elif key == 'pro' %}<li>A full board every day of the month</li><li>Room left for Advisor reviews</li>
-      {% else %}<li>Full boards, arbitrage and Advisor every day</li><li>For heavy daily research</li>{% endif %}
+      <li>Up to {{ p.credits // costs.board }} full-day boards, or {{ p.credits // costs.advisor }} Advisor reviews, or {{ p.credits // costs.prop }} single lines</li>
+      {% if key == 'free' %}<li>Try every feature, no card needed</li>
+      {% elif key == 'pro' %}{% set month = 30 * costs.board %}<li>A full board every day of a 30-day month uses {{ month }}, leaving {{ p.credits - month }}</li>
+      {% else %}{% set month = 30 * (costs.board + costs.arbitrage + costs.advisor) %}<li>Board, arbitrage and one Advisor review every day uses {{ month }}, leaving {{ p.credits - month }}</li>{% endif %}
     </ul>
     {% if key == 'free' %}
       {% if not user %}<a class="btn ghost" href="/register">Create free account</a>{% else %}<p class="muted">Included with every account</p>{% endif %}
@@ -56,7 +57,7 @@
       <tr><td>Arbitrage terminal</td><td>{{ costs.arbitrage }}</td><td>All scans for the day</td></tr>
     </tbody>
   </table>
-  <p class="muted">You see the cost before anything is charged, and reopening something you already unlocked is free. Credits reset at the start of each period, do not roll over and have no cash value. Paid plans renew monthly until you cancel; cancel any time in Account and keep your plan until the period ends. See the <a href="/legal/subscription">subscription</a> and <a href="/legal/refunds">refund</a> policies.</p>
+  <p class="muted">You see the cost before anything is charged, every charge shows what it cost and what is left, and reopening something you already unlocked is free. When you run out, nothing is charged automatically and there are no overage fees. Credits reset at the start of each period, do not roll over and have no cash value. Paid plans renew monthly until you cancel; cancel any time in Account and keep your plan until the period ends. See the <a href="/legal/subscription">subscription</a> and <a href="/legal/refunds">refund</a> policies.</p>
 </section>
 <section class="band faq">
   <h2>Questions</h2>
