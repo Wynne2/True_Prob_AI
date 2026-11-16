@@ -339,6 +339,51 @@ def test_failed_advisor_run_is_refunded(env, monkeypatch):
     assert any(r["reason"].startswith("Refund") for r in db.history(uid))
 
 
+def test_one_advisor_run_at_a_time_and_double_submit_is_free(env, monkeypatch):
+    from web import db, jobs
+
+    uid = db.create_user("busy@example.com", "long password 1")
+    monkeypatch.setattr(jobs, "board_props", lambda slate: ["prop"])
+    monkeypatch.setattr(jobs, "_start", lambda name, work: True)     # the run stays "running"
+    first = jobs.start_advisor(uid, "2026-11-15", -250, 250)
+    second = jobs.start_advisor(uid, "2026-11-15", -250, 250)
+    assert first == second and db.balance(uid) == 17
+    assert len(db.query("SELECT 1 FROM advisor_runs WHERE user_id=?", (uid,))) == 1
+    assert jobs.running_advisor(uid) == first
+
+
+def test_advisor_double_click_says_nothing_was_charged(client, env, monkeypatch):
+    from web import db, jobs
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(jobs, "board_props", lambda slate: ["prop"])
+    monkeypatch.setattr(jobs, "_start", lambda name, work: True)
+    user = register(client)
+    write_board(env)
+    first = post(client, "/app/advisor/run", band="balanced")
+    assert "Charged 3 credits" in client.get(first.headers["location"]).text
+    again = post(client, "/app/advisor/run", band="balanced")
+    assert again.headers["location"] == first.headers["location"]
+    assert "still being written. Nothing was charged." in client.get(again.headers["location"]).text
+    assert db.balance(user["id"]) == 17
+
+
+def test_advisor_run_orphaned_by_a_restart_is_refunded(env):
+    from web import db, jobs
+
+    uid = db.create_user("orphan@example.com", "long password 1")
+    run_id = db.execute("INSERT INTO advisor_runs (user_id, slate, status, created_at) VALUES (?,?,?,?)",
+                        (uid, "2026-11-15", "running", time.time() - 3600))
+    db.spend(uid, "advisor", str(run_id))
+    fresh = db.execute("INSERT INTO advisor_runs (user_id, slate, status, created_at) VALUES (?,?,?,?)",
+                       (uid, "2026-11-15", "running", time.time()))
+    jobs.reap_advisor_runs(uid)
+    jobs.reap_advisor_runs(uid)
+    status = {r["id"]: r["status"] for r in db.query("SELECT id, status FROM advisor_runs WHERE user_id=?", (uid,))}
+    assert status == {run_id: "failed", fresh: "running"}     # a just-started run is left alone
+    assert db.balance(uid) == 20                              # refunded once
+
+
 # ---------------------------------------------------------------------------
 # Billing lifecycle
 # ---------------------------------------------------------------------------

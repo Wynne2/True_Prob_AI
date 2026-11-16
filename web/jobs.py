@@ -241,13 +241,44 @@ def ensure_arb() -> dict:
 # AI Advisor
 # ---------------------------------------------------------------------------
 
+ADVISOR_GRACE = 120  # seconds a new run may take to appear in _running
+
+
+def reap_advisor_runs(user_id: int) -> None:
+    """Fail and refund runs still marked running whose thread is gone (the process restarted mid-run)."""
+    for row in db.query("SELECT id FROM advisor_runs WHERE user_id=? AND status='running' AND created_at<?",
+                        (user_id, time.time() - ADVISOR_GRACE)):
+        if f"advisor:{row['id']}" in _running:
+            continue
+        with db.transaction() as conn:
+            done = conn.execute("UPDATE advisor_runs SET status='failed', body=? WHERE id=? AND status='running'",
+                                ("The analysis was interrupted by a server restart.", row["id"])).rowcount
+        if done:
+            db.refund(user_id, "advisor", str(row["id"]), "the analysis was interrupted")
+
+
+def running_advisor(user_id: int) -> Optional[int]:
+    reap_advisor_runs(user_id)
+    rows = db.query("SELECT id FROM advisor_runs WHERE user_id=? AND status='running' ORDER BY id DESC LIMIT 1", (user_id,))
+    return int(rows[0]["id"]) if rows else None
+
+
 def start_advisor(user_id: int, slate: str, min_odds: int, max_odds: int) -> Optional[int]:
-    """Charge for and start one Advisor run. None when the customer cannot pay. Refunded if the run fails."""
+    """
+    Charge for and start one Advisor run. None when the customer cannot pay. Refunded if the run fails.
+    A customer has at most one run going: while one is running its id is returned and nothing is charged.
+    """
     props = board_props(slate)
     if not props:
         return None
-    run_id = db.execute("INSERT INTO advisor_runs (user_id, slate, status, created_at) VALUES (?,?,?,?)",
-                        (user_id, slate, "running", time.time()))
+    reap_advisor_runs(user_id)
+    with db.transaction() as conn:
+        busy = conn.execute("SELECT id FROM advisor_runs WHERE user_id=? AND status='running' ORDER BY id DESC LIMIT 1",
+                            (user_id,)).fetchone()
+        if busy:
+            return int(busy["id"])
+        run_id = conn.execute("INSERT INTO advisor_runs (user_id, slate, status, created_at) VALUES (?,?,?,?)",
+                              (user_id, slate, "running", time.time())).lastrowid
     if db.spend(user_id, "advisor", str(run_id), f"AI Advisor analysis ({slate})") != "ok":
         db.execute("DELETE FROM advisor_runs WHERE id=?", (run_id,))
         return None

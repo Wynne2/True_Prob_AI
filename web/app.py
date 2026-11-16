@@ -559,6 +559,7 @@ async def advisor(request: Request):
     if redirect:
         return redirect
     board = jobs.load_board()
+    jobs.reap_advisor_runs(user["id"])
     runs = db.query("SELECT * FROM advisor_runs WHERE user_id=? ORDER BY id DESC LIMIT 10", (user["id"],))
     return render(request, "advisor.html", user=user, board=board, runs=runs, bands=ADVISOR_BANDS, run=None,
                   ai_ready=bool(os.environ.get("OPENAI_API_KEY")))
@@ -579,6 +580,10 @@ async def advisor_run(request: Request):
     if not board or not board.get("rows"):
         flash(request, "Open the Explorer first so today's board is scanned. Nothing was charged.", "warn")
         return RedirectResponse("/app/advisor", 303)
+    busy = await run_in_threadpool(jobs.running_advisor, user["id"])
+    if busy:
+        flash(request, "Your previous analysis is still being written. Nothing was charged.")
+        return RedirectResponse(f"/app/advisor/{busy}", 303)
     if db.balance(user["id"]) < db.COSTS["advisor"]:
         db.track("limit_hit", user["id"])
         return RedirectResponse("/pricing?need=advisor", 303)
@@ -595,6 +600,7 @@ async def advisor_view(request: Request):
     user, redirect = need_user(request)
     if redirect:
         return redirect
+    jobs.reap_advisor_runs(user["id"])
     rows = db.query("SELECT * FROM advisor_runs WHERE id=? AND user_id=?", (request.path_params["run_id"], user["id"]))
     if not rows:
         raise HTTPException(404)
