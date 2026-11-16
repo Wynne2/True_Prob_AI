@@ -571,6 +571,16 @@ def test_arbitrage_rows_link_to_both_venues_rules(client, env):
     assert "javascript:" not in page and "Read the settlement rules on" in page
 
 
+def test_wide_tables_scroll_in_their_own_keyboard_reachable_box(client, env):
+    from web import db
+
+    user = register(client)
+    write_board(env)
+    db.spend(user["id"], "board", "2026-11-15")
+    for page in (client.get("/app/explorer").text, client.get("/performance").text):
+        assert re.search(r'<div class="table-scroll" role="region" aria-label="[^"]+" tabindex="0">\s*<table class="data', page)
+
+
 def test_locked_board_does_not_leak_gap_order(client, env):
     from web import db
 

@@ -4,6 +4,7 @@
 {% macro match(title) %}{% if '[confirmed pair]' in title %}Rules reviewed by hand{% elif '[Kalshi+Polymarket prop]' in title %}Same player, stat, line and game{% elif '[Kalshi+Polymarket]' in title %}Same game, both teams matched{% else %}Single venue{% endif %}{% endmacro %}
 {% macro rules(urls) %}{% set links = urls | venue_links %}{% if links %}<span class="rules">Read the settlement rules on {% for u, name in links %}<a href="{{ u }}" rel="noopener noreferrer nofollow" target="_blank">{{ name }}<span class="visually-hidden"> (opens in a new tab)</span></a>{% if not loop.last %} and {% endif %}{% endfor %}</span>{% endif %}{% endmacro %}
 {% macro table(rows, conditional=False) %}
+<div class="table-scroll" role="region" aria-label="Arbitrage pairs" tabindex="0">
 <table class="data arb">
   <thead><tr><th scope="col">Market</th><th scope="col">Legs to buy</th><th scope="col">Contracts</th><th scope="col">Cost</th><th scope="col">Profit at book prices</th><th scope="col">If each bought leg fills 1¢ worse</th><th scope="col">Interest while held</th><th scope="col">Settles</th></tr></thead>
   <tbody>
@@ -21,6 +22,7 @@
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% endmacro %}
 {% block content %}
 <header class="work-head">

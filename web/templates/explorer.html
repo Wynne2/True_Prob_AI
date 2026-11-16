@@ -42,6 +42,7 @@
   {{ rail_key(own=True) }}
   <p class="muted">{{ total }} lines match. The gap is the probability used for edge minus the offered price's own probability. When the model's weight is 0, that probability is the market consensus, so a gap only means this venue is priced differently from the others.</p>
 
+  <div class="table-scroll" role="region" aria-label="Today's lines" tabindex="0">
   <table class="data board">
     <thead><tr><th scope="col">Line</th><th scope="col">Best price</th><th scope="col" class="railcol">Probability, 0 to 100%</th><th scope="col">Gap</th><th scope="col">Model weight</th><th scope="col"></th></tr></thead>
     <tbody>
@@ -58,6 +59,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
   {% if total > rows | length %}<p class="muted">Showing the first {{ rows | length }}. Narrow the filters to see the rest.</p>{% endif %}
 {% endif %}
 {% endblock %}

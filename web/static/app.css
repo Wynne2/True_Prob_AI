@@ -182,8 +182,15 @@ table.data { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .board .railcol { width: 38%; min-width: 220px; }
 .arb .legs li { font-size: .82rem; color: var(--muted); }
 .arb .rules { display: block; font-weight: 400; font-size: .82rem; margin-top: .2rem; }
+.data tbody th .rules a { color: var(--market); text-decoration: underline; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .panel > table.data, section > table.data { display: block; overflow-x: auto; }
+/* Wide tables scroll inside their own box; the first column stays put so you never lose the row's name. */
+.table-scroll { overflow-x: auto; max-width: 100%; margin-bottom: 1rem; }
+.table-scroll:focus-visible { outline-offset: 0; }
+.table-scroll .data tbody th, .table-scroll .data thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--ink);
+  box-shadow: inset -1px 0 0 var(--line); }
+.table-scroll .data thead th:first-child { z-index: 2; }
 
 /* The probability rail */
 .rail { width: 100%; height: 40px; display: block; overflow: visible; }
@@ -227,5 +234,6 @@ table.data { width: 100%; border-collapse: collapse; font-size: .92rem; }
   .legal-nav { position: static; display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
   .demo-nums { grid-template-columns: 1fr 1fr; }
   .board .railcol { min-width: 180px; }
+  .table-scroll .data tbody th { min-width: 9rem; max-width: 11rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }

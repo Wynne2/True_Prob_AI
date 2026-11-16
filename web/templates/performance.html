@@ -11,17 +11,19 @@
 <section class="band">
   <h2>Accuracy on graded live boards</h2>
   {% if perf.dates %}
+  <div class="table-scroll" role="region" aria-label="Graded boards by date" tabindex="0">
   <table class="data">
     <thead><tr><th scope="col">Date</th><th scope="col">Final games</th><th scope="col">Lines graded</th><th scope="col">Our Brier</th><th scope="col">Market Brier</th><th scope="col">Flagged positive gaps</th><th scope="col">Their hit rate</th><th scope="col">Their flat-stake return</th></tr></thead>
     <tbody>
     {% for d in perf.dates %}
-      <tr><td>{{ d.date }}</td><td class="num">{{ d.games }}</td><td class="num">{{ '{:,}'.format(d.all.decided or 0) }}</td>
+      <tr><th scope="row">{{ d.date }}</th><td class="num">{{ d.games }}</td><td class="num">{{ '{:,}'.format(d.all.decided or 0) }}</td>
       <td class="num">{{ '%.4f' % d.all.brier_model if d.all.brier_model else '–' }}</td><td class="num">{{ '%.4f' % d.all.brier_market if d.all.brier_market else '–' }}</td>
       <td class="num">{{ '{:,}'.format(d.positive_edge.decided or 0) }}</td><td class="num">{{ d.positive_edge.hit_rate | pct }}</td>
       <td class="num {{ 'neg' if (d.positive_edge.flat_roi_per_bet or 0) < 0 else 'pos' }}">{{ ('%+.1f%%' % (d.positive_edge.flat_roi_per_bet * 100)) if d.positive_edge.flat_roi_per_bet is not none else '–' }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
+  </div>
   <p class="muted">Brier score is the mean squared error of a probability; lower is better, and 0.25 is what always guessing 50% scores. "Flat-stake return" is the average profit per $1 if every flagged positive gap had been bought at the listed price. Lines for one player and game are correlated, so a single night is a small sample. These early boards used earlier model versions, before the fixes that anchor every probability to the market.</p>
   {% else %}<p>No graded boards yet.</p>{% endif %}
 </section>
