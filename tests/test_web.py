@@ -191,6 +191,34 @@ def test_sitemap_dates_only_the_page_whose_change_date_is_known(client, env, mon
     assert "Disallow: /billing" in robots and "Disallow: /app" in robots and "Sitemap: " in robots
 
 
+def _graded(path, rows, decided, games=2):
+    path.write_text(json.dumps({"summary": {"final_games": games, "all": {"decided": decided}, "positive_edge": {}},
+                                "rows": rows}), encoding="utf-8")
+
+
+def test_performance_totals_pool_every_graded_line_on_the_same_rows(client, monkeypatch, tmp_path):
+    from web import app as webapp, db
+
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    row = lambda model, market, result, edge=0.0, roi=None: {"model_probability": model, "market_probability": market,
+                                                             "result": result, "edge": edge, "roi": roi}
+    _graded(preds / "2026-11-01.graded.json", [row(0.6, None, "win", 0.1, 1.0)], 1)       # no market price
+    _graded(preds / "2026-11-02.graded.json", [row(0.5, 0.4, "loss", 0.05, -1.0), row(0.7, 0.8, "win"),
+                                               row(0.5, 0.5, "void", 0.2)], 2, games=3)
+    _graded(preds / "2026-11-03.graded.json", [row(0.9, 0.9, "win", 0.3, 0.5)], 0)        # nothing decided: left out
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    t = webapp._performance()["total"]
+    assert (t["decided"], t["with_market"], t["games"], t["flagged"]) == (3, 2, 5, 2)
+    assert t["brier_model"] == pytest.approx((0.25 + 0.09) / 2) and t["brier_market"] == pytest.approx((0.16 + 0.04) / 2)
+    assert t["flagged_hit_rate"] == 0.5 and t["flagged_roi"] == 0.0
+    page = client.get("/performance").text
+    assert "All 2 dates" in page and "0.1700" in page and "0.1000" in page and "+0.0%" in page
+    assert "only the 2 of 3 lines that had a market price" in page
+    monkeypatch.setattr(db, "ROOT", tmp_path / "empty")
+    assert webapp._performance()["total"] is None and "All 0 dates" not in client.get("/performance").text
+
+
 def test_paid_plans_show_what_a_board_works_out_to(client):
     from web import db
 

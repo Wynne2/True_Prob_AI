@@ -228,21 +228,44 @@ templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago
 # Public pages
 # ---------------------------------------------------------------------------
 
+SUMMARY_FIELDS = ("decided", "hit_rate", "brier_model", "brier_market", "flat_roi_per_bet")
+
+
+def graded_totals(rows: list[dict]) -> dict:
+    """Every graded line pooled, scored the way engine/clv.py scores one date. Both Briers use the same lines."""
+    decided = [r for r in rows if r.get("result") in ("win", "loss")]
+    both = [(r["model_probability"], r["market_probability"], r["result"] == "win") for r in decided
+            if r.get("market_probability") is not None and r.get("model_probability") is not None]
+    flagged = [r for r in rows if (r.get("edge") or 0) > 0]
+    hits = [r["result"] == "win" for r in flagged if r.get("result") in ("win", "loss")]
+    rois = [r["roi"] for r in flagged if r.get("roi") is not None]
+    mean = lambda xs: sum(xs) / len(xs) if xs else None
+    return {"decided": len(decided), "with_market": len(both),
+            "brier_model": mean([(m - y) ** 2 for m, _, y in both]), "brier_market": mean([(k - y) ** 2 for _, k, y in both]),
+            "flagged": len(hits), "flagged_hit_rate": mean(hits), "flagged_roi": mean(rois)}
+
+
 def _performance() -> dict:
     """Published results, read from files the grading jobs write. Nothing is filtered out."""
-    out: dict = {"slope": None, "dates": [], "scorecard": None}
+    out: dict = {"slope": None, "dates": [], "scorecard": None, "total": None}
     try:
         out["slope"] = json.loads((db.ROOT / "data" / "models" / "market_slope.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         pass
+    rows: list[dict] = []
     for path in sorted((db.ROOT / "data" / "predictions").glob("????-??-??.graded.json")):
         try:
-            s = json.loads(path.read_text(encoding="utf-8")).get("summary") or {}
+            graded = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
+        s = graded.get("summary") or {}
         if (s.get("all") or {}).get("decided"):
+            # A group with no decided lines has no hit_rate or Brier keys; the templates need them present (as None).
             out["dates"].append({"date": path.name[:10], "games": s.get("final_games"), **{
-                k: s.get(k) or {} for k in ("all", "positive_edge")}})
+                k: {f: (s.get(k) or {}).get(f) for f in SUMMARY_FIELDS} for k in ("all", "positive_edge")}})
+            rows += graded.get("rows") or []
+    if out["dates"]:
+        out["total"] = graded_totals(rows) | {"games": sum(d["games"] or 0 for d in out["dates"])}
     try:
         from engine.candidate.track import scorecard
 
