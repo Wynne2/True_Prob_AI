@@ -288,6 +288,20 @@ def structured_data(base: str) -> list[dict]:
     ]
 
 
+def performance_dataset(base: str, dates: list[str]) -> dict | None:
+    """Dataset JSON-LD for /performance: one CSV per graded date, the same files the page links to."""
+    if not dates:
+        return None
+    return {"@context": "https://schema.org", "@type": "Dataset", "name": "True Prob AI graded NBA player prop lines",
+            "description": "Every NBA player prop line True Prob AI published before tip-off, graded against box scores the "
+                           "next day: offered price, no-vig market probability, model probability, gap, result and "
+                           "flat-stake return. Nothing is left out, including losing dates.",
+            "url": base + "/performance", "creator": {"@type": "Organization", "name": "True Prob AI", "url": base + "/"},
+            "isAccessibleForFree": True, "temporalCoverage": f"{dates[0]}/{dates[-1]}",
+            "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "name": f"Graded lines {d}",
+                              "contentUrl": f"{base}/performance/{d}.csv"} for d in dates]}
+
+
 async def landing(request: Request):
     db.track("visit_landing")
     return render(request, "landing.html", faq=content.FAQ, board=jobs.load_board(),
@@ -304,7 +318,9 @@ async def pricing(request: Request):
 
 
 async def performance(request: Request):
-    return render(request, "performance.html", perf=await run_in_threadpool(_performance))
+    perf = await run_in_threadpool(_performance)
+    return render(request, "performance.html", perf=perf,
+                  dataset=performance_dataset(base_url(request), [d["date"] for d in perf["dates"]]))
 
 
 GRADED_COLUMNS = ("player", "prop", "sportsbook", "odds", "implied_probability", "market_probability", "model_probability",

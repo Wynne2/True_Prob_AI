@@ -237,6 +237,21 @@ def test_each_graded_date_downloads_every_line_unedited(client):
         assert client.get(bad).status_code == 404, bad
 
 
+def test_performance_page_describes_its_csv_files_as_a_dataset(client, monkeypatch, tmp_path):
+    from web import db
+
+    page = client.get("/performance").text
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
+    assert data["@type"] == "Dataset" and 50 <= len(data["description"]) <= 5000 and data["name"]
+    assert data["temporalCoverage"] == "2026-10-31/2026-11-06" and data["isAccessibleForFree"] is True
+    urls = [d["contentUrl"] for d in data["distribution"]]
+    assert urls[-1] == "http://testserver/performance/2026-11-06.csv" and "license" not in data
+    for u in urls:                                            # every advertised file really downloads
+        assert client.get(u.replace("http://testserver", "")).status_code == 200
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    assert "application/ld+json" not in client.get("/performance").text
+
+
 def test_paid_plans_show_what_a_board_works_out_to(client):
     from web import db
 
