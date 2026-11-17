@@ -73,7 +73,7 @@
       {% for h in history %}<tr><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '%+d' % h.delta }}</td><td class="muted">{{ h.created_at | ago }}</td></tr>{% endfor %}
     </tbody></table>
     {% endif %}
-    {% if runs %}<h3>AI Advisor</h3><ul class="plain">{% for r in runs %}<li><a href="/app/advisor/{{ r.id }}">Analysis for {{ r.slate }}</a> <span class="muted">{{ r.status }}, {{ r.created_at | ago }}</span></li>{% endfor %}</ul>{% endif %}
+    {% if runs %}<h3>AI Advisor</h3><ul class="plain">{% for r in runs %}<li><a href="/app/advisor/{{ r.id }}">Analysis for {{ r.slate }}</a> <span class="muted">{{ r.status | run_status }}, {{ r.created_at | ago }}</span></li>{% endfor %}</ul>{% endif %}
   </section>
 </div>
 

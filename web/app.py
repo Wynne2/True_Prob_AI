@@ -213,7 +213,15 @@ def venue_links(urls) -> list[tuple[str, str]]:
     return [(u, name) for u in urls or [] if isinstance(u, str) for host, name in VENUE_SITES if u.startswith(host)]
 
 
-templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links)
+def run_status(status: str) -> str:
+    """An Advisor run's state in words, including whether its credits came back."""
+    back = f"{db.COSTS['advisor']} credits returned"
+    return {"running": "Being written", "done": "Ready", "failed": f"Did not complete, {back}",
+            "empty": f"Nothing to review in that range, {back}"}.get(status, status)
+
+
+templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
+                             run_status=run_status)
 
 
 # ---------------------------------------------------------------------------

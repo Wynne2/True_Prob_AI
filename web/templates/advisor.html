@@ -32,7 +32,7 @@
   </section>
   {% endif %}
   {% if runs %}
-  <section class="panel"><h2>Your analyses</h2><ul class="plain">{% for r in runs %}<li><a href="/app/advisor/{{ r.id }}">{{ r.slate }}</a> <span class="muted">{{ r.status }}, {{ r.created_at | ago }}</span></li>{% endfor %}</ul></section>
+  <section class="panel"><h2>Your analyses</h2><ul class="plain">{% for r in runs %}<li><a href="/app/advisor/{{ r.id }}">{{ r.slate }}</a> <span class="muted">{{ r.status | run_status }}, {{ r.created_at | ago }}</span></li>{% endfor %}</ul></section>
   {% endif %}
 {% endif %}
 {% endblock %}

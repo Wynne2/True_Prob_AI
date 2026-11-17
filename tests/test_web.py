@@ -619,6 +619,15 @@ def test_advisor_run_with_nothing_to_review_is_refunded(client, env, monkeypatch
     assert db.balance(user["id"]) == 20
     assert db.query("SELECT status FROM advisor_runs WHERE user_id=?", (user["id"],))[0]["status"] == "empty"
     assert any(r["reason"].startswith("Refund: no lines") for r in db.history(user["id"]))
+    for path in ("/app", "/app/advisor"):
+        assert "Nothing to review in that range, 3 credits returned" in client.get(path).text
+
+
+def test_advisor_run_status_reads_as_words():
+    from web.app import run_status
+
+    assert [run_status(s) for s in ("running", "done", "failed", "empty")] == [
+        "Being written", "Ready", "Did not complete, 3 credits returned", "Nothing to review in that range, 3 credits returned"]
 
 
 def test_one_advisor_run_at_a_time_and_double_submit_is_free(env, monkeypatch):
