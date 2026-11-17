@@ -47,6 +47,11 @@
       <label>New password<input type="password" name="new" minlength="10" autocomplete="new-password" required><small>Changing it signs out every other device.</small></label>
       <button class="btn small ghost">Change password</button>
     </form>
+    <h3>Signed in somewhere else?</h3>
+    <form method="post" action="/app/account/sessions" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Password<input type="password" name="password" autocomplete="current-password" required><small>Signs out every other device and browser. This one stays signed in.</small></label>
+      <button class="btn small ghost">Sign out other devices</button>
+    </form>
   </section>
   <section class="panel danger">
     <h2>Privacy</h2>

@@ -369,6 +369,24 @@ def test_password_reset_is_single_use_and_ends_sessions(client):
     assert db.check_password("brand new pass 2", db.get_user(user["id"])["pw_hash"])
 
 
+def test_sign_out_other_devices_keeps_this_one(client):
+    from web import db
+
+    user = register(client)
+    other = __import__("starlette.testclient", fromlist=["TestClient"]).TestClient(client.app)
+    other.post("/login", data={"csrf": _csrf(other, "/login"), "email": "ann@example.com", "password": "correct horse 1"})
+    assert "Sign out other devices" in client.get("/app/account").text
+    post(client, "/app/account/sessions", password="wrong password")
+    assert "No device was signed out" in client.get("/app/account").text
+    assert other.get("/app", follow_redirects=False).status_code == 200
+    assert post(client, "/app/account/sessions", password="correct horse 1").status_code == 303
+    assert "Every other device and browser was signed out" in client.get("/app/account").text
+    assert other.get("/app", follow_redirects=False).status_code == 303
+    assert client.get("/app", follow_redirects=False).status_code == 200
+    assert db.query("SELECT 1 FROM audit WHERE actor_id=? AND action='sessions.revoke_others'", (user["id"],))
+    assert client.post("/app/account/sessions", data={"csrf": "forged", "password": "correct horse 1"}).status_code == 403
+
+
 def test_forgot_password_does_not_reveal_accounts(client):
     register(client, verify=False)
     known = client.post("/forgot", data={"csrf": _csrf(client, "/forgot"), "email": "ann@example.com"}).text

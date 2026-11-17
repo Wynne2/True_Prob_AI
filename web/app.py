@@ -715,6 +715,21 @@ async def change_password(request: Request):
     return RedirectResponse("/app/account", 303)
 
 
+async def sign_out_others(request: Request):
+    form = await checked_form(request)
+    user, redirect = need_user(request)
+    if redirect:
+        return redirect
+    if not db.check_password(str(form.get("password") or ""), user["pw_hash"]):
+        flash(request, "Your password is not correct. No device was signed out.", "warn")
+    else:
+        db.update_user(user["id"], session_version=user["session_version"] + 1)
+        request.session["sv"] = user["session_version"] + 1
+        db.audit(user["id"], "sessions.revoke_others")
+        flash(request, "Every other device and browser was signed out. This one stays signed in.")
+    return RedirectResponse("/app/account", 303)
+
+
 async def delete_account(request: Request):
     form = await checked_form(request)
     user, redirect = need_user(request)
@@ -893,6 +908,7 @@ routes = [
     P("/app/arbitrage", arbitrage), P("/app/arbitrage/unlock", unlock_arb, ("POST",)),
     P("/app/advisor", advisor), P("/app/advisor/run", advisor_run, ("POST",)), P("/app/advisor/{run_id:int}", advisor_view),
     P("/app/account", account), P("/app/account/password", change_password, ("POST",)),
+    P("/app/account/sessions", sign_out_others, ("POST",)),
     P("/app/account/delete", delete_account, ("POST",)),
     P("/billing/checkout", checkout, ("POST",)), P("/billing/portal", portal, ("POST",)),
     P("/stripe/webhook", stripe_webhook, ("POST",)),
