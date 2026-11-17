@@ -21,6 +21,7 @@
     <div>
       <h2>Open today's full board</h2>
       <p>See the consensus, gap and projection for all {{ board.rows | length }} lines for the rest of the day, or open single lines for {{ costs.prop }} credit each.</p>
+      {% if mine %}{% set k = mine | length %}<p class="muted">You have opened {{ k }} single line{{ 's' if k != 1 }} today ({{ k * costs.prop }} credit{{ 's' if k * costs.prop != 1 }}). Those are not counted toward the board, so it only saves credits if you will open more than {{ costs.board // costs.prop }} other lines today.</p>{% endif %}
     </div>
     <form method="post" action="/app/explorer/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
       <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Open board for {{ costs.board }} credits</button>

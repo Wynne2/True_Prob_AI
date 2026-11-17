@@ -472,6 +472,21 @@ def test_every_charge_shows_a_receipt(client, env):
     assert "Charged 5 credits for today&#39;s full board (2026-11-15). You have 14 left." in client.get("/app/explorer").text
 
 
+def test_single_line_pages_say_when_the_board_costs_less(client, env):
+    register(client)
+    write_board(env)
+    page = client.get("/app/prop/p0").text
+    assert "Opening 5 or more lines today?" in page and "the same as 5 single lines, and opens all 3" in page
+    assert "You have opened" not in client.get("/app/explorer").text
+    post(client, "/app/prop/p0/unlock")
+    post(client, "/app/prop/p1/unlock")
+    assert ("You have opened 2 single lines today (2 credits). Those are not counted toward the board, so it only saves "
+            "credits if you will open more than 5 other lines today.") in client.get("/app/explorer").text
+    post(client, "/app/explorer/unlock")
+    assert "You have opened" not in client.get("/app/explorer").text
+    assert "Opening 5 or more" not in client.get("/app/prop/p2").text
+
+
 def test_credit_history_downloads_as_csv_with_running_balance(client, env):
     import csv as _csv
     from web import db
