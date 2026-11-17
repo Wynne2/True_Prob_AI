@@ -46,7 +46,7 @@
     <h2>Credits</h2>
     <p class="big">{{ balance }}</p>
     <p>left on the {{ plans[plan].name }} plan.
-    {% if plan == 'free' %}They reset 30 days after the last reset.{% elif user.period_end %}They reset when the plan renews on {{ user.period_end | when }}.{% endif %}</p>
+    {% if reset %}Your balance becomes {{ reset[1] }} on {{ reset[0] | day }}{% if plan == 'free' %} (on your first visit from that day){% endif %}.{% endif %}</p>
     <a class="btn small ghost" href="/app/account">Usage history</a>
   </section>
 </div>

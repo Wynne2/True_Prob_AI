@@ -168,7 +168,8 @@ def _apply(etype: str, obj: dict) -> str:
         if etype.endswith("deleted") and user["stripe_subscription_id"] == sub.get("id"):
             db.grant_period(user["id"], "free", f"end:{sub.get('id')}")
             mailer.send(user["email"], "Your True Prob AI subscription has ended",
-                        "Your paid plan has ended and your account is back on the Free plan (20 credits a month). "
+                        f"Your paid plan has ended and your account is back on the Free plan ({db.PLANS['free']['credits']} "
+                        "credits every 30 days). "
                         "You can subscribe again any time from the pricing page.")
             db.track("subscription_ended", user["id"])
         elif before and not before["cancel_at_period_end"] and user["cancel_at_period_end"]:

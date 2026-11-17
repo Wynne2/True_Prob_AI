@@ -564,6 +564,8 @@ def test_customers_see_when_their_credits_reset_and_to_what(client, env):
     assert f"Back to 20 on {when}." in client.get("/app").text
     assert f"Your balance becomes 20 on {when}" in client.get("/app/account").text
     assert f"or wait until {when}, when your balance becomes 20" in client.get("/pricing?need=board").text
+    assert f"Your balance becomes 20 on {when} (on your first visit from that day)." in client.get("/app").text
+    assert "30 days after the last reset" not in client.get("/app").text
 
     end = time.time() + 10 * 86400
     db.update_user(user["id"], plan="pro", sub_status="active", period_end=end)
@@ -573,6 +575,14 @@ def test_customers_see_when_their_credits_reset_and_to_what(client, env):
     db.update_user(user["id"], period_end=None)
     assert db.next_reset(db.get_user(user["id"])) is None
     assert "Back to" not in client.get("/app").text
+
+
+def test_free_allowance_copy_comes_from_the_plan(client, env, monkeypatch):
+    from web import db
+
+    monkeypatch.setitem(db.PLANS, "free", {**db.PLANS["free"], "credits": 25})
+    home = client.get("/").text
+    assert "25 free credits every 30 days. No card needed. 21+." in home and "a month. No card" not in home
 
 
 def test_insufficient_credits_charge_nothing(client, env):
@@ -780,6 +790,8 @@ def test_subscription_lifecycle(client, env, monkeypatch):
     send_event(client, {"id": "evt_7", "type": "customer.subscription.deleted", "data": {"object": ended}})
     u = db.get_user(u["id"])
     assert db.effective_plan(u) == "free" and db.balance(u["id"]) == 20
+    from web import mailer
+    assert "back on the Free plan (20 credits every 30 days)" in mailer.OUTBOX.read_text(encoding="utf-8")
 
 
 def test_webhook_rejects_spoofed_and_unknown_prices(client, env, monkeypatch):
