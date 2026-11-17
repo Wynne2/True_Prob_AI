@@ -8,7 +8,9 @@ Environment:   see docs/DEPLOY.md. Nothing here places a bet or a trade.
 from __future__ import annotations
 
 import base64
+import csv
 import hashlib
+import io
 import json
 import logging
 import os
@@ -697,6 +699,25 @@ async def account(request: Request):
                   dev_verify=request.session.get("dev_verify"))
 
 
+def csv_cell(text: str) -> str:
+    """Text a spreadsheet will not run as a formula (OWASP CSV injection)."""
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+async def history_csv(request: Request):
+    user, redirect = need_user(request)
+    if redirect:
+        return redirect
+    out, running = io.StringIO(), 0
+    writer = csv.writer(out)
+    writer.writerow(["When (UTC)", "What", "Credits", "Balance after"])
+    for h in db.query("SELECT * FROM ledger WHERE user_id=? ORDER BY id", (user["id"],)):
+        running += h["delta"]
+        writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(h["created_at"])), csv_cell(h["reason"]), h["delta"], running])
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="true-prob-ai-credits.csv"'})
+
+
 async def change_password(request: Request):
     form = await checked_form(request)
     user, redirect = need_user(request)
@@ -908,7 +929,7 @@ routes = [
     P("/app/arbitrage", arbitrage), P("/app/arbitrage/unlock", unlock_arb, ("POST",)),
     P("/app/advisor", advisor), P("/app/advisor/run", advisor_run, ("POST",)), P("/app/advisor/{run_id:int}", advisor_view),
     P("/app/account", account), P("/app/account/password", change_password, ("POST",)),
-    P("/app/account/sessions", sign_out_others, ("POST",)),
+    P("/app/account/sessions", sign_out_others, ("POST",)), P("/app/account/history.csv", history_csv),
     P("/app/account/delete", delete_account, ("POST",)),
     P("/billing/checkout", checkout, ("POST",)), P("/billing/portal", portal, ("POST",)),
     P("/stripe/webhook", stripe_webhook, ("POST",)),

@@ -472,6 +472,29 @@ def test_every_charge_shows_a_receipt(client, env):
     assert "Charged 5 credits for today&#39;s full board (2026-11-15). You have 14 left." in client.get("/app/explorer").text
 
 
+def test_credit_history_downloads_as_csv_with_running_balance(client, env):
+    import csv as _csv
+    from web import db
+
+    user = register(client)
+    write_board(env)
+    post(client, "/app/prop/p0/unlock")
+    db.execute("INSERT INTO ledger (user_id, delta, reason, ref, created_at) VALUES (?,?,?,?,?)",
+               (user["id"], 2, '=HYPERLINK("http://evil")', "x", time.time()))
+    register(client.__class__(client.app), email="bob@example.com")
+    assert 'href="/app/account/history.csv"' in client.get("/app/account").text
+    r = client.get("/app/account/history.csv")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"] and r.headers["cache-control"] == "no-store"
+    rows = list(_csv.reader(r.text.splitlines()))
+    assert rows[0] == ["When (UTC)", "What", "Credits", "Balance after"]
+    assert [(w, c, b) for _, w, c, b in rows[1:]] == [
+        ("Free plan credits", "20", "20"), ("Analysis: Player 0 points over 20.5", "-1", "19"),
+        ("'=HYPERLINK(\"http://evil\")", "2", "21")]          # formula neutralised; other customers' rows absent
+    signed_out = client.__class__(client.app).get("/app/account/history.csv", follow_redirects=False)
+    assert signed_out.status_code == 303
+
+
 def test_customers_see_when_their_credits_reset_and_to_what(client, env):
     from web import app as webapp, db
 
