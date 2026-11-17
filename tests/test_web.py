@@ -404,6 +404,23 @@ def test_login_limit_per_account_survives_changing_networks(client, monkeypatch)
     assert webapp._dummy_hash
 
 
+def test_rate_limit_store_forgets_idle_keys(env, monkeypatch):
+    clock = [1_000_000.0]
+    monkeypatch.setattr(env.time, "time", lambda: clock[0])
+    env._swept[0] = clock[0]
+    for i in range(500):                      # e.g. guesses spread over many made-up emails
+        env._over(f"login-account:{i}@example.com", 10, 900)
+    assert env._over("login:1.2.3.4", 1, 3600) is False
+    assert env._over("login:1.2.3.4", 1, 3600) is True
+    clock[0] += env.LONGEST_WINDOW - 10
+    env._over("other", 10, 60)                # sweep runs, but nothing is old enough yet
+    assert len(env._hits) == 502
+    clock[0] += 400
+    env._over("other", 10, 60)
+    assert set(env._hits) == {"other"}        # idle keys are gone; limits still work afterwards
+    assert env._over("login:1.2.3.4", 1, 3600) is False
+
+
 # ---------------------------------------------------------------------------
 # Credits
 # ---------------------------------------------------------------------------

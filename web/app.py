@@ -100,11 +100,18 @@ async def checked_form(request: Request):
 
 
 _hits: dict[str, deque] = defaultdict(deque)
+LONGEST_WINDOW = 3600  # every `per` passed to _over must be at most this
+_swept = [0.0]
 
 
 def _over(key: str, n: int, per: int) -> bool:
     # shortcut: per-process memory; use a shared store when there is more than one web instance.
-    q, now = _hits[key], time.time()
+    now = time.time()
+    if now - _swept[0] > 300:  # keys are attacker-chosen (emails, IPs), so drop idle ones or memory grows forever
+        _swept[0] = now
+        for k in [k for k, q in _hits.items() if not q or q[-1] < now - LONGEST_WINDOW]:
+            del _hits[k]
+    q = _hits[key]
     while q and q[0] < now - per:
         q.popleft()
     q.append(now)
