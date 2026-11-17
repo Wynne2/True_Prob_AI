@@ -332,3 +332,16 @@ def test_cross_pairs_keep_each_venues_close_date():
     assert row["close_gap_days"] == 13.0
     single = finder.Candidate("all-no", "One venue", [leg(0.30), leg(0.30)], 1.0, NOW)
     assert _row(single, 1, 0.6, 0.4, NOW)["close_by_venue"] == {} and _row(single, 1, 0.6, 0.4, NOW)["close_gap_days"] is None
+
+
+def test_reviewed_pairs_with_different_deadlines_rank_last():
+    from arbitrage.scanner import _rank
+
+    rows = [
+        {"title": "Fed cuts in Dec: Yes [confirmed pair]", "profit": 90.0, "close_gap_days": 13.0},  # deadlines differ
+        {"title": "Knicks vs Celtics [Kalshi+Polymarket]", "profit": 40.0, "close_gap_days": 13.0},   # normal for games
+        {"title": "CPI above 3%: Yes [confirmed pair]", "profit": 10.0, "close_gap_days": 0.5},      # same day: fine
+        {"title": "One venue", "profit": 60.0, "close_gap_days": None},
+        {"title": "Election: Yes [confirmed pair]", "profit": 20.0, "close_gap_days": 2.0},
+    ]
+    assert [r["profit"] for r in sorted(rows, key=_rank)] == [60.0, 40.0, 10.0, 90.0, 20.0]

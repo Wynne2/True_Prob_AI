@@ -25,6 +25,12 @@ def _gap_days(leg_closes) -> float | None:
     return round(abs((closes[0] - closes[1]).total_seconds()) / 86400, 1) if len(closes) == 2 else None
 
 
+def _rank(r: dict) -> tuple[bool, float]:
+    """Most profit first, but a reviewed non-sports pair whose venues close a day or more apart goes last:
+    its two markets may not settle on the same result. Games and player lines differ by design, so they are not moved."""
+    return "[confirmed pair]" in r["title"] and (r.get("close_gap_days") or 0) >= 1, -r["profit"]
+
+
 def _row(c: finder.Candidate, contracts: float, cost: float, profit: float, now: datetime) -> dict:
     return {
         "kind": c.kind,
@@ -108,9 +114,9 @@ def scan(
         contracts, cost, profit = finder.walk([[(c.legs[0].ask, float("inf"))], ladder], c.legs, c.payout)
         if profit > 0 and contracts >= max(leg.min_size for leg in c.legs):
             maker_rows.append(_row(c, contracts, cost, profit, now))
-    maker_rows.sort(key=lambda r: -r["profit"])
+    maker_rows.sort(key=_rank)
 
-    rows.sort(key=lambda r: -r["profit"])
+    rows.sort(key=_rank)
     # An arb must still clear min_profit after every leg slips a tick, or it is a bet on execution.
     arbs = [r for r in rows if r["profit_if_slipped"] >= min_profit and r["annualized"] >= min_annual]
     if log and arbs:
@@ -129,7 +135,7 @@ def scan(
         "maker_pairs": len(maker_rows),
         "book_errors": errors,
     }
-    at_risk.sort(key=lambda r: -r["profit"])
+    at_risk.sort(key=_rank)
     return {"arbs": arbs, "near": [r for r in rows if r not in arbs], "maker": maker_rows, "at_risk": at_risk, "stats": stats}
 
 
