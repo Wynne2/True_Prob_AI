@@ -13,6 +13,7 @@ import json
 import re
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -217,6 +218,23 @@ def test_performance_totals_pool_every_graded_line_on_the_same_rows(client, monk
     assert "only the 2 of 3 lines that had a market price" in page
     monkeypatch.setattr(db, "ROOT", tmp_path / "empty")
     assert webapp._performance()["total"] is None and "All 0 dates" not in client.get("/performance").text
+
+
+def test_each_graded_date_downloads_every_line_unedited(client):
+    import csv as _csv
+
+    page = client.get("/performance").text
+    assert 'href="/performance/2026-11-06.csv"' in page
+    graded = json.loads((Path(__file__).resolve().parents[1] / "data" / "predictions" / "2026-11-06.graded.json").read_text())
+    r = client.get("/performance/2026-11-06.csv")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    rows = list(_csv.DictReader(r.text.splitlines()))
+    assert len(rows) == len(graded["rows"])
+    first = graded["rows"][0]
+    assert rows[0]["player"] == first["player"] and rows[0]["result"] == first["result"]
+    assert float(rows[0]["market_probability"]) == first["market_probability"]
+    for bad in ("/performance/2026-11-15.csv", "/performance/..%2Fapp.csv", "/performance/latest.csv"):
+        assert client.get(bad).status_code == 404, bad
 
 
 def test_paid_plans_show_what_a_board_works_out_to(client):

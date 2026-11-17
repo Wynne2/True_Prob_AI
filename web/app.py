@@ -307,6 +307,28 @@ async def performance(request: Request):
     return render(request, "performance.html", perf=await run_in_threadpool(_performance))
 
 
+GRADED_COLUMNS = ("player", "prop", "sportsbook", "odds", "implied_probability", "market_probability", "model_probability",
+                  "probability_method", "edge", "actual", "result", "roi", "closing_probability", "clv")
+
+
+async def graded_csv(request: Request):
+    """Every graded line for one date, as saved before tip-off and graded after. Nothing dropped or edited."""
+    date = request.path_params["date"]
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        raise HTTPException(404)
+    try:
+        rows = json.loads((db.ROOT / "data" / "predictions" / f"{date}.graded.json").read_text(encoding="utf-8")).get("rows") or []
+    except (OSError, ValueError):
+        raise HTTPException(404)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(GRADED_COLUMNS)
+    for r in rows:
+        writer.writerow(["" if r.get(c) is None else csv_cell(r[c]) if isinstance(r[c], str) else r[c] for c in GRADED_COLUMNS])
+    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="true-prob-ai-graded-{date}.csv"'})
+
+
 async def legal(request: Request):
     page = content.LEGAL.get(request.path_params["slug"])
     if page is None:
@@ -950,7 +972,8 @@ def P(path, endpoint, methods=("GET",)):
 
 
 routes = [
-    P("/", landing), P("/pricing", pricing), P("/performance", performance), P("/legal/{slug}", legal),
+    P("/", landing), P("/pricing", pricing), P("/performance", performance), P("/performance/{date}.csv", graded_csv),
+    P("/legal/{slug}", legal),
     P("/healthz", healthz), P("/robots.txt", robots), P("/sitemap.xml", sitemap), P("/favicon.ico", favicon),
     P("/register", register, ("GET", "POST")), P("/login", login, ("GET", "POST")), P("/logout", logout, ("POST",)),
     P("/verify", verify), P("/verify/resend", resend, ("POST",)),
