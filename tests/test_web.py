@@ -1116,3 +1116,22 @@ def test_performance_splits_every_graded_line_by_market(client, monkeypatch, tmp
     assert sum(s["decided"] for s in by.values()) == webapp._performance()["total"]["decided"]
     page = client.get("/performance").text
     assert "By market" in page and "-100.0%" in page and "Points + rebounds + assists" not in page
+
+
+def test_watchlist_says_what_happened_and_overview_shows_every_watched_player(client, env):
+    from web import db
+
+    user = register(client)
+    write_board(env)
+    post(client, "/app/watch", player="Player 2", back="/app/prop/p2")
+    assert "Watching Player 2. Their lines on today&#39;s board are listed on your Overview." in client.get("/app/prop/p2").text
+    for i in range(48):
+        db.execute("INSERT INTO watchlist VALUES (?,?,?,?)", (user["id"], f"filler {i}", f"Filler {i}", time.time() + 1 + i))
+    post(client, "/app/watch", player="Player 1")
+    page = client.get("/app").text
+    assert "Player 2" in page and "/app/prop/p2" in page and "Filler 47" in page   # the oldest of 50 still listed and matched
+    post(client, "/app/watch", player="Player 0")
+    assert "Your watchlist is full (50 players)" in client.get("/app").text
+    assert len(db.query("SELECT 1 FROM watchlist WHERE user_id=?", (user["id"],))) == 50
+    post(client, "/app/watch", player="Player 2", remove="1")
+    assert "Stopped watching Player 2." in client.get("/app").text

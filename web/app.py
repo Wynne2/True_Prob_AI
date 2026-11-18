@@ -572,7 +572,7 @@ async def dashboard(request: Request):
     if redirect:
         return redirect
     board, arb = jobs.load_board(), jobs.load_arb()
-    watch = db.query("SELECT * FROM watchlist WHERE user_id=? ORDER BY created_at DESC LIMIT 20", (user["id"],))
+    watch = db.query("SELECT * FROM watchlist WHERE user_id=? ORDER BY created_at DESC LIMIT ?", (user["id"], WATCH_LIMIT))
     watched = {w["key"] for w in watch}
     hits = [r for r in (board or {}).get("rows", []) if r["player"].lower() in watched][:12]
     perf = await run_in_threadpool(_performance)
@@ -681,6 +681,9 @@ async def unlock_prop(request: Request):
     return RedirectResponse(f"/app/prop/{row['id']}", 303)
 
 
+WATCH_LIMIT = 50
+
+
 async def watch(request: Request):
     form = await checked_form(request)
     user, redirect = need_user(request)
@@ -690,8 +693,12 @@ async def watch(request: Request):
     if label:
         if form.get("remove"):
             db.execute("DELETE FROM watchlist WHERE user_id=? AND key=?", (user["id"], label.lower()))
-        elif len(db.query("SELECT 1 FROM watchlist WHERE user_id=?", (user["id"],))) < 50:
+            flash(request, f"Stopped watching {label}.")
+        elif len(db.query("SELECT 1 FROM watchlist WHERE user_id=?", (user["id"],))) < WATCH_LIMIT:
             db.execute("INSERT OR IGNORE INTO watchlist VALUES (?,?,?,?)", (user["id"], label.lower(), label, time.time()))
+            flash(request, f"Watching {label}. Their lines on today's board are listed on your Overview.")
+        else:
+            flash(request, f"Your watchlist is full ({WATCH_LIMIT} players). Remove someone on your Overview first.", "warn")
     back = str(form.get("back") or "/app")
     return RedirectResponse(back if back.startswith("/app") else "/app", 303)
 
