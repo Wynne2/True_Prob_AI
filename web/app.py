@@ -29,7 +29,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
@@ -1005,9 +1005,22 @@ async def on_error(request: Request, exc: HTTPException):
     return response
 
 
+# Plain HTML with no template or database, so it still renders when those are what broke.
+CRASH_PAGE = (
+    '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+    f'<meta name="robots" content="noindex"><title>Something went wrong: True Prob AI</title><script>{THEME_SCRIPT}</script>'
+    '<link rel="stylesheet" href="/static/app.css"></head><body><main id="main"><section class="auth">'
+    '<h1>Something went wrong on our side</h1><p>Nothing was charged. Try again in a moment.</p>'
+    '<p><a class="btn ghost" href="/">Go to the home page</a></p></section></main><footer class="foot">'
+    '<p><strong>21+ only.</strong> Research and information, not betting or investment advice. Nothing here is a guarantee, '
+    'and most people who bet lose money. Gambling problem? Call or text <strong>1-800-GAMBLER</strong>.</p></footer></body></html>')
+
+
 async def on_crash(request: Request, exc: Exception):
     logger.exception("Unhandled error on %s", request.url.path)
-    return PlainTextResponse("Something went wrong on our side. Nothing was charged. Try again in a moment.", 500)
+    if request.url.path == "/stripe/webhook":
+        return PlainTextResponse("temporary failure", 500)
+    return HTMLResponse(CRASH_PAGE, 500, headers={"Cache-Control": "no-store"})
 
 
 def P(path, endpoint, methods=("GET",)):

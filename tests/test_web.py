@@ -1084,3 +1084,14 @@ def test_reset_emails_are_capped_per_account_without_revealing_it(client, env):
         pages.append(client.post("/forgot", data={"csrf": _csrf(client, "/forgot"), "email": "Ann@Example.com "}))
     assert all(p.status_code == 200 for p in pages) and len({re.sub(r'<p class="flash note">Development mode.*?</p>', "", p.text) for p in pages}) == 1
     assert mailer.OUTBOX.read_text(encoding="utf-8").count("subject=Reset your True Prob AI password") == 3
+
+
+def test_server_error_page_is_html_with_the_disclosures(env, monkeypatch):
+    from starlette.testclient import TestClient
+    from web import jobs
+
+    monkeypatch.setattr(jobs, "load_board", lambda *a: 1 / 0)
+    r = TestClient(env.app, raise_server_exceptions=False).get("/")
+    assert r.status_code == 500 and r.headers["content-type"].startswith("text/html")
+    assert "21+" in r.text and "1-800-GAMBLER" in r.text and "Nothing was charged" in r.text
+    assert "ZeroDivisionError" not in r.text and 'name="robots" content="noindex"' in r.text
