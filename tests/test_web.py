@@ -1135,3 +1135,24 @@ def test_watchlist_says_what_happened_and_overview_shows_every_watched_player(cl
     assert len(db.query("SELECT 1 FROM watchlist WHERE user_id=?", (user["id"],))) == 50
     post(client, "/app/watch", player="Player 2", remove="1")
     assert "Stopped watching Player 2." in client.get("/app").text
+
+
+def test_account_shows_what_this_periods_credits_were_used_for(client, env):
+    from web import db
+
+    user = register(client)
+    assert "Nothing used since" in client.get("/app/account").text
+    write_board(env)
+    for pid in ("p0", "p1", "p0"):   # reopening p0 is free and is not counted
+        post(client, f"/app/prop/{pid}/unlock")
+    post(client, "/app/explorer/unlock")
+    db.spend(user["id"], "advisor", "7", "AI Advisor analysis")
+    db.refund(user["id"], "advisor", "7", "the analysis did not complete")
+    db.execute("INSERT INTO ledger (user_id, delta, reason, ref, created_at) VALUES (?,?,?,?,?)",
+               (user["id"], -5, "Old board", "board:2026-10-01", float(user["credits_reset_at"]) - 60))   # last period
+    usage = db.period_usage(db.get_user(user["id"]))
+    assert usage == {"prop": {"times": 2, "spent": 2, "refunded": 0}, "board": {"times": 1, "spent": 5, "refunded": 0},
+                     "advisor": {"times": 1, "spent": 3, "refunded": 3}}
+    page = client.get("/app/account").text
+    assert "Single lines opened: 2, 2 credits" in page and "Full boards opened: 1, 5 credits" in page
+    assert "AI Advisor analyses: 1, 3 credits (3 returned)" in page and "Arbitrage terminal days" not in page

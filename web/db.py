@@ -355,6 +355,22 @@ def adjust_credits(admin_id: int, user_id: int, delta: int, note: str) -> None:
                      (admin_id, "credits.adjust", str(user_id), json.dumps({"delta": delta, "note": note}), now))
 
 
+def period_usage(user) -> dict[str, dict]:
+    """What this period's credits went on: per kind, how many charges, credits spent and credits refunded."""
+    out = {k: {"times": 0, "spent": 0, "refunded": 0} for k in COSTS}
+    with connect() as conn:
+        rows = conn.execute("SELECT delta, ref FROM ledger WHERE user_id=? AND created_at>=?",
+                            (user["id"], float(user["credits_reset_at"]))).fetchall()
+    for delta, ref in rows:
+        kind, _, rest = ref.partition(":")
+        if delta < 0 and kind in out:
+            out[kind]["times"] += 1
+            out[kind]["spent"] -= delta
+        elif kind == "refund" and rest.split(":")[0] in out:
+            out[rest.split(":")[0]]["refunded"] += delta
+    return {k: v for k, v in out.items() if v["times"]}
+
+
 def history(user_id: int, limit: int = 50) -> list:
     with connect() as conn:
         return conn.execute("SELECT * FROM ledger WHERE user_id=? ORDER BY id DESC LIMIT ?", (user_id, limit)).fetchall()

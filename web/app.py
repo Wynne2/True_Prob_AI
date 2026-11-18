@@ -800,7 +800,7 @@ async def account(request: Request):
     if request.query_params.get("checkout") == "done":
         flash(request, "Thanks. Your plan and credits appear here as soon as the payment is confirmed (usually within a minute).")
         return RedirectResponse("/app/account", 303)
-    return render(request, "account.html", user=user, history=db.history(user["id"], 100),
+    return render(request, "account.html", user=user, history=db.history(user["id"], 100), usage=db.period_usage(user),
                   dev_verify=request.session.get("dev_verify"))
 
 
