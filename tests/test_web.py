@@ -1002,3 +1002,18 @@ def test_arbitrage_shows_both_close_dates_and_flags_reviewed_pairs_with_differen
     assert "Kalshi 2027-12-31, Polymarket 2026-12-31" in page
     assert page.count("Deadlines 365 days apart") == 1 and "Deadlines 13 days" not in page
     assert "Kalshi 2026-11-16" not in page        # same calendar day: one date only
+
+
+def test_scan_error_text_stays_off_public_and_customer_pages(client, env, monkeypatch):
+    from web import jobs
+
+    secret = "HTTPError: 401 for url https://api.example.com/odds?apiKey=abc123"
+    monkeypatch.setitem(jobs._errors, "board", secret)
+    health = client.get("/healthz").json()
+    assert health["jobs"]["errors"] == ["board"] and "abc123" not in json.dumps(health)
+    register(client)
+    page = client.get("/app/explorer").text
+    assert "The last scan stopped on our side" in page and "abc123" not in page
+    client.cookies.clear()
+    register(client, email="boss@example.com")
+    assert "abc123" in client.get("/admin").text

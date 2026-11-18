@@ -68,13 +68,15 @@ def _start(name: str, work: Callable[[], None]) -> bool:
 
 
 def status(name: str) -> dict:
+    """What customers see. The raw error can hold provider URLs or keys, so it stays in the log and on Admin."""
     started = _running.get(name)
     return {"running": started is not None, "seconds": int(time.time() - started) if started else 0,
-            "error": _errors.get(name, "")}
+            "error": "The last scan stopped on our side before it finished." if name in _errors else ""}
 
 
-def health() -> dict:
-    return {"running": {k: int(time.time() - v) for k, v in _running.items()}, "errors": dict(_errors)}
+def health(details: bool = False) -> dict:
+    return {"running": {k: int(time.time() - v) for k, v in _running.items()},
+            "errors": dict(_errors) if details else sorted(_errors)}
 
 
 # ---------------------------------------------------------------------------

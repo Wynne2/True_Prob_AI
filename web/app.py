@@ -911,7 +911,7 @@ async def admin(request: Request):
         audit=db.query("SELECT * FROM audit ORDER BY id DESC LIMIT 40"),
         flags={k: db.flag(k, k != "legal_reviewed") for k in ("scan", "arbitrage", "advisor", "legal_reviewed")},
         notes=db.query("SELECT * FROM announcements ORDER BY id DESC LIMIT 10"),
-        health=jobs.health(), board=jobs.load_board(), arb=jobs.load_arb(),
+        health=jobs.health(details=True), board=jobs.load_board(), arb=jobs.load_arb(),
         spend_30d=db.query("SELECT ref, COUNT(*) AS n, -SUM(delta) AS credits FROM (SELECT substr(ref,1,instr(ref,':')-1) AS ref, delta "
                            "FROM ledger WHERE delta<0 AND created_at>?) GROUP BY ref", (since,)),
     )
