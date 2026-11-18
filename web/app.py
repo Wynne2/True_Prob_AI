@@ -519,7 +519,8 @@ async def forgot(request: Request):
         raise HTTPException(429, "Too many reset requests. Try again later.")
     user = db.get_user(email=str(form.get("email") or ""))
     dev_link = None
-    if user:
+    # Per account too, so requests from many networks cannot flood one inbox; the page reads the same either way.
+    if user and not _over(f"forgot-account:{user['id']}", 3, 3600):
         link = f"{base_url(request)}/reset?token={db.make_token(user['id'], 'reset', 3600)}"
         mailer.send(user["email"], "Reset your True Prob AI password",
                     f"Use this link to choose a new password. It works once and expires in one hour:\n{link}\n\n"

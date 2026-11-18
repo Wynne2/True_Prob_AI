@@ -1070,3 +1070,15 @@ def test_a_new_password_or_signing_out_others_voids_every_other_reset_link(clien
         token = db.make_token(bea["id"], "reset", 3600)
         assert post(client, path, **data).status_code == 303
         assert db.use_token(token, "reset") is None, path
+
+
+def test_reset_emails_are_capped_per_account_without_revealing_it(client, env):
+    from web import mailer
+
+    register(client)
+    pages = []
+    for i in range(5):
+        env._hits.pop("forgot:testclient", None)   # a new network each time
+        pages.append(client.post("/forgot", data={"csrf": _csrf(client, "/forgot"), "email": "Ann@Example.com "}))
+    assert all(p.status_code == 200 for p in pages) and len({re.sub(r'<p class="flash note">Development mode.*?</p>', "", p.text) for p in pages}) == 1
+    assert mailer.OUTBOX.read_text(encoding="utf-8").count("subject=Reset your True Prob AI password") == 3
