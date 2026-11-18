@@ -132,6 +132,11 @@ def limited(request: Request, bucket: str, n: int, per: int) -> bool:
     return _over(f"{bucket}:{ip}", n, per)
 
 
+def too_many(message: str, per: int) -> HTTPException:
+    """A 429 that says, in Retry-After, how many seconds the limit's window lasts."""
+    return HTTPException(429, message, headers={"Retry-After": str(per), "Cache-Control": "no-store"})
+
+
 _dummy_hash: list[str] = []
 
 
@@ -436,7 +441,7 @@ async def register(request: Request):
         return render(request, "auth.html", 400, mode="register", regions=content.REGIONS, error=error, email=email, region=region)
     # Counts only sign-ups that pass validation, so typos never lock anyone out.
     if limited(request, "register", 5, 3600):
-        raise HTTPException(429, "Too many sign-ups from this network. Try again in an hour.")
+        raise too_many("Too many sign-ups from this network. Try again in an hour.", 3600)
     uid = db.create_user(email, password, region)
     if uid is None:
         return render(request, "auth.html", 400, mode="register", regions=content.REGIONS, email=email, region=region,
@@ -459,11 +464,11 @@ async def login(request: Request):
         return render(request, "auth.html", mode="login", next=nxt)
     form = await checked_form(request)
     if limited(request, "login", 10, 600):
-        raise HTTPException(429, "Too many sign-in attempts. Wait ten minutes and try again.")
+        raise too_many("Too many sign-in attempts. Wait ten minutes and try again.", 600)
     email = str(form.get("email") or "").strip().lower()
     # Per account as well as per network, so spreading guesses over many addresses does not help.
     if _over(f"login-account:{email}", 10, 900):
-        raise HTTPException(429, "Too many sign-in attempts. Wait fifteen minutes and try again, or reset your password.")
+        raise too_many("Too many sign-in attempts. Wait fifteen minutes and try again, or reset your password.", 900)
     user = db.get_user(email=email)
     if not _password_matches(user, str(form.get("password") or "")):
         db.audit(user["id"] if user else None, "login.failed")
@@ -502,7 +507,7 @@ async def resend(request: Request):
     if redirect:
         return redirect
     if limited(request, "resend", 3, 3600):
-        raise HTTPException(429, "A confirmation email was sent recently. Check your inbox and spam folder.")
+        raise too_many("A confirmation email was sent recently. Check your inbox and spam folder.", 3600)
     if not user["verified_at"]:
         link = _send_verification(request, user)
         if not mailer.configured() and not PRODUCTION:
@@ -516,7 +521,7 @@ async def forgot(request: Request):
         return render(request, "auth.html", mode="forgot")
     form = await checked_form(request)
     if limited(request, "forgot", 5, 3600):
-        raise HTTPException(429, "Too many reset requests. Try again later.")
+        raise too_many("Too many reset requests. Try again later.", 3600)
     user = db.get_user(email=str(form.get("email") or ""))
     dev_link = None
     # Per account too, so requests from many networks cannot flood one inbox; the page reads the same either way.
@@ -734,7 +739,7 @@ async def advisor_run(request: Request):
         flash(request, "The AI Advisor is switched off right now. Nothing was charged.", "warn")
         return RedirectResponse("/app/advisor", 303)
     if limited(request, "advisor", 6, 600):
-        raise HTTPException(429, "That is a lot of analyses in a short time. Wait a few minutes.")
+        raise too_many("That is a lot of analyses in a short time. Wait a few minutes.", 600)
     board = jobs.load_board()
     band = ADVISOR_BANDS.get(str(form.get("band")), ADVISOR_BANDS["balanced"])
     if not board or not board.get("rows"):
@@ -995,7 +1000,9 @@ async def on_error(request: Request, exc: HTTPException):
         return PlainTextResponse(str(exc.detail), exc.status_code)
     titles = {403: "That did not go through", 404: "Page not found", 429: "Slow down"}
     detail = exc.detail if isinstance(exc.detail, str) and exc.status_code != 404 else "There is nothing at this address."
-    return render(request, "message.html", exc.status_code, title=titles.get(exc.status_code, "Something went wrong"), message=detail)
+    response = render(request, "message.html", exc.status_code, title=titles.get(exc.status_code, "Something went wrong"), message=detail)
+    response.headers.update(exc.headers or {})
+    return response
 
 
 async def on_crash(request: Request, exc: Exception):

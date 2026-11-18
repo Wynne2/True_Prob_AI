@@ -458,9 +458,11 @@ def test_forgot_password_does_not_reveal_accounts(client):
 
 def test_login_rate_limit(client):
     register(client, verify=False)
-    codes = [client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "ann@example.com", "password": "nope"}).status_code
-             for _ in range(12)]
-    assert codes[-1] == 429
+    replies = [client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "ann@example.com", "password": "nope"})
+               for _ in range(12)]
+    assert replies[-1].status_code == 429
+    assert replies[-1].headers["retry-after"] == "600" and replies[-1].headers["cache-control"] == "no-store"
+    assert "1-800-GAMBLER" in replies[-1].text and "retry-after" not in replies[0].headers
 
 
 def test_login_limit_per_account_survives_changing_networks(client, monkeypatch):
