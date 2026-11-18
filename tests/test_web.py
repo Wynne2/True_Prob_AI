@@ -1017,3 +1017,22 @@ def test_scan_error_text_stays_off_public_and_customer_pages(client, env, monkey
     client.cookies.clear()
     register(client, email="boss@example.com")
     assert "abc123" in client.get("/admin").text
+
+
+def test_production_refuses_to_start_without_base_url(env, monkeypatch):
+    monkeypatch.setattr(env, "PRODUCTION", True)
+    monkeypatch.delenv("BASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="BASE_URL"):
+        env._require_base_url()
+    monkeypatch.setenv("BASE_URL", "https://trueprob.example")
+    env._require_base_url()
+
+
+def test_reset_link_uses_base_url_not_the_host_header(client, env, monkeypatch):
+    from web import mailer
+
+    register(client)
+    monkeypatch.setenv("BASE_URL", "https://trueprob.example")
+    client.post("/forgot", data={"csrf": _csrf(client, "/forgot"), "email": "ann@example.com"}, headers={"host": "evil.example"})
+    mail = mailer.OUTBOX.read_text(encoding="utf-8")
+    assert "https://trueprob.example/reset?token=" in mail and "evil.example" not in mail

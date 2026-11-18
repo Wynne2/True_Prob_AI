@@ -18,9 +18,9 @@ mode: confirm now" link so you can verify accounts. Without Stripe settings, pri
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `APP_ENV=production` | yes | Secure cookies, HSTS, refuses to start without `SECRET_KEY`, hides dev links |
+| `APP_ENV=production` | yes | Secure cookies, HSTS, refuses to start without `SECRET_KEY` or `BASE_URL`, hides dev links |
 | `SECRET_KEY` | yes | Signs session cookies. 48+ random characters; never reuse or commit |
-| `BASE_URL` | yes | Public origin, e.g. `https://trueprob.ai`, used in email links and Stripe redirects |
+| `BASE_URL` | yes | Public origin, e.g. `https://trueprob.ai`, used in email links and Stripe redirects (never taken from the request's Host header in production) |
 | `TRUEPROB_DB` | yes | Path to the SQLite file on a persistent disk, e.g. `/var/data/app.db` |
 | `ADMIN_EMAILS` | yes | Comma-separated emails that become admins when they sign in |
 | `SUPPORT_EMAIL` | yes | Shown on the contact page and in emails |

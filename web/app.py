@@ -69,6 +69,12 @@ def _secret_key() -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
+def _require_base_url() -> None:
+    # Otherwise reset and confirmation links are built from the Host header, which the requester controls.
+    if PRODUCTION and not os.environ.get("BASE_URL"):
+        raise RuntimeError("BASE_URL must be set in production")
+
+
 def base_url(request: Request) -> str:
     return (os.environ.get("BASE_URL") or str(request.base_url)).rstrip("/")
 
@@ -1007,6 +1013,7 @@ routes = [
     Mount("/static", StaticFiles(directory=str(HERE / "static")), name="static"),
 ]
 
+_require_base_url()
 db.init()
 app = Starlette(
     routes=routes,
