@@ -239,6 +239,8 @@ templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago
 # Public pages
 # ---------------------------------------------------------------------------
 
+STAT_NAMES = {"points": "Points", "rebounds": "Rebounds", "assists": "Assists", "threes": "Threes made", "steals": "Steals",
+              "blocks": "Blocks", "pra": "Points + rebounds + assists"}
 SUMMARY_FIELDS = ("decided", "hit_rate", "brier_model", "brier_market", "flat_roi_per_bet")
 
 
@@ -258,7 +260,7 @@ def graded_totals(rows: list[dict]) -> dict:
 
 def _performance() -> dict:
     """Published results, read from files the grading jobs write. Nothing is filtered out."""
-    out: dict = {"slope": None, "dates": [], "scorecard": None, "total": None}
+    out: dict = {"slope": None, "dates": [], "scorecard": None, "total": None, "by_stat": []}
     try:
         out["slope"] = json.loads((db.ROOT / "data" / "models" / "market_slope.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -277,6 +279,11 @@ def _performance() -> dict:
             rows += graded.get("rows") or []
     if out["dates"]:
         out["total"] = graded_totals(rows) | {"games": sum(d["games"] or 0 for d in out["dates"])}
+        by_stat = defaultdict(list)
+        for r in rows:
+            by_stat[str(r.get("prop") or "?").split(" ")[0]].append(r)
+        out["by_stat"] = sorted(((STAT_NAMES.get(k, k), t) for k, v in by_stat.items() if (t := graded_totals(v))["decided"]),
+                                key=lambda kt: -kt[1]["decided"])
     try:
         from engine.candidate.track import scorecard
 

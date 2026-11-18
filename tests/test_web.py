@@ -1095,3 +1095,24 @@ def test_server_error_page_is_html_with_the_disclosures(env, monkeypatch):
     assert r.status_code == 500 and r.headers["content-type"].startswith("text/html")
     assert "21+" in r.text and "1-800-GAMBLER" in r.text and "Nothing was charged" in r.text
     assert "ZeroDivisionError" not in r.text and 'name="robots" content="noindex"' in r.text
+
+
+def test_performance_splits_every_graded_line_by_market(client, monkeypatch, tmp_path):
+    from web import app as webapp, db
+
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    row = lambda prop, model, market, result, edge=0.0, roi=None: {"prop": prop, "model_probability": model, "market_probability": market,
+                                                                   "result": result, "edge": edge, "roi": roi}
+    _graded(preds / "2026-11-01.graded.json", [row("points over 20.5", 0.6, 0.5, "win", 0.1, 0.9),
+                                               row("points under 20.5", 0.4, 0.5, "loss"),
+                                               row("rebounds over 5.5", 0.5, 0.5, "win"),
+                                               row("pra over 30.5", 0.5, 0.5, "void"),       # never decided: no row
+                                               row("blocks over 0.5", 0.7, 0.6, "loss", 0.1, -1.0)], 4)
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    by = dict(webapp._performance()["by_stat"])
+    assert list(by) == ["Points", "Rebounds", "Blocks"] and by["Points"]["decided"] == 2
+    assert by["Points"]["brier_model"] == pytest.approx((0.16 + 0.16) / 2) and by["Blocks"]["flagged_roi"] == -1.0
+    assert sum(s["decided"] for s in by.values()) == webapp._performance()["total"]["decided"]
+    page = client.get("/performance").text
+    assert "By market" in page and "-100.0%" in page and "Points + rebounds + assists" not in page

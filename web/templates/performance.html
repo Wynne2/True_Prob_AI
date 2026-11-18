@@ -37,6 +37,27 @@
   {% else %}<p>No graded boards yet.</p>{% endif %}
 </section>
 
+{% if perf.by_stat %}
+<section class="band">
+  <h2>By market</h2>
+  <p>The same graded lines, split by stat. Every market we graded is listed, including the ones where we did worse than the market.</p>
+  <div class="table-scroll" role="region" aria-label="Graded lines by market" tabindex="0">
+  <table class="data">
+    <thead><tr><th scope="col">Market</th><th scope="col">Lines graded</th><th scope="col">Our Brier</th><th scope="col">Market Brier</th><th scope="col">Flagged positive gaps</th><th scope="col">Their hit rate</th><th scope="col">Their flat-stake return</th></tr></thead>
+    <tbody>
+    {% for name, s in perf.by_stat %}
+      <tr><th scope="row">{{ name }}</th><td class="num">{{ '{:,}'.format(s.decided) }}</td>
+      <td class="num">{{ '%.4f' % s.brier_model if s.brier_model is not none else '–' }}</td><td class="num">{{ '%.4f' % s.brier_market if s.brier_market is not none else '–' }}</td>
+      <td class="num">{{ '{:,}'.format(s.flagged) }}</td><td class="num">{{ s.flagged_hit_rate | pct }}</td>
+      <td class="num {{ 'neg' if (s.flagged_roi or 0) < 0 else 'pos' }}">{{ ('%+.1f%%' % (s.flagged_roi * 100)) if s.flagged_roi is not none else '–' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">Both Brier scores in a row use only that market's lines that had a market price. Splitting the lines makes each sample smaller, so a single market's numbers move more from night to night; a lower Brier on one market is not evidence the model beats the market there.</p>
+</section>
+{% endif %}
+
 {% if wf %}
 <section class="band split">
   <div>
