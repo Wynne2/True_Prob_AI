@@ -1051,3 +1051,22 @@ def test_owner_is_emailed_when_the_password_is_changed_or_reset(client, env):
     client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "third pass 333"})
     mail = mailer.OUTBOX.read_text(encoding="utf-8")
     assert mail.count(subject) == 2 and "/forgot" in mail and "third pass" not in mail and "1-800-GAMBLER" in mail
+
+
+def test_a_new_password_or_signing_out_others_voids_every_other_reset_link(client, env):
+    from web import db
+
+    user = register(client)
+    reset = lambda token: client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token,
+                                                      "password": "fresh password 9"}, follow_redirects=False).status_code
+    first, second = db.make_token(user["id"], "reset", 3600), db.make_token(user["id"], "reset", 3600)
+    verify_token = db.make_token(user["id"], "verify", 3600)
+    assert reset(first) == 303 and reset(second) == 400
+    assert db.use_token(verify_token, "verify") == user["id"]   # only reset links are voided
+    register(client, email="bea@example.com")
+    bea = db.get_user(email="bea@example.com")
+    for path, data in (("/app/account/password", {"current": "correct horse 1", "new": "brand new pass 2"}),
+                       ("/app/account/sessions", {"password": "brand new pass 2"})):
+        token = db.make_token(bea["id"], "reset", 3600)
+        assert post(client, path, **data).status_code == 303
+        assert db.use_token(token, "reset") is None, path

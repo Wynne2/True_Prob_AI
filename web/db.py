@@ -196,6 +196,12 @@ def use_token(token: str, kind: str) -> Optional[int]:
         return int(row["user_id"])
 
 
+def void_tokens(user_id: int, kind: str) -> None:
+    """Make every unused token of this kind for this user unusable."""
+    with connect() as conn:
+        conn.execute("UPDATE tokens SET used_at=? WHERE user_id=? AND kind=? AND used_at IS NULL", (time.time(), user_id, kind))
+
+
 # ---------------------------------------------------------------------------
 # Users
 # ---------------------------------------------------------------------------

@@ -543,6 +543,7 @@ async def reset(request: Request):
     user = db.get_user(uid)
     # A new session version signs out every existing session.
     db.update_user(uid, pw_hash=db.hash_password(password), session_version=user["session_version"] + 1)
+    db.void_tokens(uid, "reset")
     db.audit(uid, "password.reset")
     _send_password_notice(request, user)
     flash(request, "Password changed. Sign in with the new one.")
@@ -815,6 +816,7 @@ async def change_password(request: Request):
     else:
         db.update_user(user["id"], pw_hash=db.hash_password(new), session_version=user["session_version"] + 1)
         request.session["sv"] = user["session_version"] + 1  # this session stays signed in; all others end
+        db.void_tokens(user["id"], "reset")
         db.audit(user["id"], "password.change")
         _send_password_notice(request, user)
         flash(request, "Password changed. Other devices were signed out.")
@@ -831,6 +833,7 @@ async def sign_out_others(request: Request):
     else:
         db.update_user(user["id"], session_version=user["session_version"] + 1)
         request.session["sv"] = user["session_version"] + 1
+        db.void_tokens(user["id"], "reset")
         db.audit(user["id"], "sessions.revoke_others")
         flash(request, "Every other device and browser was signed out. This one stays signed in.")
     return RedirectResponse("/app/account", 303)
