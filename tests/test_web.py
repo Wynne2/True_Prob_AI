@@ -1036,3 +1036,18 @@ def test_reset_link_uses_base_url_not_the_host_header(client, env, monkeypatch):
     client.post("/forgot", data={"csrf": _csrf(client, "/forgot"), "email": "ann@example.com"}, headers={"host": "evil.example"})
     mail = mailer.OUTBOX.read_text(encoding="utf-8")
     assert "https://trueprob.example/reset?token=" in mail and "evil.example" not in mail
+
+
+def test_owner_is_emailed_when_the_password_is_changed_or_reset(client, env):
+    from web import db, mailer
+
+    user = register(client)
+    subject = "subject=Your True Prob AI password was changed"
+    post(client, "/app/account/password", current="wrong one here", new="brand new pass 2")
+    assert subject not in mailer.OUTBOX.read_text(encoding="utf-8")
+    post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
+    assert mailer.OUTBOX.read_text(encoding="utf-8").count(subject) == 1
+    token = db.make_token(user["id"], "reset", 3600)
+    client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "third pass 333"})
+    mail = mailer.OUTBOX.read_text(encoding="utf-8")
+    assert mail.count(subject) == 2 and "/forgot" in mail and "third pass" not in mail and "1-800-GAMBLER" in mail

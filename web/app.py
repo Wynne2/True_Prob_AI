@@ -407,6 +407,14 @@ def _send_verification(request: Request, user) -> str:
     return link
 
 
+def _send_password_notice(request: Request, user) -> None:
+    support = os.environ.get("SUPPORT_EMAIL") or "support@example.com"
+    mailer.send(user["email"], "Your True Prob AI password was changed",
+                f"The password for your True Prob AI account was changed on {when(time.time())}. "
+                "Other devices signed in to it were signed out.\n\n"
+                f"If this was not you, choose a new password now at {base_url(request)}/forgot and write to {support}.")
+
+
 async def register(request: Request):
     if request.method == "GET":
         return render(request, "auth.html", mode="register", regions=content.REGIONS)
@@ -536,6 +544,7 @@ async def reset(request: Request):
     # A new session version signs out every existing session.
     db.update_user(uid, pw_hash=db.hash_password(password), session_version=user["session_version"] + 1)
     db.audit(uid, "password.reset")
+    _send_password_notice(request, user)
     flash(request, "Password changed. Sign in with the new one.")
     return RedirectResponse("/login", 303)
 
@@ -807,6 +816,7 @@ async def change_password(request: Request):
         db.update_user(user["id"], pw_hash=db.hash_password(new), session_version=user["session_version"] + 1)
         request.session["sv"] = user["session_version"] + 1  # this session stays signed in; all others end
         db.audit(user["id"], "password.change")
+        _send_password_notice(request, user)
         flash(request, "Password changed. Other devices were signed out.")
     return RedirectResponse("/app/account", 303)
 
