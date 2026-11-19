@@ -1006,6 +1006,8 @@ class SecurityHeaders(BaseHTTPMiddleware):
             "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
             "Cross-Origin-Opener-Policy": "same-origin",
         })
+        if request.url.path in ("/reset", "/verify"):  # the address carries a one-time token
+            response.headers["Referrer-Policy"] = "no-referrer"
         if PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         if request.url.path.startswith(("/app", "/admin")):

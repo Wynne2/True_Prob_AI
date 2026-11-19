@@ -1195,3 +1195,9 @@ def test_common_and_context_passwords_are_refused_everywhere_a_password_is_set(c
 def test_pages_are_isolated_from_cross_origin_windows(client):
     for path in ("/", "/login", "/performance", "/nope"):
         assert client.get(path).headers["Cross-Origin-Opener-Policy"] == "same-origin", path
+
+
+def test_pages_with_a_token_in_the_address_send_no_referrer(client):
+    assert client.get("/reset?token=abc").headers["Referrer-Policy"] == "no-referrer"
+    assert client.get("/verify?token=abc", follow_redirects=False).headers["Referrer-Policy"] == "no-referrer"
+    assert client.get("/login").headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
