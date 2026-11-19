@@ -213,7 +213,13 @@ def ago(ts) -> str:
     if not ts:
         return "never"
     mins = int((time.time() - float(ts)) // 60)
-    return "just now" if mins < 1 else f"{mins} min ago" if mins < 90 else f"{mins // 60} h ago"
+    if mins < 1:
+        return "just now"
+    if mins < 90:
+        return f"{mins} min ago"
+    if mins < 48 * 60:
+        return f"{mins // 60} h ago"
+    return f"{mins // 1440} days ago"
 
 
 VENUE_SITES = (("https://kalshi.com/", "Kalshi"), ("https://polymarket.com/", "Polymarket"))

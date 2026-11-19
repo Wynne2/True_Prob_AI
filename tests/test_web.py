@@ -1280,3 +1280,9 @@ def test_performance_numbers_are_reused_until_a_graded_file_changes(client, monk
     assert len(runs) == 1                                        # parsed once, not on every page view
     _graded(preds / "2026-11-02.graded.json", [row, row], 2)     # a newly graded date shows up straight away
     assert len(webapp._performance()["dates"]) == 2 and len(runs) == 2
+
+
+def test_relative_times_switch_to_days_after_two_days(env):
+    now = time.time()
+    assert [env.ago(now - s) for s in (10, 5 * 60, 3 * 3600, 47 * 3600)] == ["just now", "5 min ago", "3 h ago", "47 h ago"]
+    assert env.ago(now - 72 * 3600) == "3 days ago" and env.ago(now - 30 * 86400) == "30 days ago" and env.ago(None) == "never"
