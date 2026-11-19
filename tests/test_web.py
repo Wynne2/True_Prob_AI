@@ -1286,3 +1286,19 @@ def test_relative_times_switch_to_days_after_two_days(env):
     now = time.time()
     assert [env.ago(now - s) for s in (10, 5 * 60, 3 * 3600, 47 * 3600)] == ["just now", "5 min ago", "3 h ago", "47 h ago"]
     assert env.ago(now - 72 * 3600) == "3 days ago" and env.ago(now - 30 * 86400) == "30 days ago" and env.ago(None) == "never"
+
+
+def test_health_check_says_503_in_json_when_the_database_is_down(client, env, monkeypatch):
+    from web import db
+
+    ok = client.get("/healthz")
+    assert ok.status_code == 200 and ok.json()["ok"] is True and ok.json()["database"] == "ok"
+    assert ok.headers["cache-control"] == "no-store"
+
+    def broken(*a, **k):
+        raise __import__("sqlite3").OperationalError("disk I/O error at /secret/path")
+
+    monkeypatch.setattr(db, "query", broken)
+    down = client.get("/healthz")
+    assert down.status_code == 503 and down.json() == {"ok": False, "database": "unavailable"}
+    assert "secret" not in down.text and down.headers["cache-control"] == "no-store"

@@ -407,8 +407,13 @@ async def legal(request: Request):
 
 
 async def healthz(request: Request):
-    db.query("SELECT 1")
-    return JSONResponse({"ok": True, "jobs": jobs.health()})
+    """200 when the database answers; 503 (so the host stops routing here) when it does not."""
+    try:
+        db.query("SELECT 1")
+    except Exception:
+        logger.exception("Health check: database unavailable")
+        return JSONResponse({"ok": False, "database": "unavailable"}, 503, headers={"Cache-Control": "no-store"})
+    return JSONResponse({"ok": True, "database": "ok", "jobs": jobs.health()}, headers={"Cache-Control": "no-store"})
 
 
 async def robots(request: Request):
