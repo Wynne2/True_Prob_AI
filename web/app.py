@@ -1004,6 +1004,7 @@ class SecurityHeaders(BaseHTTPMiddleware):
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+            "Cross-Origin-Opener-Policy": "same-origin",
         })
         if PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

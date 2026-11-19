@@ -1190,3 +1190,8 @@ def test_common_and_context_passwords_are_refused_everywhere_a_password_is_set(c
     assert client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": fresh, "password": "brand new pass 2"},
                        follow_redirects=False).status_code == 303
     assert db.check_password("brand new pass 2", db.get_user(user["id"])["pw_hash"])
+
+
+def test_pages_are_isolated_from_cross_origin_windows(client):
+    for path in ("/", "/login", "/performance", "/nope"):
+        assert client.get(path).headers["Cross-Origin-Opener-Policy"] == "same-origin", path
