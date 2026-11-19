@@ -1302,3 +1302,20 @@ def test_health_check_says_503_in_json_when_the_database_is_down(client, env, mo
     down = client.get("/healthz")
     assert down.status_code == 503 and down.json() == {"ok": False, "database": "unavailable"}
     assert "secret" not in down.text and down.headers["cache-control"] == "no-store"
+
+
+def test_dataset_markup_and_page_explain_every_csv_column(client):
+    from web import app as webapp
+
+    page = client.get("/performance").text
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
+    names = [v["name"] for v in data["variableMeasured"]]
+    assert names == list(webapp.GRADED_COLUMNS) and all(v["@type"] == "PropertyValue" and v["description"]
+                                                        for v in data["variableMeasured"])
+    assert "Brier score" in data["keywords"]
+    header = client.get("/performance/2026-11-06.csv").text.splitlines()[0]
+    assert header.split(",") == names                                   # the markup describes the real file
+    assert "What each CSV column means" in page
+    for k, v in webapp.GRADED_COLUMN_NOTES.items():                     # and the same text is on the page
+        text = str(__import__("markupsafe").escape(v))
+        assert f"<dt><code>{k}</code></dt><dd>{text}</dd>" in page

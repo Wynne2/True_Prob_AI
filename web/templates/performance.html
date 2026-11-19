@@ -32,6 +32,9 @@
   </div>
   <p>Check our numbers: download every graded line, as saved before tip-off with its result (CSV):
   {% for d in perf.dates %}<a href="/performance/{{ d.date }}.csv" download>{{ d.date }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  <details class="columns"><summary>What each CSV column means</summary>
+    <dl>{% for k, v in columns.items() %}<dt><code>{{ k }}</code></dt><dd>{{ v }}</dd>{% endfor %}</dl>
+  </details>
   {% if t %}<p class="muted">The last row pools every graded line from every date above. Both of its Brier scores use only the {{ '{:,}'.format(t.with_market) }} of {{ '{:,}'.format(t.decided) }} lines that had a market price, so they compare the same lines.</p>{% endif %}
   <p class="muted">Brier score is the mean squared error of a probability; lower is better, and 0.25 is what always guessing 50% scores. "Flat-stake return" is the average profit per $1 if every flagged positive gap had been bought at the listed price. Lines for one player and game are correlated, so a single night is a small sample. These early boards used earlier model versions, before the fixes that anchor every probability to the market.</p>
   {% else %}<p>No graded boards yet.</p>{% endif %}

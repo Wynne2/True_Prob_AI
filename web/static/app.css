@@ -98,6 +98,11 @@ main { padding: 0 clamp(16px, 4vw, 48px) 48px; max-width: 1160px; margin: 0 auto
 .faq details { border-bottom: 1px solid var(--line); padding: .9rem 0; max-width: 80ch; }
 .faq summary { cursor: pointer; font-weight: 600; }
 .faq details p { margin: .7rem 0 0; color: var(--muted); }
+details.columns { margin: .5rem 0 1rem; max-width: 80ch; }
+details.columns summary { cursor: pointer; font-weight: 600; }
+details.columns dl { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: .35rem 1rem; margin: .7rem 0 0; }
+details.columns dt code { overflow-wrap: anywhere; }
+details.columns dd { margin: 0; color: var(--muted); }
 
 .page-head { padding: 40px 0 16px; }
 .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px; }

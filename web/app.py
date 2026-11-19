@@ -350,6 +350,8 @@ def performance_dataset(base: str, dates: list[str]) -> dict | None:
                            "flat-stake return. Nothing is left out, including losing dates.",
             "url": base + "/performance", "creator": {"@type": "Organization", "name": "True Prob AI", "url": base + "/"},
             "isAccessibleForFree": True, "temporalCoverage": f"{dates[0]}/{dates[-1]}",
+            "keywords": ["NBA", "player props", "probability", "Brier score", "calibration", "graded predictions"],
+            "variableMeasured": [{"@type": "PropertyValue", "name": k, "description": v} for k, v in GRADED_COLUMN_NOTES.items()],
             "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "name": f"Graded lines {d}",
                               "contentUrl": f"{base}/performance/{d}.csv"} for d in dates]}
 
@@ -371,12 +373,27 @@ async def pricing(request: Request):
 
 async def performance(request: Request):
     perf = await run_in_threadpool(_performance)
-    return render(request, "performance.html", perf=perf,
+    return render(request, "performance.html", perf=perf, columns=GRADED_COLUMN_NOTES,
                   dataset=performance_dataset(base_url(request), [d["date"] for d in perf["dates"]]))
 
 
-GRADED_COLUMNS = ("player", "prop", "sportsbook", "odds", "implied_probability", "market_probability", "model_probability",
-                  "probability_method", "edge", "actual", "result", "roi", "closing_probability", "clv")
+GRADED_COLUMN_NOTES = {
+    "player": "Player name",
+    "prop": "Stat, side and line, for example \"points over 14.5\"",
+    "sportsbook": "Venue whose price was offered",
+    "odds": "Offered price in American odds",
+    "implied_probability": "Probability implied by the offered price, margin included",
+    "market_probability": "No-vig market consensus probability",
+    "model_probability": "Probability the board published",
+    "probability_method": "How the published probability was produced",
+    "edge": "Published probability minus implied probability",
+    "actual": "The player's number in the box score",
+    "result": "win, loss or void",
+    "roi": "Profit per $1 staked at the offered price; empty when void",
+    "closing_probability": "Market probability at the close, when it was recorded",
+    "clv": "Closing probability minus implied probability, when recorded",
+}
+GRADED_COLUMNS = tuple(GRADED_COLUMN_NOTES)
 
 
 async def graded_csv(request: Request):
