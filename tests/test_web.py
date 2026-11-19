@@ -1261,3 +1261,22 @@ def test_wallet_warns_before_the_balance_is_too_low_for_a_board(client):
     assert "enough for 1 single line, not" in client.get("/app").text
     db.adjust_credits(user["id"], user["id"], -1, "test")
     assert "Out of credits. Nothing is charged automatically." in client.get("/app/explorer").text
+
+
+def test_performance_numbers_are_reused_until_a_graded_file_changes(client, monkeypatch, tmp_path):
+    from web import app as webapp, db
+
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    row = {"model_probability": 0.6, "market_probability": 0.5, "result": "win", "edge": 0.1, "roi": 1.0}
+    _graded(preds / "2026-11-01.graded.json", [row], 1)
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    runs = []
+    real = webapp._compute_performance
+    monkeypatch.setattr(webapp, "_compute_performance", lambda: runs.append(1) or real())
+    assert len(webapp._performance()["dates"]) == 1
+    client.get("/performance")
+    client.get("/performance")
+    assert len(runs) == 1                                        # parsed once, not on every page view
+    _graded(preds / "2026-11-02.graded.json", [row, row], 2)     # a newly graded date shows up straight away
+    assert len(webapp._performance()["dates"]) == 2 and len(runs) == 2

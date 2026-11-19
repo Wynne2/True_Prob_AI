@@ -258,7 +258,35 @@ def graded_totals(rows: list[dict]) -> dict:
             "flagged": len(hits), "flagged_hit_rate": mean(hits), "flagged_roi": mean(rois)}
 
 
+_perf_cache: dict = {}
+
+
+def _performance_inputs() -> tuple:
+    """(path, mtime, size) of every file _performance reads, so a new or regraded file is picked up at once."""
+    from engine import clv
+
+    graded = "????-??-??.graded.json"
+    paths = sorted({*(db.ROOT / "data" / "predictions").glob(graded), *Path(clv.DEFAULT_DIR).glob(graded),
+                    db.ROOT / "data" / "models" / "market_slope.json"})
+    out = []
+    for p in paths:
+        try:
+            st = p.stat()
+        except OSError:
+            continue
+        out.append((str(p), st.st_mtime_ns, st.st_size))
+    return tuple(out)
+
+
 def _performance() -> dict:
+    """The published results, recomputed only when one of the files behind them changes. Callers must not modify it."""
+    key = _performance_inputs()
+    if _perf_cache.get("key") != key:
+        _perf_cache.update(key=key, value=_compute_performance())
+    return _perf_cache["value"]
+
+
+def _compute_performance() -> dict:
     """Published results, read from files the grading jobs write. Nothing is filtered out."""
     out: dict = {"slope": None, "dates": [], "scorecard": None, "total": None, "by_stat": []}
     try:
