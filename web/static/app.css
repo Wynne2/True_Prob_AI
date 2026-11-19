@@ -103,6 +103,7 @@ details.columns summary { cursor: pointer; font-weight: 600; }
 details.columns dl { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: .35rem 1rem; margin: .7rem 0 0; }
 details.columns dt code { overflow-wrap: anywhere; }
 details.columns dd { margin: 0; color: var(--muted); }
+@media (max-width: 600px) { details.columns dl { grid-template-columns: minmax(0, 1fr); gap: .1rem; } details.columns dd { margin-bottom: .5rem; } }
 
 .page-head { padding: 40px 0 16px; }
 .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px; }
