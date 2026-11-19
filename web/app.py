@@ -803,8 +803,15 @@ async def account(request: Request):
     if request.query_params.get("checkout") == "done":
         flash(request, "Thanks. Your plan and credits appear here as soon as the payment is confirmed (usually within a minute).")
         return RedirectResponse("/app/account", 303)
+    security = db.query(f"SELECT action, at FROM audit WHERE actor_id=? AND action IN ({','.join('?' * len(SECURITY_EVENTS))}) "
+                        "ORDER BY id DESC LIMIT 10", (user["id"], *SECURITY_EVENTS))
     return render(request, "account.html", user=user, history=db.history(user["id"], 100), usage=db.period_usage(user),
-                  dev_verify=request.session.get("dev_verify"))
+                  security=[(SECURITY_EVENTS[s["action"]], s["at"]) for s in security], dev_verify=request.session.get("dev_verify"))
+
+
+SECURITY_EVENTS = {"login.ok": "Signed in", "login.failed": "Sign-in with a wrong password", "password.change": "Password changed",
+                   "password.reset": "Password reset from an email link", "sessions.revoke_others": "Other devices signed out",
+                   "user.register": "Account created"}
 
 
 def csv_cell(text: str) -> str:

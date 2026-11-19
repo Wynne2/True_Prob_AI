@@ -1201,3 +1201,22 @@ def test_pages_with_a_token_in_the_address_send_no_referrer(client):
     assert client.get("/reset?token=abc").headers["Referrer-Policy"] == "no-referrer"
     assert client.get("/verify?token=abc", follow_redirects=False).headers["Referrer-Policy"] == "no-referrer"
     assert client.get("/login").headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+
+
+def test_account_lists_recent_sign_ins_and_security_changes_for_this_user_only(client):
+    from starlette.testclient import TestClient
+
+    register(client)
+    other = TestClient(client.app)
+    other.post("/login", data={"csrf": _csrf(other, "/login"), "email": "ann@example.com", "password": "wrong password"})
+    other.post("/login", data={"csrf": _csrf(other, "/login"), "email": "ann@example.com", "password": "correct horse 1"})
+    post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
+    stranger = TestClient(client.app)
+    register(stranger, email="bob@example.com")
+    stranger.post("/login", data={"csrf": _csrf(stranger, "/login"), "email": "bob@example.com", "password": "nope nope nope"})
+
+    page = client.get("/app/account").text
+    section = page[page.index("Recent sign-ins and security changes"):]
+    labels = re.findall(r"<li>([^<]+?) <span class=\"muted\">", section)
+    assert labels == ["Password changed", "Signed in", "Sign-in with a wrong password", "Account created"]
+    assert "We do not record IP addresses or devices" in section

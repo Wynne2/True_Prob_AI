@@ -57,6 +57,9 @@
       <label>Password<input type="password" name="password" autocomplete="current-password" required><small>Signs out every other device and browser. This one stays signed in.</small></label>
       <button class="btn small ghost">Sign out other devices</button>
     </form>
+    <h3>Recent sign-ins and security changes</h3>
+    {% if security %}<ul class="plain">{% for label, at in security %}<li>{{ label }} <span class="muted">{{ at | when }}</span></li>{% endfor %}</ul>{% endif %}
+    <p class="muted">The latest 10. We do not record IP addresses or devices. Something you do not recognise? Change your password, then sign out other devices.</p>
   </section>
   <section class="panel danger">
     <h2>Privacy</h2>
