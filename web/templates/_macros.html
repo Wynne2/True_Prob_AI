@@ -34,7 +34,7 @@
 </ul>
 {% endmacro %}
 
-{% macro appnav(path, user, balance, plan, feature, csrf, reset=none) %}
+{% macro appnav(path, user, balance, plan, feature, csrf, reset=none, costs=none) %}
 <aside class="side">
   <a class="brand" href="/app">True Prob <span>AI</span></a>
   <nav aria-label="App">
@@ -49,6 +49,7 @@
   <div class="wallet">
     <p class="num">{{ balance }}</p>
     <p>credits left on {{ {'free': 'Free', 'pro': 'Pro', 'power': 'Power'}[plan] }}</p>
+    {% if costs and balance < costs.board %}<p class="low">{% if balance <= 0 %}Out of credits. Nothing is charged automatically.{% else %}Running low: enough for {{ balance // costs.prop }} single line{{ 's' if balance // costs.prop != 1 }}, not a full board ({{ costs.board }}).{% endif %}</p>{% endif %}
     {% if reset %}<p class="renews">Back to {{ reset[1] }} on {{ reset[0] | day }}. Unused credits do not roll over.</p>{% endif %}
     {% if plan == 'free' %}<a class="btn small" href="/pricing">See plans</a>{% endif %}
   </div>

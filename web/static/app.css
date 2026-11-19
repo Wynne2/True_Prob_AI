@@ -140,6 +140,7 @@ table.costs { border-collapse: collapse; width: 100%; max-width: 760px; margin-b
 .wallet .num { font: 700 2rem/1 var(--display); text-align: left; margin: 0 0 .2rem; }
 .wallet p { margin: 0 0 .8rem; color: var(--muted); font-size: .88rem; }
 .wallet p.renews { font-size: .8rem; line-height: 1.4; }
+.wallet p.low { color: var(--warn); font-size: .8rem; line-height: 1.4; }
 .work { padding: 28px clamp(16px, 3vw, 40px) 48px; max-width: 1240px; margin: 0; }
 .work-head { margin-bottom: 20px; }
 .work-head h1 { font-size: clamp(1.7rem, 3vw, 2.3rem); }

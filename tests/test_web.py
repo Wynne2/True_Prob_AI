@@ -1247,3 +1247,17 @@ def test_customers_can_download_their_own_data_as_json(client, env):
     assert "user.register" in {e["action"] for e in data["security_log"]}
     assert "bob@example.com" not in r.text and "cus_secret" not in r.text and "scrypt" not in r.text
     assert db.query("SELECT 1 FROM audit WHERE actor_id=? AND action='data.export'", (user["id"],))
+
+
+def test_wallet_warns_before_the_balance_is_too_low_for_a_board(client):
+    from web import db
+
+    user = register(client)
+    assert "Running low" not in client.get("/app").text and "Out of credits" not in client.get("/app").text
+    db.adjust_credits(user["id"], user["id"], -17, "test")          # 3 left
+    page = client.get("/app/account").text
+    assert "Running low: enough for 3 single lines, not a full board (5)." in page
+    db.adjust_credits(user["id"], user["id"], -2, "test")           # 1 left
+    assert "enough for 1 single line, not" in client.get("/app").text
+    db.adjust_credits(user["id"], user["id"], -1, "test")
+    assert "Out of credits. Nothing is charged automatically." in client.get("/app/explorer").text
