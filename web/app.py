@@ -833,6 +833,42 @@ async def history_csv(request: Request):
                     headers={"Content-Disposition": 'attachment; filename="true-prob-ai-credits.csv"'})
 
 
+def iso(ts) -> str | None:
+    return None if ts is None else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(float(ts)))
+
+
+async def data_export(request: Request):
+    """Everything stored about this account, as one JSON file. No password hash, no payment-provider IDs."""
+    user, redirect = need_user(request)
+    if redirect:
+        return redirect
+    uid = user["id"]
+    rows = lambda sql: [dict(r) for r in db.query(sql, (uid,))]
+    data = {
+        "exported_at": iso(time.time()),
+        "notes": "Times are UTC. Credits are usage units with no cash value. Card and invoice details are held by Stripe "
+                 "and are in the billing portal. IP addresses and devices are not recorded.",
+        "account": {"email": user["email"], "created_at": iso(user["created_at"]), "email_confirmed_at": iso(user["verified_at"]),
+                    "region": user["region"], "plan": user["plan"], "subscription_status": user["sub_status"] or None,
+                    "period_end": iso(user["period_end"]), "cancel_at_period_end": bool(user["cancel_at_period_end"]),
+                    "credits_reset_at": iso(user["credits_reset_at"]), "credit_balance": db.balance(uid)},
+        "credit_history": [{"at": iso(r["created_at"]), "credits": r["delta"], "what": r["reason"]}
+                           for r in rows("SELECT * FROM ledger WHERE user_id=? ORDER BY id")],
+        "unlocked": [{"at": iso(r["created_at"]), "kind": r["kind"], "ref": r["ref"]}
+                     for r in rows("SELECT * FROM unlocks WHERE user_id=? ORDER BY created_at")],
+        "watchlist": [{"at": iso(r["created_at"]), "player": r["label"]}
+                      for r in rows("SELECT * FROM watchlist WHERE user_id=? ORDER BY created_at")],
+        "advisor_runs": [{"at": iso(r["created_at"]), "slate": r["slate"], "status": r["status"], "text": r["body"]}
+                         for r in rows("SELECT * FROM advisor_runs WHERE user_id=? ORDER BY id")],
+        "security_log": [{"at": iso(r["at"]), "action": r["action"]}
+                         for r in rows("SELECT action, at FROM audit WHERE actor_id=? ORDER BY id")],
+        "usage_events": [{"at": iso(r["at"]), "event": r["name"]} for r in rows("SELECT name, at FROM events WHERE user_id=? ORDER BY id")],
+    }
+    db.audit(uid, "data.export")
+    return Response(json.dumps(data, indent=2), media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="true-prob-ai-my-data.json"'})
+
+
 async def change_password(request: Request):
     form = await checked_form(request)
     user, redirect = need_user(request)
@@ -1067,6 +1103,7 @@ routes = [
     P("/app/advisor", advisor), P("/app/advisor/run", advisor_run, ("POST",)), P("/app/advisor/{run_id:int}", advisor_view),
     P("/app/account", account), P("/app/account/password", change_password, ("POST",)),
     P("/app/account/sessions", sign_out_others, ("POST",)), P("/app/account/history.csv", history_csv),
+    P("/app/account/data.json", data_export),
     P("/app/account/delete", delete_account, ("POST",)),
     P("/billing/checkout", checkout, ("POST",)), P("/billing/portal", portal, ("POST",)),
     P("/stripe/webhook", stripe_webhook, ("POST",)),

@@ -1220,3 +1220,30 @@ def test_account_lists_recent_sign_ins_and_security_changes_for_this_user_only(c
     labels = re.findall(r"<li>([^<]+?) <span class=\"muted\">", section)
     assert labels == ["Password changed", "Signed in", "Sign-in with a wrong password", "Account created"]
     assert "We do not record IP addresses or devices" in section
+
+
+def test_customers_can_download_their_own_data_as_json(client, env):
+    from starlette.testclient import TestClient
+
+    from web import db
+
+    assert client.get("/app/account/data.json", follow_redirects=False).status_code == 303   # signed out
+    user = register(client)
+    write_board(env)
+    post(client, "/app/prop/p0/unlock")
+    post(client, "/app/watch", player="Player 0")
+    db.execute("UPDATE users SET stripe_customer_id='cus_secret' WHERE id=?", (user["id"],))
+    register(TestClient(client.app), email="bob@example.com")
+    assert 'href="/app/account/data.json"' in client.get("/app/account").text
+
+    r = client.get("/app/account/data.json")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/json")
+    assert "attachment" in r.headers["content-disposition"] and r.headers["cache-control"] == "no-store"
+    data = r.json()
+    assert data["account"]["email"] == "ann@example.com" and data["account"]["credit_balance"] == 19
+    assert [h["credits"] for h in data["credit_history"]] == [20, -1]
+    assert data["watchlist"] == [{"at": data["watchlist"][0]["at"], "player": "Player 0"}]
+    assert data["unlocked"][0]["kind"] == "prop" and data["exported_at"].endswith("Z")
+    assert "user.register" in {e["action"] for e in data["security_log"]}
+    assert "bob@example.com" not in r.text and "cus_secret" not in r.text and "scrypt" not in r.text
+    assert db.query("SELECT 1 FROM audit WHERE actor_id=? AND action='data.export'", (user["id"],))
