@@ -1156,3 +1156,37 @@ def test_account_shows_what_this_periods_credits_were_used_for(client, env):
     page = client.get("/app/account").text
     assert "Single lines opened: 2, 2 credits" in page and "Full boards opened: 1, 5 credits" in page
     assert "AI Advisor analyses: 1, 3 credits (3 returned)" in page and "Arbitrage terminal days" not in page
+
+
+def test_common_and_context_passwords_are_refused_everywhere_a_password_is_set(client):
+    from web import db, passwords
+
+    for weak in ("1234567890", "Password2026!", "basketball23", "TrueProb2026", "aaaaaaaaaa", "ababababab"):
+        assert passwords.problem(weak), weak
+    assert passwords.problem("kimberly.smith99", "kimberly.smith@example.com")           # the email's own name
+    for fine in ("correct horse 1", "long enough 1", "brand new pass 2", "password manager lamp"):
+        assert passwords.problem(fine) is None, fine
+
+    def sign_up(pw):
+        return client.post("/register", data={"csrf": _csrf(client), "email": "kim@example.com", "password": pw,
+                                              "region": "New Jersey", "age": "yes", "terms": "yes"}, follow_redirects=False)
+
+    r = sign_up("qwertyuiop")
+    assert r.status_code == 400 and "list of common or easy-to-guess passwords" in r.text
+    assert "three or four unrelated words" in r.text.lower() and "not a common password, your email or our name" in r.text
+    assert sign_up("kim@example.com").status_code == 400 and db.get_user(email="kim@example.com") is None
+    user = register(client)
+
+    post(client, "/app/account/password", current="correct horse 1", new="ann@example.com")
+    assert "list of common or easy-to-guess passwords" in client.get("/app/account").text
+    assert db.check_password("correct horse 1", db.get_user(user["id"])["pw_hash"])
+
+    token = db.make_token(user["id"], "reset", 3600)
+    r = client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "football2026"})
+    assert r.status_code == 400 and "list of common" in r.text
+    r = client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "ann@example.com"})
+    fresh = re.search(r'name="token" value="([^"]+)"', r.text).group(1)        # token was spent; the form gets a new one
+    assert r.status_code == 400 and fresh != token
+    assert client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": fresh, "password": "brand new pass 2"},
+                       follow_redirects=False).status_code == 303
+    assert db.check_password("brand new pass 2", db.get_user(user["id"])["pw_hash"])

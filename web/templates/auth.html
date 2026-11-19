@@ -21,7 +21,7 @@
         <input id="pw" type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required{% if mode != 'login' %} aria-describedby="pw-rule"{% endif %}>
         <button type="button" class="btn ghost small" data-reveal="pw" aria-controls="pw" aria-pressed="false" hidden>Show</button>
       </div>
-      {% if mode != 'login' %}<small id="pw-rule">At least 10 characters.</small>{% endif %}
+      {% if mode != 'login' %}<small id="pw-rule">At least 10 characters, and not a common password, your email or our name. Three or four unrelated words work well.</small>{% endif %}
     </div>
     {% endif %}
     {% if mode == 'reset' %}<input type="hidden" name="token" value="{{ token }}">{% endif %}

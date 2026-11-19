@@ -35,7 +35,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 import config  # noqa: F401  (loads .env)
-from web import billing, content, db, jobs, mailer
+from web import billing, content, db, jobs, mailer, passwords
 
 logger = logging.getLogger(__name__)
 HERE = Path(__file__).parent
@@ -436,8 +436,8 @@ async def register(request: Request):
     error = None
     if not EMAIL_RE.match(email):
         error = "Enter a valid email address."
-    elif len(password) < 10 or len(password) > 200:
-        error = "Use a password of at least 10 characters."
+    elif weak := passwords.problem(password, email):
+        error = weak
     elif form.get("age") != "yes" or form.get("terms") != "yes":
         error = "You must be 21 or older and accept the terms to create an account."
     elif region not in content.REGIONS:
@@ -548,12 +548,15 @@ async def reset(request: Request):
         return render(request, "auth.html", mode="reset", token=request.query_params.get("token", ""))
     form = await checked_form(request)
     password, token = str(form.get("password") or ""), str(form.get("token") or "")
-    if len(password) < 10 or len(password) > 200:
-        return render(request, "auth.html", 400, mode="reset", token=token, error="Use a password of at least 10 characters.")
+    if weak := passwords.problem(password):
+        return render(request, "auth.html", 400, mode="reset", token=token, error=weak)
     uid = db.use_token(token, "reset")
     if uid is None:
         return render(request, "auth.html", 400, mode="forgot", error="That reset link is invalid or expired. Request a new one.")
     user = db.get_user(uid)
+    if weak := passwords.problem(password, user["email"]):
+        # The token is spent by now, so hand out a fresh one rather than make them request another email.
+        return render(request, "auth.html", 400, mode="reset", error=weak, token=db.make_token(uid, "reset", 3600))
     # A new session version signs out every existing session.
     db.update_user(uid, pw_hash=db.hash_password(password), session_version=user["session_version"] + 1)
     db.void_tokens(uid, "reset")
@@ -831,8 +834,8 @@ async def change_password(request: Request):
     new = str(form.get("new") or "")
     if not db.check_password(str(form.get("current") or ""), user["pw_hash"]):
         flash(request, "Your current password is not correct.", "warn")
-    elif len(new) < 10 or len(new) > 200:
-        flash(request, "Use a new password of at least 10 characters.", "warn")
+    elif weak := passwords.problem(new, user["email"]):
+        flash(request, weak, "warn")
     else:
         db.update_user(user["id"], pw_hash=db.hash_password(new), session_version=user["session_version"] + 1)
         request.session["sv"] = user["session_version"] + 1  # this session stays signed in; all others end
