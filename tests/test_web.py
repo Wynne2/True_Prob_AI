@@ -730,6 +730,21 @@ def test_advisor_run_with_nothing_to_review_is_refunded(client, env, monkeypatch
         assert "Nothing to review in that range, 3 credits returned" in client.get(path).text
 
 
+def test_advisor_says_how_old_the_board_is_before_charging(client, env, monkeypatch):
+    from web import jobs
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    register(client)
+    board = write_board(env)
+    page = client.get("/app/advisor").text
+    assert "It reads today's board as it is now: 3 lines, read just now" in page and "Prices may have moved since." in page
+    assert "to start a fresh scan first" not in page
+    board["scanned_at"] = time.time() - jobs.BOARD_TTL - 60
+    (jobs.BOARD_DIR / "2026-11-15.json").write_text(json.dumps(board), encoding="utf-8")
+    page = client.get("/app/advisor").text
+    assert "read 31 min ago" in page and '<a href="/app/explorer">Open the explorer</a> to start a fresh scan first.' in page
+
+
 def test_advisor_run_status_reads_as_words():
     from web.app import run_status
 

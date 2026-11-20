@@ -23,6 +23,7 @@
     <div>
       <h2>Review today's board</h2>
       <p>Choose which prices to consider. The Advisor ranks up to five lines from the 20 largest model-backed gaps, passes on the rest with reasons, and checks whether any parlay holds up.</p>
+      <p class="muted">It reads today's board as it is now: {{ board.rows | length }} lines, read {{ board.scanned_at | ago }} ({{ board.scanned_at | when }}). Prices may have moved since.{% if stale %} <a href="/app/explorer">Open the explorer</a> to start a fresh scan first.{% endif %}</p>
     </div>
     <form method="post" action="/app/advisor/run" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
       <label>Prices<select name="band">{% for k, b in bands.items() %}<option value="{{ k }}" {% if k == 'balanced' %}selected{% endif %}>{{ b[2] }}</option>{% endfor %}</select></label>

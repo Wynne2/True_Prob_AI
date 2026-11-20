@@ -815,7 +815,7 @@ async def advisor(request: Request):
     jobs.reap_advisor_runs(user["id"])
     runs = db.query("SELECT * FROM advisor_runs WHERE user_id=? ORDER BY id DESC LIMIT 10", (user["id"],))
     return render(request, "advisor.html", user=user, board=board, runs=runs, bands=ADVISOR_BANDS, run=None,
-                  ai_ready=bool(os.environ.get("OPENAI_API_KEY")))
+                  ai_ready=bool(os.environ.get("OPENAI_API_KEY")), stale=jobs.board_is_stale(board))
 
 
 async def advisor_run(request: Request):
