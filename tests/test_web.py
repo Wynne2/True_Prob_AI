@@ -249,7 +249,10 @@ def test_performance_lists_saved_boards_that_are_not_graded_yet(client, monkeypa
     assert webapp._performance()["pending"] == [{"date": "2026-11-03", "lines": 1234}]
     page = client.get("/performance").text
     assert "Saved, not graded yet" in page and "2026-11-03: 1,234 lines saved before tip-off" in page
-    _graded(preds / "2026-11-03.graded.json", [], 0)                                     # graded later: drops off at once
+    _graded(preds / "2026-11-03.graded.json", [], 0, games=0)                            # graded with no final games
+    assert webapp._performance()["pending"] == [{"date": "2026-11-03", "lines": None, "no_finals": True}]
+    assert "2026-11-03: graded, but no game had a final box score" in client.get("/performance").text
+    _graded(preds / "2026-11-03.graded.json", [{"model_probability": 0.5, "market_probability": 0.5, "result": "loss"}], 1)
     assert webapp._performance()["pending"] == [] and "Saved, not graded yet" not in client.get("/performance").text
 
 

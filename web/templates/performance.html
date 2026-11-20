@@ -40,8 +40,8 @@
   {% else %}<p>No graded boards yet.</p>{% endif %}
   {% if perf.pending %}
   <h3>Saved, not graded yet</h3>
-  <ul class="plain">{% for p in perf.pending %}<li>{{ p.date }}{% if p.lines is not none %}: {{ '{:,}'.format(p.lines) }} lines saved before tip-off{% endif %}</li>{% endfor %}</ul>
-  <p class="muted">These boards were saved before their games started and are not in any number above. Each one is added, wins and losses alike, once it is graded against the box scores.</p>
+  <ul class="plain">{% for p in perf.pending %}<li>{{ p.date }}{% if p.no_finals %}: graded, but no game had a final box score, so no line could be scored{% elif p.lines is not none %}: {{ '{:,}'.format(p.lines) }} lines saved before tip-off{% endif %}</li>{% endfor %}</ul>
+  <p class="muted">These boards were saved before their games started and are not in any number above. Each one is added, wins and losses alike, once its lines are graded against the box scores.</p>
   {% endif %}
 </section>
 

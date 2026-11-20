@@ -312,6 +312,8 @@ def _compute_performance() -> dict:
             out["dates"].append({"date": path.name[:10], "games": s.get("final_games"), **{
                 k: {f: (s.get(k) or {}).get(f) for f in SUMMARY_FIELDS} for k in ("all", "positive_edge")}})
             rows += graded.get("rows") or []
+        else:
+            out["pending"].append({"date": path.name[:10], "lines": None, "no_finals": True})
     if out["dates"]:
         out["total"] = graded_totals(rows) | {"games": sum(d["games"] or 0 for d in out["dates"])}
         by_stat = defaultdict(list)
@@ -327,6 +329,7 @@ def _compute_performance() -> dict:
             except (OSError, ValueError, TypeError):
                 lines = None
             out["pending"].append({"date": path.stem, "lines": lines})
+    out["pending"].sort(key=lambda p: p["date"])
     try:
         from engine.candidate.track import scorecard
 
