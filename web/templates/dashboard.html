@@ -61,6 +61,7 @@
       <table class="data compact"><thead><tr><th scope="col">Line</th><th scope="col">Price</th><th scope="col"></th></tr></thead><tbody>
         {% for r in watch_hits %}<tr><td>{{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</td><td>{{ r.odds | american }} {{ r.venue }}</td><td><a href="/app/prop/{{ r.id }}">View</a></td></tr>{% endfor %}
       </tbody></table>
+      {% if watch_total > watch_hits | length %}<p class="muted">Showing {{ watch_hits | length }} of {{ watch_total }} lines for your players. Search a player's name in the <a href="/app/explorer">explorer</a> to see all of theirs.</p>{% endif %}
       {% else %}<p class="muted">None of your players are on today's board.</p>{% endif %}
     {% else %}
       <p>Follow players from any line's page and their lines show up here first.</p>

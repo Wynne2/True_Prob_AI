@@ -1203,6 +1203,19 @@ def test_watchlist_says_what_happened_and_overview_shows_every_watched_player(cl
     assert "Stopped watching Player 2." in client.get("/app").text
 
 
+def test_overview_says_when_watched_lines_are_cut_short(client, env):
+    register(client)
+    rows = write_board(env)["rows"]
+    many = [dict(rows[0], id=f"q{i}", player="Busy Player", line=10.5 + i) for i in range(15)]
+    write_board(env, many)
+    post(client, "/app/watch", player="Busy Player")
+    page = client.get("/app").text
+    assert page.count('href="/app/prop/q') == 12
+    assert "Showing 12 of 15 lines for your players." in page and 'the <a href="/app/explorer">explorer</a>' in page
+    write_board(env, many[:12])
+    assert "Showing 12 of" not in client.get("/app").text
+
+
 def test_account_shows_what_this_periods_credits_were_used_for(client, env):
     from web import db
 
