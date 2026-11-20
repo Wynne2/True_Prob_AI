@@ -1122,7 +1122,7 @@ class SecurityHeaders(BaseHTTPMiddleware):
             response.headers["Referrer-Policy"] = "no-referrer"
         if PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        if request.url.path.startswith(("/app", "/admin")):
+        if request.url.path.startswith(("/app", "/admin", "/login", "/register", "/forgot", "/reset", "/verify", "/billing")):
             response.headers["Cache-Control"] = "no-store"
         return response
 

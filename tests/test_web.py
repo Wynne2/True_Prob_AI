@@ -1237,6 +1237,16 @@ def test_pages_with_a_token_in_the_address_send_no_referrer(client):
     assert client.get("/login").headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
 
 
+def test_sign_in_and_recovery_pages_are_never_cached(client):
+    for path in ("/login", "/register", "/forgot", "/reset?token=abc"):
+        assert client.get(path).headers["Cache-Control"] == "no-store", path
+    assert client.get("/verify?token=abc", follow_redirects=False).headers["Cache-Control"] == "no-store"
+    r = client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "x@example.com", "password": "nope"})
+    assert r.status_code == 400 and r.headers["Cache-Control"] == "no-store"
+    for path in ("/", "/pricing", "/performance", "/legal/terms"):          # public pages stay cacheable
+        assert "Cache-Control" not in client.get(path).headers, path
+
+
 def test_account_lists_recent_sign_ins_and_security_changes_for_this_user_only(client):
     from starlette.testclient import TestClient
 
