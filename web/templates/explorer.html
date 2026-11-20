@@ -41,8 +41,11 @@
   </form>
 
   {{ rail_key(own=True) }}
-  <p class="muted">{{ total }} lines match. The gap is the probability used for edge minus the offered price's own probability. When the model's weight is 0, that probability is the market consensus, so a gap only means this venue is priced differently from the others.</p>
+  <p class="muted">{{ total }} of {{ board.rows | length }} lines match.{% if filtered %} <a href="/app/explorer">Clear filters</a>.{% endif %} The gap is the probability used for edge minus the offered price's own probability. When the model's weight is 0, that probability is the market consensus, so a gap only means this venue is priced differently from the others.</p>
 
+  {% if not rows %}
+  <section class="panel empty"><h2>No lines match these filters</h2><p>Today's board has {{ board.rows | length }} lines. Widen the odds range or pick another market, or <a href="/app/explorer">clear the filters</a>.</p></section>
+  {% else %}
   <div class="table-scroll" role="region" aria-label="Today's lines" tabindex="0">
   <table class="data board">
     <thead><tr><th scope="col">Line</th><th scope="col">Best price</th><th scope="col" class="railcol">Probability, 0 to 100%</th><th scope="col">Gap</th><th scope="col">Model weight</th><th scope="col"></th></tr></thead>
@@ -61,6 +64,7 @@
     </tbody>
   </table>
   </div>
+  {% endif %}
   {% if total > rows | length %}<p class="muted">Showing the first {{ rows | length }}. Narrow the filters to see the rest.</p>{% endif %}
 {% endif %}
 {% endblock %}

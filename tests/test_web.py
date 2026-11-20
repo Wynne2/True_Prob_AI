@@ -982,6 +982,23 @@ def test_locked_board_does_not_leak_gap_order(client, env):
     assert order(client.get("/app/explorer?sort=edge").text) == ["Zed", "Max", "Amy"]           # by gap once paid
 
 
+def test_explorer_filters_can_be_cleared_and_never_end_in_a_blank_table(client, env):
+    register(client)
+    board = write_board(env)
+    for r, odds in zip(board["rows"], (-150, 120, 300)):
+        r["odds"] = odds
+    write_board(env, board["rows"])
+    page = client.get("/app/explorer").text
+    assert "3 of 3 lines match." in page and "Clear filters" not in page
+    page = client.get("/app/explorer?min_odds=200&max_odds=-200").text                   # typed the wrong way round
+    assert "2 of 3 lines match." in page and 'href="/app/explorer">Clear filters</a>' in page
+    assert 'name="min_odds" value="-200"' in page and 'name="max_odds" value="200"' in page
+    page = client.get("/app/explorer?q=nobody").text
+    assert "No lines match these filters" in page and "Today's board has 3 lines" in page
+    assert '<table class="data board">' not in page
+    assert "Clear filters" not in client.get("/app/explorer?backed=1").text              # ignored while the board is locked
+
+
 def test_tests_never_write_to_the_real_prediction_ledger(tmp_path):
     from datetime import date
     from pathlib import Path

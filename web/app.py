@@ -682,11 +682,17 @@ async def explorer(request: Request):
         params.pop("backed", None)
         if params.get("sort", "edge") == "edge":
             params["sort"] = "player"
+    try:
+        if int(params["min_odds"]) > int(params["max_odds"]):  # "from 200 to -200" means the same range
+            params["min_odds"], params["max_odds"] = params["max_odds"], params["min_odds"]
+    except (KeyError, ValueError):
+        pass
     rows = _filter_rows((board or {}).get("rows", []), params)
+    filtered = any(params.get(k) for k in ("q", "prop", "min_odds", "max_odds", "backed"))
     mine = {r["ref"].split(":", 1)[1] for r in db.query(
         "SELECT ref FROM unlocks WHERE user_id=? AND kind='prop' AND ref LIKE ?", (user["id"], f"{slate}:%"))}
     return render(request, "explorer.html", user=user, board=board, job=job, slate=slate, unlocked=unlocked, rows=rows[:400],
-                  total=len(rows), mine=mine, q=request.query_params,
+                  total=len(rows), mine=mine, q=params, filtered=filtered,
                   props=sorted({r["prop"] for r in (board or {}).get("rows", [])}))
 
 
