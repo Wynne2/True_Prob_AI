@@ -1282,6 +1282,22 @@ def test_pages_with_a_token_in_the_address_send_no_referrer(client):
     assert client.get("/login").headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
 
 
+def test_security_txt_follows_rfc_9116_and_needs_a_real_contact(client, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    monkeypatch.delenv("SUPPORT_EMAIL", raising=False)
+    assert client.get("/.well-known/security.txt").status_code == 404     # never advertise support@example.com
+    monkeypatch.setenv("SUPPORT_EMAIL", "help@trueprob.example")
+    r = client.get("/.well-known/security.txt")
+    assert r.status_code == 200 and r.headers["content-type"] == "text/plain; charset=utf-8"
+    fields = dict(line.split(": ", 1) for line in r.text.strip().splitlines())
+    assert fields["Contact"] == "mailto:help@trueprob.example" and fields["Preferred-Languages"] == "en"
+    assert fields["Canonical"] == "http://testserver/.well-known/security.txt"
+    expires = datetime.strptime(fields["Expires"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    assert timedelta(days=30) < expires - datetime.now(timezone.utc) < timedelta(days=365)
+    assert r.text.count("Expires:") == 1
+
+
 def test_sign_in_and_recovery_pages_are_never_cached(client):
     for path in ("/login", "/register", "/forgot", "/reset?token=abc"):
         assert client.get(path).headers["Cache-Control"] == "no-store", path

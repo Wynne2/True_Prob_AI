@@ -447,6 +447,17 @@ async def robots(request: Request):
                              f"Sitemap: {base_url(request)}/sitemap.xml\n")
 
 
+async def security_txt(request: Request):
+    """RFC 9116 contact file. Absent until SUPPORT_EMAIL is set: a placeholder address must never be advertised."""
+    contact = os.environ.get("SUPPORT_EMAIL")
+    if not contact:
+        raise HTTPException(404)
+    # Rolling expiry, under the RFC's recommended year; it stays true only while SUPPORT_EMAIL is a monitored inbox.
+    expires = time.strftime("%Y-%m-%dT00:00:00Z", time.gmtime(time.time() + 180 * 86400))
+    return PlainTextResponse(f"Contact: mailto:{contact}\nExpires: {expires}\nPreferred-Languages: en\n"
+                             f"Canonical: {base_url(request)}/.well-known/security.txt\n")
+
+
 def performance_lastmod() -> str | None:
     """The day /performance last got new numbers: the newest graded board or slope fit. None if unknown."""
     days = [p.name[:10] for p in (db.ROOT / "data" / "predictions").glob("????-??-??.graded.json")]
@@ -1170,7 +1181,7 @@ def P(path, endpoint, methods=("GET",)):
 routes = [
     P("/", landing), P("/pricing", pricing), P("/performance", performance), P("/performance/{date}.csv", graded_csv),
     P("/legal/{slug}", legal),
-    P("/healthz", healthz), P("/robots.txt", robots), P("/sitemap.xml", sitemap), P("/favicon.ico", favicon),
+    P("/healthz", healthz), P("/robots.txt", robots), P("/.well-known/security.txt", security_txt), P("/sitemap.xml", sitemap), P("/favicon.ico", favicon),
     P("/register", register, ("GET", "POST")), P("/login", login, ("GET", "POST")), P("/logout", logout, ("POST",)),
     P("/verify", verify), P("/verify/resend", resend, ("POST",)),
     P("/forgot", forgot, ("GET", "POST")), P("/reset", reset, ("GET", "POST")),
