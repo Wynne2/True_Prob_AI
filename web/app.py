@@ -273,6 +273,7 @@ def _performance_inputs() -> tuple:
 
     graded = "????-??-??.graded.json"
     paths = sorted({*(db.ROOT / "data" / "predictions").glob(graded), *Path(clv.DEFAULT_DIR).glob(graded),
+                    *(db.ROOT / "data" / "predictions").glob("????-??-??.json"),
                     db.ROOT / "data" / "models" / "market_slope.json"})
     out = []
     for p in paths:
@@ -294,7 +295,7 @@ def _performance() -> dict:
 
 def _compute_performance() -> dict:
     """Published results, read from files the grading jobs write. Nothing is filtered out."""
-    out: dict = {"slope": None, "dates": [], "scorecard": None, "total": None, "by_stat": []}
+    out: dict = {"slope": None, "dates": [], "scorecard": None, "total": None, "by_stat": [], "pending": []}
     try:
         out["slope"] = json.loads((db.ROOT / "data" / "models" / "market_slope.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -318,6 +319,14 @@ def _compute_performance() -> dict:
             by_stat[str(r.get("prop") or "?").split(" ")[0]].append(r)
         out["by_stat"] = sorted(((STAT_NAMES.get(k, k), t) for k, v in by_stat.items() if (t := graded_totals(v))["decided"]),
                                 key=lambda kt: -kt[1]["decided"])
+    # Boards saved before tip-off with no graded file yet, so a missing date is visibly pending, not quietly absent.
+    for path in sorted((db.ROOT / "data" / "predictions").glob("????-??-??.json")):
+        if not path.with_name(f"{path.stem}.graded.json").exists():
+            try:
+                lines = len(json.loads(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError, TypeError):
+                lines = None
+            out["pending"].append({"date": path.stem, "lines": lines})
     try:
         from engine.candidate.track import scorecard
 

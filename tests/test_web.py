@@ -220,6 +220,23 @@ def test_performance_totals_pool_every_graded_line_on_the_same_rows(client, monk
     assert webapp._performance()["total"] is None and "All 0 dates" not in client.get("/performance").text
 
 
+def test_performance_lists_saved_boards_that_are_not_graded_yet(client, monkeypatch, tmp_path):
+    from web import app as webapp, db
+
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    _graded(preds / "2026-11-01.graded.json", [{"model_probability": 0.5, "market_probability": 0.5, "result": "win"}], 1)
+    (preds / "2026-11-01.json").write_text("[{}]", encoding="utf-8")                     # graded: not pending
+    (preds / "2026-11-03.json").write_text(json.dumps([{}] * 1234), encoding="utf-8")
+    (preds / "2026-11-03.closing.json").write_text("[]", encoding="utf-8")               # closing file is not a board
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    assert webapp._performance()["pending"] == [{"date": "2026-11-03", "lines": 1234}]
+    page = client.get("/performance").text
+    assert "Saved, not graded yet" in page and "2026-11-03: 1,234 lines saved before tip-off" in page
+    _graded(preds / "2026-11-03.graded.json", [], 0)                                     # graded later: drops off at once
+    assert webapp._performance()["pending"] == [] and "Saved, not graded yet" not in client.get("/performance").text
+
+
 def test_each_graded_date_downloads_every_line_unedited(client):
     import csv as _csv
 

@@ -38,6 +38,11 @@
   {% if t %}<p class="muted">The last row pools every graded line from every date above. Both of its Brier scores use only the {{ '{:,}'.format(t.with_market) }} of {{ '{:,}'.format(t.decided) }} lines that had a market price, so they compare the same lines.</p>{% endif %}
   <p class="muted">Brier score is the mean squared error of a probability; lower is better, and 0.25 is what always guessing 50% scores. "Flat-stake return" is the average profit per $1 if every flagged positive gap had been bought at the listed price. Lines for one player and game are correlated, so a single night is a small sample. These early boards used earlier model versions, before the fixes that anchor every probability to the market.</p>
   {% else %}<p>No graded boards yet.</p>{% endif %}
+  {% if perf.pending %}
+  <h3>Saved, not graded yet</h3>
+  <ul class="plain">{% for p in perf.pending %}<li>{{ p.date }}{% if p.lines is not none %}: {{ '{:,}'.format(p.lines) }} lines saved before tip-off{% endif %}</li>{% endfor %}</ul>
+  <p class="muted">These boards were saved before their games started and are not in any number above. Each one is added, wins and losses alike, once it is graded against the box scores.</p>
+  {% endif %}
 </section>
 
 {% if perf.by_stat %}
