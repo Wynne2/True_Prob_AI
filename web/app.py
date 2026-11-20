@@ -870,7 +870,11 @@ async def account(request: Request):
         return RedirectResponse("/app/account", 303)
     security = db.query(f"SELECT action, at FROM audit WHERE actor_id=? AND action IN ({','.join('?' * len(SECURITY_EVENTS))}) "
                         "ORDER BY id DESC LIMIT 10", (user["id"], *SECURITY_EVENTS))
-    return render(request, "account.html", user=user, history=db.history(user["id"], 100), usage=db.period_usage(user),
+    history, after = [], db.balance(user["id"])
+    for h in db.history(user["id"], 100):  # newest first, so walk the balance backwards from today's
+        history.append((h, after))
+        after -= h["delta"]
+    return render(request, "account.html", user=user, history=history, usage=db.period_usage(user),
                   security=[(SECURITY_EVENTS[s["action"]], s["at"]) for s in security], dev_verify=request.session.get("dev_verify"))
 
 

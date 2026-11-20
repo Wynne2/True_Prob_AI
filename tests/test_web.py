@@ -590,6 +590,23 @@ def test_credit_history_downloads_as_csv_with_running_balance(client, env):
     assert signed_out.status_code == 303
 
 
+def test_account_history_shows_the_balance_after_each_row(client, env):
+    from web import db
+
+    user = register(client)
+    write_board(env)
+    post(client, "/app/prop/p0/unlock")
+    post(client, "/app/explorer/unlock")
+    db.execute("INSERT INTO ledger (user_id, delta, reason, ref, created_at) VALUES (?,?,?,?,?)",
+               (user["id"], 3, "Adjustment by support: test", "admin:1", time.time()))
+    page = client.get("/app/account").text
+    assert '<th scope="col">Balance after</th>' in page
+    cells = re.findall(r'<tr><td>[^<]+</td><td>([^<]+)</td><td class="num[^"]*">([^<]+)</td><td class="num">(-?\d+)</td></tr>', page)
+    assert cells == [("Adjustment by support: test", "+3", "17"), ("Full board for 2026-11-15", "-5", "14"),
+                     ("Analysis: Player 0 points over 20.5", "-1", "19"), ("Free plan credits", "+20", "20")]
+    assert cells[0][2] == str(db.balance(user["id"]))
+
+
 def test_customers_see_when_their_credits_reset_and_to_what(client, env):
     from web import app as webapp, db
 
