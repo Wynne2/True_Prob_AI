@@ -181,8 +181,11 @@ def _token_hash(token: str) -> str:
 def make_token(user_id: int, kind: str, ttl: int) -> str:
     """Single-use token (email verification, password reset). Only its hash is stored."""
     token = secrets.token_urlsafe(32)
+    now = time.time()
     with connect() as conn:
-        conn.execute("INSERT INTO tokens VALUES (?,?,?,?,NULL)", (_token_hash(token), user_id, kind, time.time() + ttl))
+        # Spent and expired tokens are refused exactly like unknown ones, so keeping their rows serves nothing.
+        conn.execute("DELETE FROM tokens WHERE used_at IS NOT NULL OR expires_at < ?", (now,))
+        conn.execute("INSERT INTO tokens VALUES (?,?,?,?,NULL)", (_token_hash(token), user_id, kind, now + ttl))
     return token
 
 

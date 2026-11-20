@@ -1156,6 +1156,22 @@ def test_a_new_password_or_signing_out_others_voids_every_other_reset_link(clien
         assert db.use_token(token, "reset") is None, path
 
 
+def test_spent_and_expired_one_time_links_are_deleted_not_kept(env):
+    from web import db
+
+    uid = db.create_user("tok@example.com", "long password 1")
+    used, expired, live = (db.make_token(uid, "reset", 3600), db.make_token(uid, "verify", 3600),
+                           db.make_token(uid, "verify", 3600))
+    db.execute("UPDATE tokens SET expires_at=? WHERE token_hash=?", (time.time() - 1, db._token_hash(expired)))
+    assert db.use_token(used, "reset") == uid
+    assert len(db.query("SELECT 1 FROM tokens")) == 3
+    fresh = db.make_token(uid, "reset", 3600)
+    hashes = {r["token_hash"] for r in db.query("SELECT token_hash FROM tokens")}
+    assert hashes == {db._token_hash(live), db._token_hash(fresh)}
+    assert db.use_token(used, "reset") is None and db.use_token(expired, "verify") is None   # still refused
+    assert db.use_token(live, "verify") == uid and db.use_token(fresh, "reset") == uid
+
+
 def test_reset_emails_are_capped_per_account_without_revealing_it(client, env):
     from web import mailer
 
