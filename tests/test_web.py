@@ -154,6 +154,22 @@ def test_structured_data_and_indexing_hints(client):
     assert client.get("/static/favicon.svg").status_code == 200
 
 
+def test_every_legal_page_has_its_own_meta_description(client):
+    from web import app as webapp, content
+
+    assert set(webapp.LEGAL_DESCRIPTIONS) == set(content.LEGAL)
+    seen = set()
+    for slug in content.LEGAL:
+        page = client.get(f"/legal/{slug}").text
+        desc = re.search(r'<meta name="description" content="([^"]+)">', page).group(1)
+        og = re.search(r'<meta property="og:description" content="([^"]+)">', page).group(1)
+        assert desc == og and desc.endswith("Draft awaiting review by a lawyer."), slug
+        seen.add(desc)
+    assert len(seen) == len(content.LEGAL)                  # unique per page
+    home = re.search(r'<meta name="description" content="([^"]+)">', client.get("/").text).group(1)
+    assert home not in seen and "Draft" not in home
+
+
 def test_pricing_translates_credits_into_usage(client, env):
     from web import content, db
 

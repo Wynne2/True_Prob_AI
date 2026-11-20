@@ -423,12 +423,24 @@ async def graded_csv(request: Request):
                     headers={"Content-Disposition": f'attachment; filename="true-prob-ai-graded-{date}.csv"'})
 
 
+# Search-result summaries of what each page covers (its headings), not legal text; the pages themselves are in content.py.
+LEGAL_DESCRIPTIONS = {
+    "terms": "The terms for using True Prob AI, an NBA player-prop research tool for adults 21+.",
+    "privacy": "What True Prob AI collects (account, usage, billing and technical data), how it is used, who it is shared with and how long it is kept.",
+    "risk": "Read this before relying on True Prob AI: what its probabilities can and cannot tell you.",
+    "subscription": "True Prob AI plans and credits, automatic renewal, how to cancel online, plan changes and failed payments.",
+    "refunds": "When True Prob AI refunds a first payment, a renewal or a service problem, and how refunds are paid.",
+    "acceptable-use": "What you may and may not do with True Prob AI and its data.",
+    "contact": "How to reach True Prob AI support, billing help, privacy requests and responsible-gambling help (1-800-GAMBLER).",
+}
+
+
 async def legal(request: Request):
     page = content.LEGAL.get(request.path_params["slug"])
     if page is None:
         raise HTTPException(404)
     support = os.environ.get("SUPPORT_EMAIL") or "support@example.com"
-    return render(request, "legal.html", page=page, pages=content.LEGAL,
+    return render(request, "legal.html", page=page, pages=content.LEGAL, description=LEGAL_DESCRIPTIONS.get(request.path_params["slug"]),
                   body=_md.render(page["body"].replace("{support_email}", support)))
 
 
