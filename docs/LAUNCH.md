@@ -1,6 +1,6 @@
 # True Prob AI: launch readiness
 
-Status as of 2026-11-15. "Done" means built and covered by automated tests or a recorded browser run.
+Status as of 2026-11-20 (first written 2026-11-15; daily changes are in `docs/daily/`). "Done" means built and covered by automated tests or a recorded browser run.
 "Blocked" means it needs something only the owner can provide (an approval, a credential, a lawyer).
 
 ## What a customer can do today (local or once deployed)
@@ -8,8 +8,11 @@ Status as of 2026-11-15. "Done" means built and covered by automated tests or a 
 Visit the landing page, read pricing, performance and legal pages, register (21+ and region check,
 terms acceptance), confirm their email, get 20 free credits, open single lines (1 credit) or the
 whole day's board (5), run AI Advisor analyses (3, refunded if they fail), open the arbitrage
-terminal (5 per day), keep a watchlist, see their full credit history, change their password and
-delete their account. With Stripe keys set they can subscribe, receive plan credits automatically
+terminal (5 per day), keep a watchlist, see their full credit history (with the balance after each
+row, and as a CSV), change their password (the account's email is told), sign out other devices, see
+recent sign-ins and security changes, download all their data as JSON and delete their account.
+Anyone can download every graded line on `/performance` as CSV and see which saved boards are not
+graded yet. With Stripe keys set they can subscribe, receive plan credits automatically
 from the `invoice.paid` webhook, manage billing and cancel in Stripe's portal, and drop back to
 Free when the subscription ends.
 
@@ -39,6 +42,9 @@ Free when the subscription ends.
   buckets hit less often than priced; 70–100% more often), which the Performance page shows.
 - **Live boards graded** (Nov 4–6; earlier model versions): our Brier 0.2303 / 0.2196 / 0.2144 vs
   market 0.2230 / 0.2202 / 0.2142. Flat-stake return on flagged positive gaps −19.2%, −1.2%, −16.2%.
+  Also graded: Oct 31 (1,168 decided lines, none with a market price recorded, so no market Brier). Nov 2's grading
+  found no final games, and Nov 15 is saved but not graded (as of 2026-11-20). `/performance` is the
+  current, complete table.
 - **Candidate model**: fitted blend weight 0 on every stat; its own gaps have lost money on live boards.
 - **Conclusion**: the product sells transparency and speed (margin-free consensus across venues,
   projections, arbitrage screening), not a proven edge. All marketing copy says so.
@@ -97,7 +103,10 @@ minutes per network; Odds API optional.
 - [x] Stripe checkout, signed + idempotent webhooks, renewals, failed payments, cancellation, plan end
 - [x] Explorer, line detail, watchlist, arbitrage terminal, AI Advisor, account, admin
 - [x] Security: CSRF, rate limits, session invalidation, CSP, admin hidden (404), no secrets in pages
-- [x] Account deletion (cancels subscription, erases personal data)
+- [x] Account recovery per OWASP: per-account reset limits, password-change emails, old reset links voided,
+      spent links deleted, no-store and no-referrer on sign-in and reset pages, common-password blocklist
+- [x] `/.well-known/security.txt` (served only once `SUPPORT_EMAIL` is set)
+- [x] Account deletion (cancels subscription, erases personal data) and a JSON export of the customer's data
 
 **Needs production credentials (owner)**
 - [ ] Stripe **test-mode** keys and prices to run the paid journey end to end (the only Stripe account
