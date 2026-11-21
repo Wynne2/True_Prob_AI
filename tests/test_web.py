@@ -1427,6 +1427,33 @@ def test_wallet_warns_before_the_balance_is_too_low_for_a_board(client):
     assert "Out of credits. Nothing is charged automatically." in client.get("/app/explorer").text
 
 
+def test_paid_buttons_say_when_the_balance_is_short_before_anyone_clicks(client, env, monkeypatch):
+    from web import db
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    user = register(client)
+    write_board(env)
+    db.adjust_credits(user["id"], user["id"], -18, "test")          # 2 left
+    explorer = client.get("/app/explorer").text
+    assert "This needs 5 credits and you have 2." in explorer and '<a href="/pricing?need=board">See plans</a>' in explorer
+    assert re.search(r"<button class=\"btn\" disabled>Open board for 5 credits", explorer)
+    assert "when your balance becomes 20" in explorer
+    line = client.get("/app/prop/p0").text
+    assert "You have 2." in line and "This needs" not in line
+    assert not re.search(r"<button class=\"btn\" disabled>Open for 1 credit", line)
+    advisor = client.get("/app/advisor").text
+    assert "This needs 3 credits and you have 2." in advisor and "need=advisor" in advisor
+    from web import jobs
+
+    jobs.ARB_PATH.write_text(json.dumps({"arbs": [], "near": [], "maker": [], "scanned_at": time.time(), "seconds": 1, "stats": {
+        "kalshi_events": 1, "polymarket_events": 1, "matched_games": 0, "confirmed_pairs": 0, "candidates": 0,
+        "depth_checked": 0, "maker_pairs": 0, "book_errors": 0}}), encoding="utf-8")
+    assert "This needs 5 credits and you have 2." in client.get("/app/arbitrage").text
+    db.adjust_credits(user["id"], user["id"], 10, "test")
+    assert "You have 12. Refunded automatically if it fails." in client.get("/app/advisor").text
+    assert "This needs" not in client.get("/app/explorer").text
+
+
 def test_performance_numbers_are_reused_until_a_graded_file_changes(client, monkeypatch, tmp_path):
     from web import app as webapp, db
 

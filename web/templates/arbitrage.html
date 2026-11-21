@@ -1,4 +1,5 @@
 {% extends "app.html" %}
+{% from "_macros.html" import afford %}
 {% block title %}Arbitrage terminal: True Prob AI{% endblock %}
 {% block head %}{% if job and job.running and not arb %}<meta http-equiv="refresh" content="20">{% endif %}{% endblock %}
 {% macro match(title) %}{% if '[confirmed pair]' in title %}Rules reviewed by hand{% elif '[Kalshi+Polymarket prop]' in title %}Same player, stat, line and game{% elif '[Kalshi+Polymarket]' in title %}Same game, both teams matched{% else %}Single venue{% endif %}{% endmacro %}
@@ -54,7 +55,7 @@
   <section class="panel unlock">
     <div><h2>Open today's terminal</h2><p>See every pair, its legs, the depth the books support, fees, the one-cent slippage test and settlement dates, for every scan today.</p></div>
     <form method="post" action="/app/arbitrage/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
-      <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Open for {{ costs.arbitrage }} credits</button><small>You have {{ balance }}.</small></form>
+      <button class="btn" {% if not user.verified_at or balance < costs.arbitrage %}disabled{% endif %}>Open for {{ costs.arbitrage }} credits</button>{{ afford('arbitrage', costs, balance, reset) }}</form>
   </section>
   {% else %}
   <section>

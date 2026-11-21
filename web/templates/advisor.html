@@ -1,4 +1,5 @@
 {% extends "app.html" %}
+{% from "_macros.html" import afford %}
 {% block title %}AI Advisor: True Prob AI{% endblock %}
 {% block head %}{% if run and run.status == 'running' %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
 {% block content %}
@@ -27,8 +28,8 @@
     </div>
     <form method="post" action="/app/advisor/run" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
       <label>Prices<select name="band">{% for k, b in bands.items() %}<option value="{{ k }}" {% if k == 'balanced' %}selected{% endif %}>{{ b[2] }}</option>{% endfor %}</select></label>
-      <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Run analysis for {{ costs.advisor }} credits</button>
-      <small>You have {{ balance }}. Refunded automatically if it fails.</small>
+      <button class="btn" {% if not user.verified_at or balance < costs.advisor %}disabled{% endif %}>Run analysis for {{ costs.advisor }} credits</button>
+      {{ afford('advisor', costs, balance, reset, 'Refunded automatically if it fails.') }}
     </form>
   </section>
   {% endif %}

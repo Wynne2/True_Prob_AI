@@ -154,6 +154,7 @@ table.costs { border-collapse: collapse; width: 100%; max-width: 760px; margin-b
 .panel.empty { padding: 40px 28px; }
 .panel.unlock { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; border-color: var(--market); }
 .panel.unlock form { display: grid; gap: .3rem; justify-items: start; }
+.panel.unlock small.short { color: var(--warn); max-width: 34ch; line-height: 1.4; }
 .panel.danger { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
 .panel.feature .rail { height: 72px; margin: 4px 0 8px; }
 .big { font: 700 2.4rem/1 var(--display); margin: .1rem 0 .5rem; }

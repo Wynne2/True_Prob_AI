@@ -1,5 +1,5 @@
 {% extends "app.html" %}
-{% from "_macros.html" import rail, rail_key %}
+{% from "_macros.html" import rail, rail_key, afford %}
 {% block title %}{{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}: True Prob AI{% endblock %}
 {% block content %}
 <header class="work-head">
@@ -18,7 +18,7 @@
     <p>Best price now: <strong>{{ r.odds | american }}</strong> at {{ r.venue }} ({{ r.implied | pct }} including the margin), quoted by {{ r.venues }} venues. Opening shows the consensus, gap, projection and the other side.</p>
   </div>
   <form method="post" action="/app/prop/{{ r.id }}/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
-    <button class="btn" {% if not user.verified_at %}disabled{% endif %}>Open for {{ costs.prop }} credit</button><small>You have {{ balance }}.</small></form>
+    <button class="btn" {% if not user.verified_at or balance < costs.prop %}disabled{% endif %}>Open for {{ costs.prop }} credit</button>{{ afford('prop', costs, balance, reset) }}</form>
   {% set n = costs.board // costs.prop %}
   <p class="muted">Opening {{ n }} or more lines today? The <a href="/app/explorer">full board</a> costs {{ costs.board }} credits, the same as {{ n }} single lines, and opens all {{ board.rows | length }} for the rest of the day.</p>
 </section>
