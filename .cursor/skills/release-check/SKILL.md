@@ -11,7 +11,8 @@ git config core.hooksPath .githooks          # pre-push hook runs the offline su
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # .venv is gitignored
 ```
 
-If `venv` fails with "ensurepip is not available", install `python3.12-venv` first.
+If `venv` fails with "ensurepip is not available", install `python3.12-venv` first
+(`sudo apt-get update && sudo apt-get install -y python3.12-venv`; on a fresh VM the install fails without the update).
 
 ## 2. Tests
 
@@ -32,7 +33,11 @@ FEATURE_SCAN=0 TRUEPROB_DB=/tmp/trueprob-check.db .venv/bin/uvicorn web.app:app 
 - Use Playwright with Chromium (install it into `.venv`; it is not in `requirements.txt`).
 - Every changed page at **1280 px and 375 px**, with the OS colour scheme set to **light and dark**.
 - Pass: 0 px horizontal overflow, the new text is present, no console errors, server log has no 5xx.
-- Delete any synthetic boards or files you created afterwards.
+  A 4xx you trigger on purpose (a refused sign-up, a 429) always logs Chrome's "Failed to load resource";
+  that one is expected, so list it in the log instead of counting it as a failure.
+- Delete any synthetic boards or files you created afterwards. Running the app without `SECRET_KEY` writes
+  `data/.secret_key`, and a sign-up without SMTP writes `data/outbox.log`; both are gitignored, delete them too.
+  (The test suite sets its own `SECRET_KEY` and redirects the outbox, so it writes neither.)
 
 ## 4. Before committing
 
