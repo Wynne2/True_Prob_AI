@@ -1,10 +1,14 @@
 """Shared test setup: keep the suite offline and deterministic."""
 
+import os
+
 import pytest
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "live: hits real APIs for today's slate; skip with -m 'not live'")
+    # Without it, importing web.app writes data/.secret_key into the working tree.
+    os.environ.setdefault("SECRET_KEY", "test-only-session-key")
 
 
 @pytest.fixture(autouse=True)

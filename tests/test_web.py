@@ -1136,6 +1136,16 @@ def test_explorer_filters_can_be_cleared_and_never_end_in_a_blank_table(client, 
     assert "Clear filters" not in client.get("/app/explorer?backed=1").text              # ignored while the board is locked
 
 
+def test_tests_never_write_a_session_key_file(env, monkeypatch, tmp_path):
+    from web import db
+
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    assert env._secret_key() and not (tmp_path / "data" / ".secret_key").exists()
+    monkeypatch.delenv("SECRET_KEY")
+    env._secret_key()                                   # local runs without SECRET_KEY still get a file key
+    assert (tmp_path / "data" / ".secret_key").exists()
+
+
 def test_tests_never_write_to_the_real_prediction_ledger(tmp_path):
     from datetime import date
     from pathlib import Path
