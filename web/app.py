@@ -605,10 +605,17 @@ async def logout(request: Request):
 
 
 async def verify(request: Request):
-    uid = db.use_token(request.query_params.get("token", ""), "verify")
+    token = request.query_params.get("token", "")
+    uid = db.use_token(token, "verify")
     if uid is None:
+        user = current_user(request)
+        # Opened twice, or a mail scanner opened it first: the address is confirmed, so say so instead of an error.
+        owner = db.get_user(db.token_owner(token, "verify")) or user
+        if owner and owner["verified_at"]:
+            flash(request, "Your email address is already confirmed." + ("" if user else " Sign in to continue."))
+            return RedirectResponse("/app" if user else "/login", 303)
         flash(request, "That confirmation link is invalid or was already used. Send a new one from Account.", "warn")
-        return RedirectResponse("/app/account" if current_user(request) else "/login", 303)
+        return RedirectResponse("/app/account" if user else "/login", 303)
     db.update_user(uid, verified_at=time.time())
     request.session.pop("dev_verify", None)
     db.track("verified", uid)

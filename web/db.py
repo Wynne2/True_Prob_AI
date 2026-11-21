@@ -199,6 +199,12 @@ def use_token(token: str, kind: str) -> Optional[int]:
         return int(row["user_id"])
 
 
+def token_owner(token: str, kind: str) -> Optional[int]:
+    """Whose token this is, spent or not; None once the row is gone. Grants nothing."""
+    rows = query("SELECT user_id FROM tokens WHERE token_hash=? AND kind=?", (_token_hash(token or ""), kind))
+    return int(rows[0]["user_id"]) if rows else None
+
+
 def void_tokens(user_id: int, kind: str) -> None:
     """Make every unused token of this kind for this user unusable."""
     with connect() as conn:

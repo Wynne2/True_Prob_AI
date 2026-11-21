@@ -347,6 +347,24 @@ def test_free_credits_and_verification_gate(client, env):
     assert db.balance(user["id"]) == 20
 
 
+def test_reopening_a_used_confirmation_link_says_the_email_is_already_confirmed(client, env):
+    from starlette.testclient import TestClient
+
+    register(client, verify=False)
+    link = re.search(r'href="[^"]*(/verify\?token=[^"]+)"', client.get("/app").text).group(1)
+    scanner = TestClient(env.app)                     # e.g. a mail filter that opens links first
+    assert scanner.get(link, follow_redirects=False).headers["location"] == "/login"
+    r = client.get(link, follow_redirects=False)
+    assert r.headers["location"] == "/app"
+    page = client.get("/app").text
+    assert "Your email address is already confirmed." in page and "invalid or was already used" not in page
+    stranger = TestClient(env.app).get(link)
+    assert "already confirmed. Sign in to continue." in stranger.text
+    bad = client.get("/verify?token=made-up", follow_redirects=False)
+    assert bad.headers["location"] == "/app" and "already confirmed" in client.get("/app").text  # signed in and confirmed
+    assert "invalid or was already used" in TestClient(env.app).get("/verify?token=made-up").text
+
+
 def test_first_run_checklist_tracks_progress_then_disappears(client, env):
     register(client, verify=False)
     page = client.get("/app").text
