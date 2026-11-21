@@ -273,6 +273,22 @@ def test_each_graded_date_downloads_every_line_unedited(client):
         assert client.get(bad).status_code == 404, bad
 
 
+def test_every_graded_line_downloads_in_one_file_with_its_date(client):
+    import csv as _csv
+
+    assert 'href="/performance/all.csv"' in client.get("/performance").text
+    r = client.get("/performance/all.csv")
+    assert r.status_code == 200 and "true-prob-ai-graded-all-dates.csv" in r.headers["content-disposition"]
+    rows = list(_csv.DictReader(r.text.splitlines()))
+    assert list(rows[0])[0] == "date"
+    folder = Path(__file__).resolve().parents[1] / "data" / "predictions"
+    for path in sorted(folder.glob("????-??-??.graded.json")):
+        date = path.name[:10]
+        per_date = list(_csv.DictReader(client.get(f"/performance/{date}.csv").text.splitlines()))
+        assert [{k: v for k, v in row.items() if k != "date"} for row in rows if row["date"] == date] == per_date, date
+    assert len(rows) == sum(len(json.loads(p.read_text())["rows"] or []) for p in folder.glob("????-??-??.graded.json"))
+
+
 def test_performance_page_describes_its_csv_files_as_a_dataset(client, monkeypatch, tmp_path):
     from web import db
 

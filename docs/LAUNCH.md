@@ -11,8 +11,8 @@ whole day's board (5), run AI Advisor analyses (3, refunded if they fail), open 
 terminal (5 per day), keep a watchlist, see their full credit history (with the balance after each
 row, and as a CSV), change their password (the account's email is told), sign out other devices, see
 recent sign-ins and security changes, download all their data as JSON and delete their account.
-Anyone can download every graded line on `/performance` as CSV and see which saved boards are not
-graded yet. With Stripe keys set they can subscribe, receive plan credits automatically
+Anyone can download every graded line on `/performance` as CSV (one file per date, or every date in
+one file) and see which saved boards are not graded yet. With Stripe keys set they can subscribe, receive plan credits automatically
 from the `invoice.paid` webhook, manage billing and cancel in Stripe's portal, and drop back to
 Free when the subscription ends.
 

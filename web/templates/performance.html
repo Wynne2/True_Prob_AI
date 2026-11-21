@@ -31,7 +31,8 @@
   </table>
   </div>
   <p>Check our numbers: download every graded line, as saved before tip-off with its result (CSV):
-  {% for d in perf.dates %}<a href="/performance/{{ d.date }}.csv" download>{{ d.date }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  {% for d in perf.dates %}<a href="/performance/{{ d.date }}.csv" download>{{ d.date }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.
+  Or <a href="/performance/all.csv" download>every graded date in one file</a>, with a <code>date</code> column first.</p>
   <details class="columns"><summary>What each CSV column means</summary>
     <dl>{% for k, v in columns.items() %}<dt><code>{{ k }}</code></dt><dd>{{ v }}</dd>{% endfor %}</dl>
   </details>

@@ -381,7 +381,9 @@ def performance_dataset(base: str, dates: list[str]) -> dict | None:
             "isAccessibleForFree": True, "temporalCoverage": f"{dates[0]}/{dates[-1]}",
             "keywords": ["NBA", "player props", "probability", "Brier score", "calibration", "graded predictions"],
             "variableMeasured": [{"@type": "PropertyValue", "name": k, "description": v} for k, v in GRADED_COLUMN_NOTES.items()],
-            "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "name": f"Graded lines {d}",
+            "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "name": "Graded lines, every date",
+                              "contentUrl": f"{base}/performance/all.csv"}] +
+                            [{"@type": "DataDownload", "encodingFormat": "text/csv", "name": f"Graded lines {d}",
                               "contentUrl": f"{base}/performance/{d}.csv"} for d in dates]}
 
 
@@ -434,13 +436,30 @@ async def graded_csv(request: Request):
         rows = json.loads((db.ROOT / "data" / "predictions" / f"{date}.graded.json").read_text(encoding="utf-8")).get("rows") or []
     except (OSError, ValueError):
         raise HTTPException(404)
+    return _graded_csv_response([(date, rows)], date, with_date=False)
+
+
+async def graded_csv_all(request: Request):
+    """Every graded line from every graded date in one file, with its date. Same rows as the per-date files."""
+    files = []
+    for path in sorted((db.ROOT / "data" / "predictions").glob("????-??-??.graded.json")):
+        try:
+            files.append((path.name[:10], json.loads(path.read_text(encoding="utf-8")).get("rows") or []))
+        except (OSError, ValueError):
+            continue
+    return _graded_csv_response(files, "all-dates", with_date=True)
+
+
+def _graded_csv_response(files: list[tuple[str, list]], name: str, with_date: bool) -> Response:
     out = io.StringIO()
     writer = csv.writer(out)
-    writer.writerow(GRADED_COLUMNS)
-    for r in rows:
-        writer.writerow(["" if r.get(c) is None else csv_cell(r[c]) if isinstance(r[c], str) else r[c] for c in GRADED_COLUMNS])
+    writer.writerow((("date",) if with_date else ()) + GRADED_COLUMNS)
+    for date, rows in files:
+        for r in rows:
+            writer.writerow(([date] if with_date else []) +
+                            ["" if r.get(c) is None else csv_cell(r[c]) if isinstance(r[c], str) else r[c] for c in GRADED_COLUMNS])
     return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="true-prob-ai-graded-{date}.csv"'})
+                    headers={"Content-Disposition": f'attachment; filename="true-prob-ai-graded-{name}.csv"'})
 
 
 # Search-result summaries of what each page covers (its headings), not legal text; the pages themselves are in content.py.
@@ -1218,7 +1237,7 @@ def P(path, endpoint, methods=("GET",)):
 
 
 routes = [
-    P("/", landing), P("/pricing", pricing), P("/performance", performance), P("/performance/{date}.csv", graded_csv),
+    P("/", landing), P("/pricing", pricing), P("/performance", performance), P("/performance/all.csv", graded_csv_all), P("/performance/{date}.csv", graded_csv),
     P("/legal/{slug}", legal),
     P("/healthz", healthz), P("/robots.txt", robots), P("/.well-known/security.txt", security_txt), P("/sitemap.xml", sitemap), P("/favicon.ico", favicon),
     P("/register", register, ("GET", "POST")), P("/login", login, ("GET", "POST")), P("/logout", logout, ("POST",)),
