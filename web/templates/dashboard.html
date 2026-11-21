@@ -56,10 +56,10 @@
     <h2>Watchlist</h2>
     {% if watch %}
       <ul class="chips">{% for w in watch %}<li>{{ w.label }}
-        <form method="post" action="/app/watch" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="player" value="{{ w.label }}"><input type="hidden" name="remove" value="1"><button class="link" aria-label="Stop watching {{ w.label }}">Remove</button></form></li>{% endfor %}</ul>
+        <form method="post" action="/app/watch" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="player" value="{{ w.label }}"><input type="hidden" name="remove" value="1"><button class="link">Remove<span class="visually-hidden"> {{ w.label }} from your watchlist</span></button></form></li>{% endfor %}</ul>
       {% if watch_hits %}
       <table class="data compact"><thead><tr><th scope="col">Line</th><th scope="col">Price</th><th scope="col"></th></tr></thead><tbody>
-        {% for r in watch_hits %}<tr><td>{{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</td><td>{{ r.odds | american }} {{ r.venue }}</td><td><a href="/app/prop/{{ r.id }}">View</a></td></tr>{% endfor %}
+        {% for r in watch_hits %}<tr><td>{{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</td><td>{{ r.odds | american }} {{ r.venue }}</td><td><a href="/app/prop/{{ r.id }}">View<span class="visually-hidden"> {{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</span></a></td></tr>{% endfor %}
       </tbody></table>
       {% if watch_total > watch_hits | length %}<p class="muted">Showing {{ watch_hits | length }} of {{ watch_total }} lines for your players. Search a player's name in the <a href="/app/explorer">explorer</a> to see all of theirs.</p>{% endif %}
       {% else %}<p class="muted">None of your players are on today's board.</p>{% endif %}

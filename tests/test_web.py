@@ -1063,6 +1063,22 @@ def test_wide_tables_scroll_in_their_own_keyboard_reachable_box(client, env):
         assert re.search(r'<div class="table-scroll" role="region" aria-label="[^"]+" tabindex="0">\s*<table class="data', page)
 
 
+def test_repeated_row_links_name_the_line_they_open(client, env):
+    from web import db
+
+    user = register(client)
+    write_board(env)
+    hidden = r'<span class="visually-hidden">{}</span>'
+    page = client.get("/app/explorer").text
+    assert 'Open, 1 credit' + hidden.format(": Player 2 points over 20.5") in page
+    db.spend(user["id"], "board", "2026-11-15")
+    assert 'Details' + hidden.format(": Player 0 points over 20.5") in client.get("/app/explorer").text
+    post(client, "/app/watch", player="Player 1")
+    page = client.get("/app").text
+    assert 'View' + hidden.format(" Player 1 points over 20.5") in page
+    assert 'Remove' + hidden.format(" Player 1 from your watchlist") in page and "aria-label=\"Stop watching" not in page
+
+
 def test_locked_board_does_not_leak_gap_order(client, env):
     from web import db
 

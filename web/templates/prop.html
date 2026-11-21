@@ -39,7 +39,7 @@
   {% if r.notes %}<h2>Production model notes</h2><p class="notes">{{ r.notes }}</p>{% endif %}
   {% if other %}
   <h2>The other side</h2>
-  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ '%+.1f' % (other.edge * 100) }} points. <a href="/app/prop/{{ other.id }}">View</a></p>
+  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ '%+.1f' % (other.edge * 100) }} points. <a href="/app/prop/{{ other.id }}">View<span class="visually-hidden"> the {{ other.side }} side</span></a></p>
   {% endif %}
 </section>
 <p class="muted">Research only. Prices move; check the venue before acting. <a href="/legal/risk">Risk disclosure</a>.</p>
