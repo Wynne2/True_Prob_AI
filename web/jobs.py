@@ -246,6 +246,7 @@ def ensure_arb() -> dict:
 ADVISOR_GRACE = 120  # seconds a new run may take to appear in _running
 EMPTY_REVIEW = ("No line on today's board in the range you chose passed the Advisor's filters (a price in range and a "
                 "gap the model itself backs), so no analysis was written.")
+ADVISOR_FAILED = "The analysis stopped on our side before it was finished. Try again in a few minutes."
 
 
 def reap_advisor_runs(user_id: int) -> None:
@@ -303,8 +304,9 @@ def start_advisor(user_id: int, slate: str, min_odds: int, max_odds: int) -> Opt
             if result.ai_status != AI_OK:
                 raise RuntimeError(result.ai_error or "the AI step did not complete")
             db.execute("UPDATE advisor_runs SET status='done', body=? WHERE id=?", (to_markdown(result), run_id))
-        except Exception as exc:
-            db.execute("UPDATE advisor_runs SET status='failed', body=? WHERE id=?", (f"{type(exc).__name__}: {exc}"[:300], run_id))
+        except Exception:
+            # The raw error (provider replies can quote request details or part of a key) goes to the log via _start.
+            db.execute("UPDATE advisor_runs SET status='failed', body=? WHERE id=?", (ADVISOR_FAILED, run_id))
             db.refund(user_id, "advisor", str(run_id), "the analysis did not complete")
             raise
 

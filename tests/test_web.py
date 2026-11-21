@@ -778,9 +778,12 @@ def test_failed_advisor_run_is_refunded(env, monkeypatch):
     monkeypatch.setattr(jobs, "board_props", lambda slate: ["prop"])
     import engine.advisor.run as run_mod
 
-    monkeypatch.setattr(run_mod, "run_advisor", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("model down")))
+    leak = "Error code: 401 - Incorrect API key provided: sk-proj-abc1****wxyz"
+    monkeypatch.setattr(run_mod, "run_advisor", lambda *a, **k: (_ for _ in ()).throw(RuntimeError(leak)))
     run_id = jobs.start_advisor(uid, "2026-11-15", -250, 250)
-    assert db.query("SELECT status FROM advisor_runs WHERE id=?", (run_id,))[0]["status"] == "failed"
+    run = db.query("SELECT status, body FROM advisor_runs WHERE id=?", (run_id,))[0]
+    assert run["status"] == "failed" and run["body"] == jobs.ADVISOR_FAILED and "sk-proj" not in run["body"]
+    assert "sk-proj" in jobs.health(details=True)["errors"][f"advisor:{run_id}"]   # Admin still sees the cause
     assert db.balance(uid) == 20
     assert any(r["reason"].startswith("Refund") for r in db.history(uid))
 
