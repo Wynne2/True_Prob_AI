@@ -199,7 +199,7 @@ table.data { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .panel > table.data, section > table.data { display: block; overflow-x: auto; }
 /* Wide tables scroll inside their own box; the first column stays put so you never lose the row's name. */
-.table-scroll { overflow-x: auto; max-width: 100%; margin-bottom: 1rem; }
+.table-scroll { overflow-x: auto; max-width: 100%; margin-bottom: 1rem; position: relative; } /* keeps .visually-hidden text inside the scroll box */
 .table-scroll:focus-visible { outline-offset: 0; }
 .data tfoot th, .data tfoot td { font-weight: 600; border-top: 2px solid var(--line); border-bottom: 0; }
 .table-scroll .data tbody th, .table-scroll .data tfoot th, .table-scroll .data thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--ink);
