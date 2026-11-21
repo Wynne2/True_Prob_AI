@@ -713,6 +713,17 @@ def test_free_allowance_copy_comes_from_the_plan(client, env, monkeypatch):
     assert "25 free credits every 30 days. No card needed. 21+." in home and "a month. No card" not in home
 
 
+def test_pricing_search_description_comes_from_the_plans(client, env, monkeypatch):
+    from web import db
+
+    want = ("Free (20 credits), Pro ($29/month, 200 credits) and Power ($79/month, 1,000 credits) plans for True Prob AI, "
+            "an NBA player-prop research tool for adults 21+. Credits reset each period and have no cash value; cancel any time.")
+    page = client.get("/pricing").text
+    assert f'<meta name="description" content="{want}">' in page and f'<meta property="og:description" content="{want}">' in page
+    monkeypatch.setitem(db.PLANS, "pro", {**db.PLANS["pro"], "price": 35})
+    assert "Pro ($35/month, 200 credits)" in client.get("/pricing").text
+
+
 def test_insufficient_credits_charge_nothing(client, env):
     from web import db
 

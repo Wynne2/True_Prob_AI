@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Pricing: True Prob AI{% endblock %}
-{% block description %}Free, Pro ($29/month) and Power ($79/month) plans for True Prob AI. Credits reset each period; cancel any time.{% endblock %}
+{% block description %}{% for p in plans.values() %}{{ p.name }} ({% if p.price %}${{ p.price }}/month, {% endif %}{{ '{:,}'.format(p.credits) }} credits){{ ' and ' if loop.revindex == 2 else ', ' if not loop.last }}{% endfor %} plans for True Prob AI, an NBA player-prop research tool for adults 21+. Credits reset each period and have no cash value; cancel any time.{% endblock %}
 {% block content %}
 <section class="page-head">
   <h1>Plans</h1>
