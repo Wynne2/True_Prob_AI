@@ -22,7 +22,7 @@
       <dl class="demo-nums">
         <div><dt>Offered at {{ ex.venue }}</dt><dd>{{ ex.implied | pct }}<small>{{ ex.odds | american }}</small></dd></div>
         <div><dt>Market consensus</dt><dd>{{ ex.market | pct }}</dd></div>
-        <div><dt>Gap to consensus</dt><dd class="{{ 'pos' if ex.edge > 0 else 'neg' }}">{{ '%+.1f' % (ex.edge * 100) }} pts</dd></div>
+        <div><dt>Gap to consensus</dt><dd class="{{ ex.edge | gap_tone }}">{{ ex.edge | gap }} pts</dd></div>
       </dl>
     {% else %}
       <p class="demo-head">Example: a player points line, over 24.5</p>

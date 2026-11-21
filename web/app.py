@@ -254,8 +254,20 @@ def run_status(status: str) -> str:
             "empty": f"Nothing to review in that range, {back}"}.get(status, status)
 
 
+def gap(edge) -> str:
+    """A gap in probability points as shown: one decimal, signed, and a plain 0.0 when it rounds to nothing."""
+    points = round(float(edge) * 100, 1)
+    return "0.0" if points == 0 else f"{points:+.1f}"
+
+
+def gap_tone(edge) -> str:
+    """CSS class for a gap: coloured only when the shown number is not zero."""
+    points = round(float(edge) * 100, 1)
+    return "pos" if points > 0 else "neg" if points < 0 else ""
+
+
 templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
-                             run_status=run_status)
+                             run_status=run_status, gap=gap, gap_tone=gap_tone)
 
 
 # ---------------------------------------------------------------------------

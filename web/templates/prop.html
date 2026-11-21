@@ -31,7 +31,7 @@
     <div><dt>Market consensus</dt><dd>{{ r.market | pct }}</dd><dd class="muted">Median across {{ r.venues }} venues, margin removed{% if r.market_lo is not none %}; venues range {{ r.market_lo | pct }} to {{ r.market_hi | pct }}{% endif %}</dd></div>
     <div><dt>Model alone</dt><dd>{{ r.model_own | pct }}</dd><dd class="muted">{% if r.method == 'candidate' %}Candidate model{% if r.cand_projection is not none %}, projection {{ '%g' % r.cand_projection }}{% endif %}{% else %}Production model, projection {{ '%g' % r.projection }} in {{ '%g' % r.minutes }} minutes{% endif %}</dd></div>
     <div><dt>Probability used for edge</dt><dd>{{ r.blended | pct }}</dd><dd class="muted">{% if r.weight <= 0 %}Model weight 0: this is the market consensus, not an independent estimate{% else %}Consensus moved toward the model with weight {{ '%.2f' % r.weight }}{% endif %}</dd></div>
-    <div><dt>Gap</dt><dd class="{{ 'pos' if r.edge > 0 else 'neg' }}">{{ '%+.1f' % (r.edge * 100) }} points</dd><dd class="muted">Expected value per $100 at this price: {{ '%+.2f' % r.ev_per_100 }} before any account fees, if that probability is right</dd></div>
+    <div><dt>Gap</dt><dd class="{{ r.edge | gap_tone }}">{{ r.edge | gap }} points</dd><dd class="muted">Expected value per $100 at this price: {{ '%+.2f' % r.ev_per_100 }} before any account fees, if that probability is right</dd></div>
     <div><dt>Confidence</dt><dd>{{ r.confidence | replace('_', ' ') }}</dd><dd class="muted">{{ 'The model backs the gap' if r.model_agrees else 'The model alone puts this side below the price, so the gap is not model-backed' }}</dd></div>
   </dl>
   {% if r.weight <= 0 and r.edge > 0 %}<p class="flash note">This gap comes only from {{ r.venue }} pricing differently from the other venues. Our model has not beaten the market on this kind of line in testing, so treat it as a price difference, not a prediction.</p>{% endif %}
@@ -39,7 +39,7 @@
   {% if r.notes %}<h2>Production model notes</h2><p class="notes">{{ r.notes }}</p>{% endif %}
   {% if other %}
   <h2>The other side</h2>
-  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ '%+.1f' % (other.edge * 100) }} points. <a href="/app/prop/{{ other.id }}">View<span class="visually-hidden"> the {{ other.side }} side</span></a></p>
+  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ other.edge | gap }} points. <a href="/app/prop/{{ other.id }}">View<span class="visually-hidden"> the {{ other.side }} side</span></a></p>
   {% endif %}
 </section>
 <p class="muted">Research only. Prices move; check the venue before acting. <a href="/legal/risk">Risk disclosure</a>.</p>

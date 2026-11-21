@@ -1079,6 +1079,21 @@ def test_repeated_row_links_name_the_line_they_open(client, env):
     assert 'Remove' + hidden.format(" Player 1 from your watchlist") in page and "aria-label=\"Stop watching" not in page
 
 
+def test_a_gap_that_rounds_to_zero_reads_as_zero_in_no_colour(client, env):
+    from web import app as webapp, db
+
+    assert [webapp.gap(e) for e in (0.0123, -0.0004, 0.0004, 0.0, -0.024)] == ["+1.2", "0.0", "0.0", "0.0", "-2.4"]
+    assert [webapp.gap_tone(e) for e in (0.0123, -0.0004, 0.0004, -0.024)] == ["pos", "", "", "neg"]
+    user = register(client)
+    board = write_board(env)
+    board["rows"][0]["edge"] = -0.0004
+    (env.jobs.BOARD_DIR / "2026-11-15.json").write_text(json.dumps(board), encoding="utf-8")
+    db.spend(user["id"], "board", "2026-11-15")
+    assert '<span class="">0.0</span>' in client.get("/app/explorer").text
+    assert '<dd class="">0.0 points</dd>' in client.get("/app/prop/p0").text
+    assert '<span class="neg">-2.4</span>' in client.get("/app/explorer").text
+
+
 def test_locked_board_does_not_leak_gap_order(client, env):
     from web import db
 
