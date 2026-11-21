@@ -484,6 +484,30 @@ def test_sign_out_other_devices_keeps_this_one(client):
     assert client.post("/app/account/sessions", data={"csrf": "forged", "password": "correct horse 1"}).status_code == 403
 
 
+def test_password_re_entry_on_account_is_capped_per_account(client):
+    from web import db
+
+    user = register(client)
+    for path, field in (("/app/account/password", "current"), ("/app/account/sessions", "password"),
+                        ("/app/account/delete", "password")):
+        assert post(client, path, **{field: "wrong guess", "new": "brand new pass 2"}).status_code == 303
+    for _ in range(2):
+        assert post(client, "/app/account/sessions", password="wrong guess").status_code == 303
+    blocked = post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
+    assert blocked.status_code == 429 and blocked.headers["retry-after"] == "900" and "Nothing was changed" in blocked.text
+    assert db.check_password("correct horse 1", db.get_user(user["id"])["pw_hash"])
+    assert post(client, "/app/account/delete", password="correct horse 1").status_code == 429
+    assert db.get_user(user["id"]) is not None
+    assert len(db.query("SELECT 1 FROM audit WHERE actor_id=? AND action='reauth.failed'", (user["id"],))) == 5
+    assert "Wrong password entered on this page" in client.get("/app/account").text
+
+
+def test_correct_password_re_entries_do_not_count_toward_the_cap(client):
+    register(client)
+    for i in range(8):
+        assert post(client, "/app/account/sessions", password="correct horse 1").status_code == 303
+
+
 def test_forgot_password_does_not_reveal_accounts(client):
     register(client, verify=False)
     known = client.post("/forgot", data={"csrf": _csrf(client, "/forgot"), "email": "ann@example.com"}).text

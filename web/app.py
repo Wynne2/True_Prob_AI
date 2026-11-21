@@ -112,7 +112,7 @@ LONGEST_WINDOW = 3600  # every `per` passed to _over must be at most this
 _swept = [0.0]
 
 
-def _over(key: str, n: int, per: int) -> bool:
+def _over(key: str, n: int, per: int, record: bool = True) -> bool:
     # shortcut: per-process memory; use a shared store when there is more than one web instance.
     now = time.time()
     if now - _swept[0] > 300:  # keys are attacker-chosen (emails, IPs), so drop idle ones or memory grows forever
@@ -122,7 +122,8 @@ def _over(key: str, n: int, per: int) -> bool:
     q = _hits[key]
     while q and q[0] < now - per:
         q.popleft()
-    q.append(now)
+    if record:
+        q.append(now)
     return len(q) > n
 
 
@@ -148,6 +149,22 @@ def _password_matches(user, password: str) -> bool:
         db.check_password(password, _dummy_hash[0])
         return False
     return db.check_password(password, user["pw_hash"])
+
+
+REAUTH_FAILS = 5  # wrong passwords per account per 15 minutes on Account forms
+
+
+def _reauth(user, password: str) -> bool:
+    """Password re-entry on Account. Only wrong entries count, so a session someone else is using cannot guess it."""
+    key = f"reauth:{user['id']}"
+    if _over(key, REAUTH_FAILS - 1, 900, record=False):
+        raise too_many("Too many wrong passwords. Nothing was changed. Wait fifteen minutes and try again, "
+                       "or reset your password by email.", 900)
+    if db.check_password(password, user["pw_hash"]):
+        return True
+    _over(key, REAUTH_FAILS, 900)
+    db.audit(user["id"], "reauth.failed")
+    return False
 
 
 def flash(request: Request, message: str, kind: str = "ok") -> None:
@@ -914,7 +931,7 @@ async def account(request: Request):
 
 SECURITY_EVENTS = {"login.ok": "Signed in", "login.failed": "Sign-in with a wrong password", "password.change": "Password changed",
                    "password.reset": "Password reset from an email link", "sessions.revoke_others": "Other devices signed out",
-                   "user.register": "Account created"}
+                   "user.register": "Account created", "reauth.failed": "Wrong password entered on this page"}
 
 
 def csv_cell(text: str) -> str:
@@ -978,7 +995,7 @@ async def change_password(request: Request):
     if redirect:
         return redirect
     new = str(form.get("new") or "")
-    if not db.check_password(str(form.get("current") or ""), user["pw_hash"]):
+    if not _reauth(user, str(form.get("current") or "")):
         flash(request, "Your current password is not correct.", "warn")
     elif weak := passwords.problem(new, user["email"]):
         flash(request, weak, "warn")
@@ -997,7 +1014,7 @@ async def sign_out_others(request: Request):
     user, redirect = need_user(request)
     if redirect:
         return redirect
-    if not db.check_password(str(form.get("password") or ""), user["pw_hash"]):
+    if not _reauth(user, str(form.get("password") or "")):
         flash(request, "Your password is not correct. No device was signed out.", "warn")
     else:
         db.update_user(user["id"], session_version=user["session_version"] + 1)
@@ -1013,7 +1030,7 @@ async def delete_account(request: Request):
     user, redirect = need_user(request)
     if redirect:
         return redirect
-    if not db.check_password(str(form.get("password") or ""), user["pw_hash"]):
+    if not _reauth(user, str(form.get("password") or "")):
         flash(request, "Enter your password to delete the account.", "warn")
         return RedirectResponse("/app/account", 303)
     try:
