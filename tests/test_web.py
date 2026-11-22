@@ -1056,6 +1056,22 @@ def test_admin_can_adjust_credits_with_audit(client, env):
     assert db.query("SELECT action FROM audit WHERE action='credits.adjust'")
 
 
+def test_admin_forms_answer_bad_input_with_400_not_a_crash(client, env):
+    from web import db
+
+    register(client, email="boss@example.com")
+    assert post(client, "/admin/announce", body="Maintenance at 3 AM").status_code == 303
+    note = db.query("SELECT id FROM announcements")[0]["id"]
+    for bad in ("abc", "1.5", "-1", "1 OR 1=1"):
+        r = post(client, "/admin/announce", hide=bad)
+        assert r.status_code == 400 and "1-800-GAMBLER" in r.text, bad
+    assert db.query("SELECT active FROM announcements WHERE id=?", (note,))[0]["active"] == 1
+    assert post(client, "/admin/announce", hide=str(note)).status_code == 303
+    assert db.query("SELECT active FROM announcements WHERE id=?", (note,))[0]["active"] == 0
+    assert post(client, "/admin/credits", user_id="x", delta="5", note="n").status_code == 400
+    assert post(client, "/admin/flag", key="nope", value="1").status_code == 400
+
+
 def test_customers_cannot_see_each_others_analyses(client, env):
     from web import db
 

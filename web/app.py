@@ -1200,6 +1200,8 @@ async def admin_action(request: Request):
     elif action == "announce":
         body = str(form.get("body") or "").strip()[:300]
         if form.get("hide"):
+            if not str(form.get("hide")).isdigit():
+                raise HTTPException(400, "Choose an announcement to hide from the list.")
             db.execute("UPDATE announcements SET active=0 WHERE id=?", (int(form.get("hide")),))
         elif body:
             db.execute("INSERT INTO announcements (body, created_at) VALUES (?,?)", (body, time.time()))
