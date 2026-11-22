@@ -331,6 +331,24 @@ def test_every_graded_line_downloads_in_one_file_with_its_date(client):
     assert len(rows) == sum(len(json.loads(p.read_text())["rows"] or []) for p in folder.glob("????-??-??.graded.json"))
 
 
+def test_unchanged_graded_csvs_answer_a_repeat_download_with_304(client, monkeypatch, tmp_path):
+    from web import db
+
+    for path in ("/performance/all.csv", "/performance/2026-11-06.csv"):
+        first = client.get(path)
+        tag = first.headers["etag"]
+        assert first.status_code == 200 and first.headers["cache-control"] == "no-cache" and tag.startswith('"')
+        again = client.get(path, headers={"If-None-Match": f'"other", W/{tag}'})
+        assert again.status_code == 304 and again.content == b"" and again.headers["etag"] == tag
+        assert client.get(path, headers={"If-None-Match": '"stale"'}).text == first.text
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    _graded(preds / "2026-11-06.graded.json", [{"player": "A", "result": "win"}], 1)
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    regraded = client.get("/performance/2026-11-06.csv", headers={"If-None-Match": tag})
+    assert regraded.status_code == 200 and regraded.headers["etag"] != tag and "A," in regraded.text
+
+
 def test_performance_page_describes_its_csv_files_as_a_dataset(client, monkeypatch, tmp_path):
     from web import db
 

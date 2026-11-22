@@ -461,7 +461,7 @@ async def graded_csv(request: Request):
         rows = json.loads((db.ROOT / "data" / "predictions" / f"{date}.graded.json").read_text(encoding="utf-8")).get("rows") or []
     except (OSError, ValueError):
         raise HTTPException(404)
-    return _graded_csv_response([(date, rows)], date, with_date=False)
+    return _graded_csv_response(request, [(date, rows)], date, with_date=False)
 
 
 async def graded_csv_all(request: Request):
@@ -472,10 +472,10 @@ async def graded_csv_all(request: Request):
             files.append((path.name[:10], json.loads(path.read_text(encoding="utf-8")).get("rows") or []))
         except (OSError, ValueError):
             continue
-    return _graded_csv_response(files, "all-dates", with_date=True)
+    return _graded_csv_response(request, files, "all-dates", with_date=True)
 
 
-def _graded_csv_response(files: list[tuple[str, list]], name: str, with_date: bool) -> Response:
+def _graded_csv_response(request: Request, files: list[tuple[str, list]], name: str, with_date: bool) -> Response:
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow((("date",) if with_date else ()) + GRADED_COLUMNS)
@@ -483,8 +483,13 @@ def _graded_csv_response(files: list[tuple[str, list]], name: str, with_date: bo
         for r in rows:
             writer.writerow(([date] if with_date else []) +
                             ["" if r.get(c) is None else csv_cell(r[c]) if isinstance(r[c], str) else r[c] for c in GRADED_COLUMNS])
-    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="true-prob-ai-graded-{name}.csv"'})
+    body = out.getvalue().encode("utf-8")
+    # no-cache: keep a copy but ask every time, so a regraded file is never served stale; unchanged answers are a bodiless 304.
+    headers = {"ETag": f'"{hashlib.sha256(body).hexdigest()[:32]}"', "Cache-Control": "no-cache"}
+    if headers["ETag"] in [t.strip().removeprefix("W/") for t in request.headers.get("if-none-match", "").split(",")]:
+        return Response(status_code=304, headers=headers)
+    return Response(body, media_type="text/csv; charset=utf-8",
+                    headers=headers | {"Content-Disposition": f'attachment; filename="true-prob-ai-graded-{name}.csv"'})
 
 
 # Search-result summaries of what each page covers (its headings), not legal text; the pages themselves are in content.py.
