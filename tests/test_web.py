@@ -497,6 +497,13 @@ def test_login_logout_and_open_redirect(client):
     assert ok.headers["location"] == "/app"
 
 
+def test_signing_out_tells_the_browser_to_drop_cached_pages(client):
+    register(client, verify=False)
+    r = client.post("/logout", data={"csrf": _csrf(client, "/app")}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["clear-site-data"] == '"cache"'
+    assert client.get("/app", follow_redirects=False).status_code == 303
+
+
 def test_signed_in_visitors_skip_the_sign_in_and_sign_up_forms(client):
     register(client, verify=False)
     assert client.get("/login", follow_redirects=False).headers["location"] == "/app"

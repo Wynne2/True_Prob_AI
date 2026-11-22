@@ -650,7 +650,8 @@ async def login(request: Request):
 async def logout(request: Request):
     await checked_form(request)
     request.session.clear()
-    return RedirectResponse("/", 303)
+    # Not "cookies" (would also clear sibling subdomains) or "storage" (holds only the theme choice).
+    return RedirectResponse("/", 303, headers={"Clear-Site-Data": '"cache"'})
 
 
 async def verify(request: Request):
