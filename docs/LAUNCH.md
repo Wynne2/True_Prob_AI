@@ -1,6 +1,6 @@
 # True Prob AI: launch readiness
 
-Status as of 2026-11-20 (first written 2026-11-15; daily changes are in `docs/daily/`). "Done" means built and covered by automated tests or a recorded browser run.
+Status as of 2026-11-22 (first written 2026-11-15; daily changes are in `docs/daily/`). "Done" means built and covered by automated tests or a recorded browser run.
 "Blocked" means it needs something only the owner can provide (an approval, a credential, a lawyer).
 
 ## What a customer can do today (local or once deployed)
@@ -12,7 +12,8 @@ terminal (5 per day), keep a watchlist, see their full credit history (with the 
 row, and as a CSV), change their password (the account's email is told), sign out other devices, see
 recent sign-ins and security changes, download all their data as JSON and delete their account.
 Anyone can download every graded line on `/performance` as CSV (one file per date, or every date in
-one file) and see which saved boards are not graded yet. With Stripe keys set they can subscribe, receive plan credits automatically
+one file; an unchanged file answers a repeat download with an empty 304), see the newest graded date at
+the top of the page, and see which saved boards are not graded yet. With Stripe keys set they can subscribe, receive plan credits automatically
 from the `invoice.paid` webhook, manage billing and cancel in Stripe's portal, and drop back to
 Free when the subscription ends.
 
@@ -43,7 +44,7 @@ Free when the subscription ends.
 - **Live boards graded** (Nov 4–6; earlier model versions): our Brier 0.2303 / 0.2196 / 0.2144 vs
   market 0.2230 / 0.2202 / 0.2142. Flat-stake return on flagged positive gaps −19.2%, −1.2%, −16.2%.
   Also graded: Oct 31 (1,168 decided lines, none with a market price recorded, so no market Brier). Nov 2's grading
-  found no final games, and Nov 15 is saved but not graded (as of 2026-11-20). `/performance` is the
+  found no final games, and Nov 15 is saved but not graded (as of 2026-11-22). `/performance` is the
   current, complete table.
 - **Candidate model**: fitted blend weight 0 on every stat; its own gaps have lost money on live boards.
 - **Conclusion**: the product sells transparency and speed (margin-free consensus across venues,
@@ -113,6 +114,9 @@ minutes per network; Odds API optional.
       connected in this session was live mode, which was not used)
 - [ ] SMTP provider credentials
 - [ ] Hosting account, domain, `SECRET_KEY`, persistent disk
+- [ ] `SUPPORT_EMAIL` set to an inbox someone reads (until then `security.txt`, the pricing page's Teams
+      card and the "write to us" line in password-change emails stay hidden; the legal Contact page
+      still shows the placeholder)
 
 **Needs external approval**
 - [ ] Stripe written confirmation that the business model is allowed, then live keys

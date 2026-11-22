@@ -44,5 +44,7 @@ if they came from an approved grading run; never hand-edit them.
 
 ## In the daily log
 
-State the newest graded date, whether anything new was graded since yesterday, and, if not,
+State the newest graded date with scored lines (a graded file can score none when no game was
+final, as `2026-11-02.graded.json` did; `/performance` lists such dates as not graded), whether
+anything new was graded since yesterday, and, if not,
 add "grade <dates> when box scores are available" to carry-overs and "Needs owner".
