@@ -183,6 +183,15 @@ def test_pricing_translates_credits_into_usage(client, env):
     assert all(f"costs {db.COSTS[k]}" in credits_answer for k in ("prop", "board", "advisor", "arbitrage"))
 
 
+def test_teams_card_needs_a_real_support_address(client, monkeypatch):
+    monkeypatch.delenv("SUPPORT_EMAIL", raising=False)
+    page = client.get("/pricing").text
+    assert "<h2>Teams</h2>" not in page and "example.com" not in page
+    monkeypatch.setenv("SUPPORT_EMAIL", "help@trueprob.example")
+    page = client.get("/pricing").text
+    assert "<h2>Teams</h2>" in page and 'href="mailto:help@trueprob.example?subject=' in page
+
+
 def test_sitemap_dates_only_the_page_whose_change_date_is_known(client, env, monkeypatch, tmp_path):
     import xml.etree.ElementTree as ET
 

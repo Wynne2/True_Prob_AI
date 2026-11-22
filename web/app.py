@@ -192,7 +192,7 @@ def render(request: Request, name: str, status_code: int = 200, **ctx) -> Respon
         reset=db.next_reset(user) if user else None,
         csrf=csrf_token(request), flash=request.session.pop("flash", None), plans=db.PLANS, costs=db.COSTS, theme_script=THEME_SCRIPT,
         billing_on=billing.enabled(), legal_reviewed=db.flag("legal_reviewed", False), path=request.url.path,
-        support_email=os.environ.get("SUPPORT_EMAIL") or "support@example.com", canonical=base_url(request) + request.url.path,
+        support_email=os.environ.get("SUPPORT_EMAIL"), canonical=base_url(request) + request.url.path,
         feature={k: db.flag(k) for k in ("arbitrage", "advisor", "scan")},
         announcements=db.query("SELECT body FROM announcements WHERE active=1 ORDER BY id DESC LIMIT 3") if user else [],
     )

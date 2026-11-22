@@ -38,13 +38,13 @@
     {% endif %}
   </div>
   {% endfor %}
-  <div class="plan">
+  {% if support_email %}<div class="plan">
     <h2>Teams</h2>
     <p class="price">Custom</p>
     <p class="credits">Shared credits and invoicing</p>
     <ul><li>Several seats</li><li>Annual billing</li></ul>
     <a class="btn ghost" href="mailto:{{ support_email }}?subject=True%20Prob%20AI%20for%20teams">Email us</a>
-  </div>
+  </div>{% endif %}
 </div>
 
 <section class="band">
