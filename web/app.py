@@ -568,6 +568,8 @@ def _send_password_notice(request: Request, user) -> None:
 
 async def register(request: Request):
     if request.method == "GET":
+        if current_user(request):
+            return RedirectResponse("/app", 303)
         return render(request, "auth.html", mode="register", regions=content.REGIONS)
     form = await checked_form(request)
     email, password = str(form.get("email") or "").strip().lower(), str(form.get("password") or "")
@@ -607,6 +609,8 @@ async def login(request: Request):
     if not nxt.startswith("/") or nxt.startswith("//"):
         nxt = "/app"
     if request.method == "GET":
+        if current_user(request):
+            return RedirectResponse(nxt, 303)
         return render(request, "auth.html", mode="login", next=nxt)
     form = await checked_form(request)
     if limited(request, "login", 10, 600):

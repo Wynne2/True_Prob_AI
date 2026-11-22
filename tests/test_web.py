@@ -455,6 +455,17 @@ def test_login_logout_and_open_redirect(client):
     assert ok.headers["location"] == "/app"
 
 
+def test_signed_in_visitors_skip_the_sign_in_and_sign_up_forms(client):
+    register(client, verify=False)
+    assert client.get("/login", follow_redirects=False).headers["location"] == "/app"
+    assert client.get("/login?next=/app/account", follow_redirects=False).headers["location"] == "/app/account"
+    assert client.get("/login?next=//evil.example", follow_redirects=False).headers["location"] == "/app"
+    assert client.get("/register", follow_redirects=False).headers["location"] == "/app"
+    client.post("/logout", data={"csrf": _csrf(client, "/app")})
+    assert client.get("/login", follow_redirects=False).status_code == 200
+    assert client.get("/register", follow_redirects=False).status_code == 200
+
+
 def test_old_password_hashes_still_work_and_are_upgraded_at_sign_in(client, env):
     import hashlib
     import secrets
