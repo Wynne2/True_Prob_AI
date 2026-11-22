@@ -572,11 +572,12 @@ def _send_verification(request: Request, user) -> str:
 
 
 def _send_password_notice(request: Request, user) -> None:
-    support = os.environ.get("SUPPORT_EMAIL") or "support@example.com"
+    support = os.environ.get("SUPPORT_EMAIL")
     mailer.send(user["email"], "Your True Prob AI password was changed",
                 f"The password for your True Prob AI account was changed on {when(time.time())}. "
                 "Other devices signed in to it were signed out.\n\n"
-                f"If this was not you, choose a new password now at {base_url(request)}/forgot and write to {support}.")
+                f"If this was not you, choose a new password now at {base_url(request)}/forgot"
+                + (f" and write to {support}." if support else "."))
 
 
 async def register(request: Request):

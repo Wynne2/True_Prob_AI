@@ -1306,6 +1306,19 @@ def test_owner_is_emailed_when_the_password_is_changed_or_reset(client, env):
     assert mail.count(subject) == 2 and "/forgot" in mail and "third pass" not in mail and "1-800-GAMBLER" in mail
 
 
+def test_password_notice_names_a_support_address_only_when_one_is_set(client, env, monkeypatch):
+    from web import mailer
+
+    monkeypatch.delenv("SUPPORT_EMAIL", raising=False)
+    register(client)
+    post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
+    mail = mailer.OUTBOX.read_text(encoding="utf-8")
+    assert "/forgot." in mail and "write to" not in mail and "example.com" not in mail.replace("ann@example.com", "")
+    monkeypatch.setenv("SUPPORT_EMAIL", "help@trueprob.example")
+    post(client, "/app/account/password", current="brand new pass 2", new="third new pass 3")
+    assert "/forgot and write to help@trueprob.example." in mailer.OUTBOX.read_text(encoding="utf-8")
+
+
 def test_a_new_password_or_signing_out_others_voids_every_other_reset_link(client, env):
     from web import db
 
