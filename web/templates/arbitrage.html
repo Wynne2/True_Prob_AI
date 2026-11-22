@@ -15,10 +15,10 @@
       <th scope="row">{{ r.title }}<small>{{ match(r.title) }}{% if conditional %}; needs your resting order to fill{% endif %}</small>{{ rules(r.urls) }}</th>
       <td><ul class="plain legs">{% for l in r.legs %}<li>{{ l }}</li>{% endfor %}</ul></td>
       <td class="num">{{ '{:,.0f}'.format(r.contracts) }}</td>
-      <td class="num">${{ '{:,.2f}'.format(r.cost) }}</td>
-      <td class="num pos">${{ '{:,.2f}'.format(r.profit) }}</td>
-      <td class="num {{ 'pos' if r.profit_if_slipped > 0 else 'neg' }}">${{ '{:,.2f}'.format(r.profit_if_slipped) }}</td>
-      <td class="num">${{ '{:,.2f}'.format(r.interest or 0) }}</td>
+      <td class="num">{{ r.cost | usd }}</td>
+      <td class="num {{ r.profit | usd_tone }}">{{ r.profit | usd }}</td>
+      <td class="num {{ r.profit_if_slipped | usd_tone }}">{{ r.profit_if_slipped | usd }}</td>
+      <td class="num">{{ r.interest | usd }}</td>
       <td>{{ settles(r) }}</td>
     </tr>
   {% endfor %}

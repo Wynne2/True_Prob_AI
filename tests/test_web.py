@@ -1315,6 +1315,24 @@ def test_arbitrage_shows_both_close_dates_and_flags_reviewed_pairs_with_differen
     assert "Kalshi 2026-11-16" not in page        # same calendar day: one date only
 
 
+def test_arbitrage_dollars_put_the_sign_first_and_colour_only_real_gains_or_losses(client, env):
+    from web import app as webapp, db, jobs
+
+    assert [webapp.usd(v) for v in (1234.5, -0.42, -0.004, 0, None)] == ["$1,234.50", "-$0.42", "$0.00", "$0.00", "$0.00"]
+    assert [webapp.usd_tone(v) for v in (1.0, -0.42, -0.004, 0)] == ["pos", "neg", "", ""]
+    user = register(client)
+    row = lambda slipped: {"title": "A vs B [Kalshi+Polymarket]: A", "legs": ["kalshi: YES", "polymarket: NO"], "contracts": 1500,
+                           "cost": 1400.0, "profit": 3.25, "profit_if_slipped": slipped, "interest": None, "urls": []}
+    jobs.ARB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    jobs.ARB_PATH.write_text(json.dumps({"arbs": [], "near": [row(-0.42), row(0.001)], "maker": [], "scanned_at": time.time(),
+                                         "seconds": 100, "stats": {"kalshi_events": 1, "polymarket_events": 1, "matched_games": 1,
+                                                                   "confirmed_pairs": 0, "candidates": 2}}), encoding="utf-8")
+    db.spend(user["id"], "arbitrage", "2026-11-15")
+    page = client.get("/app/arbitrage").text
+    assert '<td class="num neg">-$0.42</td>' in page and '<td class="num ">$0.00</td>' in page and "$-" not in page
+    assert '<td class="num">$1,400.00</td>' in page and '<td class="num pos">$3.25</td>' in page
+
+
 def test_scan_error_text_stays_off_public_and_customer_pages(client, env, monkeypatch):
     from web import jobs
 

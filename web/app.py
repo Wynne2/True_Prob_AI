@@ -279,9 +279,20 @@ def ret_tone(value) -> str:
     return "" if value is None else gap_tone(value)
 
 
+def usd(value) -> str:
+    """Dollars to the cent with the sign before the $ ("-$0.42", not "$-0.42"); a sum that rounds to nothing is "$0.00"."""
+    cents = round(float(value or 0), 2)
+    return f"{'-' if cents < 0 else ''}${abs(cents):,.2f}"
+
+
+def usd_tone(value) -> str:
+    cents = round(float(value or 0), 2)
+    return "pos" if cents > 0 else "neg" if cents < 0 else ""
+
+
 templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
                              run_status=run_status, gap=gap, gap_tone=gap_tone, ret=ret, ret_tone=ret_tone,
-                             n=lambda v: f"{int(v):,}")
+                             n=lambda v: f"{int(v):,}", usd=usd, usd_tone=usd_tone)
 
 
 # ---------------------------------------------------------------------------
