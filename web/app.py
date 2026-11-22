@@ -266,8 +266,21 @@ def gap_tone(edge) -> str:
     return "pos" if points > 0 else "neg" if points < 0 else ""
 
 
+def ret(value) -> str:
+    """A flat-stake return per $1 as a signed percent; "–" when there is none and a plain 0.0% when it rounds to nothing."""
+    if value is None:
+        return "–"
+    points = round(float(value) * 100, 1)
+    return "0.0%" if points == 0 else f"{points:+.1f}%"
+
+
+def ret_tone(value) -> str:
+    """CSS class for a return: coloured only when there is a non-zero number to show."""
+    return "" if value is None else gap_tone(value)
+
+
 templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
-                             run_status=run_status, gap=gap, gap_tone=gap_tone)
+                             run_status=run_status, gap=gap, gap_tone=gap_tone, ret=ret, ret_tone=ret_tone)
 
 
 # ---------------------------------------------------------------------------

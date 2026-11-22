@@ -230,10 +230,24 @@ def test_performance_totals_pool_every_graded_line_on_the_same_rows(client, monk
     assert t["brier_model"] == pytest.approx((0.25 + 0.09) / 2) and t["brier_market"] == pytest.approx((0.16 + 0.04) / 2)
     assert t["flagged_hit_rate"] == 0.5 and t["flagged_roi"] == 0.0
     page = client.get("/performance").text
-    assert "All 2 dates" in page and "0.1700" in page and "0.1000" in page and "+0.0%" in page
+    assert "All 2 dates" in page and "0.1700" in page and "0.1000" in page and '<td class="num ">0.0%</td>' in page
     assert "only the 2 of 3 lines that had a market price" in page
     monkeypatch.setattr(db, "ROOT", tmp_path / "empty")
     assert webapp._performance()["total"] is None and "All 0 dates" not in client.get("/performance").text
+
+
+def test_a_missing_or_zero_return_is_not_coloured_as_a_gain_or_loss(client, env, monkeypatch, tmp_path):
+    from web import app as webapp, db
+
+    assert [webapp.ret(v) for v in (None, 0.0, -0.0004, 0.123, -0.192)] == ["–", "0.0%", "0.0%", "+12.3%", "-19.2%"]
+    assert [webapp.ret_tone(v) for v in (None, 0.0, -0.0004, 0.123, -0.192)] == ["", "", "", "pos", "neg"]
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    _graded(preds / "2026-11-01.graded.json", [{"model_probability": 0.6, "market_probability": 0.5, "result": "win"}], 1)
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    register(client)
+    for page in (client.get("/performance").text, client.get("/app").text):   # no flagged line, so no return
+        assert '<td class="num ">–</td>' in page and 'class="num pos">–' not in page
 
 
 def test_performance_lists_saved_boards_that_are_not_graded_yet(client, monkeypatch, tmp_path):

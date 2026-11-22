@@ -20,14 +20,14 @@
       <tr><th scope="row">{{ d.date }}</th><td class="num">{{ d.games }}</td><td class="num">{{ '{:,}'.format(d.all.decided or 0) }}</td>
       <td class="num">{{ '%.4f' % d.all.brier_model if d.all.brier_model else '–' }}</td><td class="num">{{ '%.4f' % d.all.brier_market if d.all.brier_market else '–' }}</td>
       <td class="num">{{ '{:,}'.format(d.positive_edge.decided or 0) }}</td><td class="num">{{ d.positive_edge.hit_rate | pct }}</td>
-      <td class="num {{ 'neg' if (d.positive_edge.flat_roi_per_bet or 0) < 0 else 'pos' }}">{{ ('%+.1f%%' % (d.positive_edge.flat_roi_per_bet * 100)) if d.positive_edge.flat_roi_per_bet is not none else '–' }}</td></tr>
+      <td class="num {{ d.positive_edge.flat_roi_per_bet | ret_tone }}">{{ d.positive_edge.flat_roi_per_bet | ret }}</td></tr>
     {% endfor %}
     </tbody>
     {% set t = perf.total %}
     {% if t %}<tfoot><tr><th scope="row">All {{ perf.dates | length }} dates</th><td class="num">{{ t.games }}</td><td class="num">{{ '{:,}'.format(t.decided) }}</td>
       <td class="num">{{ '%.4f' % t.brier_model if t.brier_model is not none else '–' }}</td><td class="num">{{ '%.4f' % t.brier_market if t.brier_market is not none else '–' }}</td>
       <td class="num">{{ '{:,}'.format(t.flagged) }}</td><td class="num">{{ t.flagged_hit_rate | pct }}</td>
-      <td class="num {{ 'neg' if (t.flagged_roi or 0) < 0 else 'pos' }}">{{ ('%+.1f%%' % (t.flagged_roi * 100)) if t.flagged_roi is not none else '–' }}</td></tr></tfoot>{% endif %}
+      <td class="num {{ t.flagged_roi | ret_tone }}">{{ t.flagged_roi | ret }}</td></tr></tfoot>{% endif %}
   </table>
   </div>
   <p>Check our numbers: download every graded line, as saved before tip-off with its result (CSV):
@@ -58,7 +58,7 @@
       <tr><th scope="row">{{ name }}</th><td class="num">{{ '{:,}'.format(s.decided) }}</td>
       <td class="num">{{ '%.4f' % s.brier_model if s.brier_model is not none else '–' }}</td><td class="num">{{ '%.4f' % s.brier_market if s.brier_market is not none else '–' }}</td>
       <td class="num">{{ '{:,}'.format(s.flagged) }}</td><td class="num">{{ s.flagged_hit_rate | pct }}</td>
-      <td class="num {{ 'neg' if (s.flagged_roi or 0) < 0 else 'pos' }}">{{ ('%+.1f%%' % (s.flagged_roi * 100)) if s.flagged_roi is not none else '–' }}</td></tr>
+      <td class="num {{ s.flagged_roi | ret_tone }}">{{ s.flagged_roi | ret }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -102,7 +102,7 @@
   <p>Same lines, three probabilities, lower is better: candidate model {{ sc.brier_same_props.candidate }}, production blend {{ sc.brier_same_props.production }}, no-vig market {{ sc.brier_same_props.market_novig }} ({{ '{:,}'.format(sc.brier_same_props.n) }} lines).</p>
   <table class="data"><thead><tr><th scope="col">Candidate's own gap</th><th scope="col">Lines</th><th scope="col">Hit rate</th><th scope="col">Price implied</th><th scope="col">Flat-stake return</th></tr></thead><tbody>
   {% for name, b in sc.candidate_edge_bets.items() %}{% if b.n %}
-    <tr><td>{{ name }}</td><td class="num">{{ b.n }}</td><td class="num">{{ b.hit_rate | pct }}</td><td class="num">{{ b.avg_implied | pct }}</td><td class="num {{ 'neg' if b.flat_roi_per_bet < 0 else 'pos' }}">{{ '%+.1f%%' % (b.flat_roi_per_bet * 100) }}</td></tr>
+    <tr><td>{{ name }}</td><td class="num">{{ b.n }}</td><td class="num">{{ b.hit_rate | pct }}</td><td class="num">{{ b.avg_implied | pct }}</td><td class="num {{ b.flat_roi_per_bet | ret_tone }}">{{ b.flat_roi_per_bet | ret }}</td></tr>
   {% endif %}{% endfor %}
   </tbody></table>
   <p class="muted">This is why the candidate model's weight is zero on the board today: its own gaps have not paid.</p>
