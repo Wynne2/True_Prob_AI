@@ -176,11 +176,28 @@ def test_pricing_translates_credits_into_usage(client, env):
     page = client.get("/pricing").text
     for key, plan in db.PLANS.items():
         c = plan["credits"]
-        assert (f"Up to {c // db.COSTS['board']} full-day boards, or {c // db.COSTS['advisor']} Advisor reviews, "
-                f"or {c // db.COSTS['prop']} single lines") in page, key
+        assert (f"Up to {c // db.COSTS['board']:,} full-day boards, or {c // db.COSTS['advisor']:,} Advisor reviews, "
+                f"or {c // db.COSTS['prop']:,} single lines") in page, key
     assert "no overage fees" in page and "What happens when I run out of credits?" in page
     credits_answer = dict(content.FAQ)["What are credits?"]
     assert all(f"costs {db.COSTS[k]}" in credits_answer for k in ("prop", "board", "advisor", "arbitrage"))
+
+
+def test_credit_counts_of_a_thousand_or_more_have_a_thousands_separator(client, env):
+    from web import db
+
+    page = client.get("/pricing").text
+    assert "1,000 credits per billing period" in page and "or 1,000 single lines" in page and "1000" not in page
+    assert "1,000 credits each month" in client.get("/").text
+    user = register(client)
+    db.adjust_credits(user["id"], user["id"], 1214, "test top-up")
+    for path in ("/app", "/app/account", "/app/advisor"):
+        text = client.get(path).text
+        assert "1,234" in text and ">1234<" not in text and ">+1214<" not in text, path
+    assert '<td class="num pos">+1,214</td><td class="num">1,234</td>' in client.get("/app/account").text
+    write_board(env)
+    post(client, "/app/prop/p0/unlock")
+    assert "You have 1,233 left." in client.get("/app/prop/p0").text
 
 
 def test_teams_card_needs_a_real_support_address(client, monkeypatch):

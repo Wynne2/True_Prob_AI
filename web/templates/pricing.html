@@ -5,7 +5,7 @@
 <section class="page-head">
   <h1>Plans</h1>
   {% set need = request.query_params.get('need') %}
-  {% if need in costs %}<p class="flash warn">That needs {{ costs[need] }} credits and you have {{ balance or 0 }}. Nothing was charged. Pick a plan to keep going{% if reset %}, or wait until {{ reset[0] | day }}, when your balance becomes {{ reset[1] }}{% else %}, or wait for your credits to reset{% endif %}.</p>{% endif %}
+  {% if need in costs %}<p class="flash warn">That needs {{ costs[need] }} credits and you have {{ (balance or 0) | n }}. Nothing was charged. Pick a plan to keep going{% if reset %}, or wait until {{ reset[0] | day }}, when your balance becomes {{ reset[1] | n }}{% else %}, or wait for your credits to reset{% endif %}.</p>{% endif %}
   <p class="lede">Every plan has every tool. Plans differ only in how many credits you get each period.</p>
 </section>
 <div class="plans">
@@ -13,13 +13,13 @@
   <div class="plan{% if key == 'pro' %} featured{% endif %}">
     <h2>{{ p.name }}</h2>
     <p class="price">{% if p.price %}${{ p.price }}<small>/month</small>{% else %}$0{% endif %}</p>
-    <p class="credits">{{ p.credits }} credits {{ 'every 30 days' if key == 'free' else 'per billing period' }}</p>
+    <p class="credits">{{ p.credits | n }} credits {{ 'every 30 days' if key == 'free' else 'per billing period' }}</p>
     <ul>
-      <li>Up to {{ p.credits // costs.board }} full-day boards, or {{ p.credits // costs.advisor }} Advisor reviews, or {{ p.credits // costs.prop }} single lines</li>
+      <li>Up to {{ (p.credits // costs.board) | n }} full-day boards, or {{ (p.credits // costs.advisor) | n }} Advisor reviews, or {{ (p.credits // costs.prop) | n }} single lines</li>
       {% if p.price %}<li>Works out to about ${{ '%.2f' % (p.price * costs.board / p.credits) }} per full-day board{% if not loop.first %}{% set prev = (plans.values() | list)[loop.index0 - 1] %}{% if prev.price %}, {{ '%.0f' % (100 - 100 * (p.price / p.credits) / (prev.price / prev.credits)) }}% less than on {{ prev.name }}{% endif %}{% endif %}</li>{% endif %}
       {% if key == 'free' %}<li>Try every feature, no card needed</li>
-      {% elif key == 'pro' %}{% set month = 30 * costs.board %}<li>A full board every day of a 30-day month uses {{ month }}, leaving {{ p.credits - month }}</li>
-      {% else %}{% set month = 30 * (costs.board + costs.arbitrage + costs.advisor) %}<li>Board, arbitrage and one Advisor review every day uses {{ month }}, leaving {{ p.credits - month }}</li>{% endif %}
+      {% elif key == 'pro' %}{% set month = 30 * costs.board %}<li>A full board every day of a 30-day month uses {{ month }}, leaving {{ (p.credits - month) | n }}</li>
+      {% else %}{% set month = 30 * (costs.board + costs.arbitrage + costs.advisor) %}<li>Board, arbitrage and one Advisor review every day uses {{ month }}, leaving {{ (p.credits - month) | n }}</li>{% endif %}
     </ul>
     {% if key == 'free' %}
       {% if not user %}<a class="btn ghost" href="/register">Create free account</a>{% else %}<p class="muted">Included with every account</p>{% endif %}

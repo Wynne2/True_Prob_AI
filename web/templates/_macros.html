@@ -2,8 +2,8 @@
 
 {# Next to a paid button: the balance, or the shortfall and what to do about it before anyone clicks. #}
 {% macro afford(kind, costs, balance, reset=none, extra="") %}
-{% if balance < costs[kind] %}<small class="short">This needs {{ costs[kind] }} credit{{ 's' if costs[kind] != 1 }} and you have {{ balance }}. <a href="/pricing?need={{ kind }}">See plans</a>{% if reset %} or wait until {{ reset[0] | day }}, when your balance becomes {{ reset[1] }}{% endif %}.</small>
-{% else %}<small>You have {{ balance }}.{{ ' ' ~ extra if extra }}</small>{% endif %}
+{% if balance < costs[kind] %}<small class="short">This needs {{ costs[kind] }} credit{{ 's' if costs[kind] != 1 }} and you have {{ balance | n }}. <a href="/pricing?need={{ kind }}">See plans</a>{% if reset %} or wait until {{ reset[0] | day }}, when your balance becomes {{ reset[1] | n }}{% endif %}.</small>
+{% else %}<small>You have {{ balance | n }}.{{ ' ' ~ extra if extra }}</small>{% endif %}
 {% endmacro %}
 
 {# The probability rail. Default scale 0-100%; zoom=True fits a window around the values (labelled ticks). #}
@@ -53,10 +53,10 @@
     {% if user.is_admin %}<a href="/admin" {% if path.startswith('/admin') %}aria-current="page"{% endif %}>Admin</a>{% endif %}
   </nav>
   <div class="wallet">
-    <p class="num">{{ balance }}</p>
+    <p class="num">{{ balance | n }}</p>
     <p>credits left on {{ {'free': 'Free', 'pro': 'Pro', 'power': 'Power'}[plan] }}</p>
     {% if costs and balance < costs.board %}<p class="low">{% if balance <= 0 %}Out of credits. Nothing is charged automatically.{% else %}Running low: enough for {{ balance // costs.prop }} single line{{ 's' if balance // costs.prop != 1 }}, not a full board ({{ costs.board }}).{% endif %}</p>{% endif %}
-    {% if reset %}<p class="renews">Back to {{ reset[1] }} on {{ reset[0] | day }}. Unused credits do not roll over.</p>{% endif %}
+    {% if reset %}<p class="renews">Back to {{ reset[1] | n }} on {{ reset[0] | day }}. Unused credits do not roll over.</p>{% endif %}
     {% if plan == 'free' %}<a class="btn small" href="/pricing">See plans</a>{% endif %}
   </div>
   <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Sign out</button></form>

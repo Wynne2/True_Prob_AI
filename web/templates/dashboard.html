@@ -44,9 +44,9 @@
   {% endif %}
   <section class="panel">
     <h2>Credits</h2>
-    <p class="big">{{ balance }}</p>
+    <p class="big">{{ balance | n }}</p>
     <p>left on the {{ plans[plan].name }} plan.
-    {% if reset %}Your balance becomes {{ reset[1] }} on {{ reset[0] | day }}{% if plan == 'free' %} (on your first visit from that day){% endif %}.{% endif %}</p>
+    {% if reset %}Your balance becomes {{ reset[1] | n }} on {{ reset[0] | day }}{% if plan == 'free' %} (on your first visit from that day){% endif %}.{% endif %}</p>
     <a class="btn small ghost" href="/app/account">Usage history</a>
   </section>
 </div>
@@ -71,7 +71,7 @@
     <h2>Recent activity</h2>
     {% if history %}
     <table class="data compact"><tbody>
-      {% for h in history %}<tr><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '%+d' % h.delta }}</td><td class="muted">{{ h.created_at | ago }}</td></tr>{% endfor %}
+      {% for h in history %}<tr><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '{:+,}'.format(h.delta) }}</td><td class="muted">{{ h.created_at | ago }}</td></tr>{% endfor %}
     </tbody></table>
     {% endif %}
     {% if runs %}<h3>AI Advisor</h3><ul class="plain">{% for r in runs %}<li><a href="/app/advisor/{{ r.id }}">Analysis for {{ r.slate }}</a> <span class="muted">{{ r.status | run_status }}, {{ r.created_at | ago }}</span></li>{% endfor %}</ul>{% endif %}

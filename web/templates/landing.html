@@ -68,7 +68,7 @@
     <div class="plan{% if key == 'pro' %} featured{% endif %}">
       <h3>{{ p.name }}</h3>
       <p class="price">{% if p.price %}${{ p.price }}<small>/month</small>{% else %}Free{% endif %}</p>
-      <p>{{ p.credits }} credits {{ 'every 30 days' if key == 'free' else 'each month' }}</p>
+      <p>{{ p.credits | n }} credits {{ 'every 30 days' if key == 'free' else 'each month' }}</p>
     </div>
     {% endfor %}
   </div>

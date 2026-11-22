@@ -23,8 +23,8 @@
   </section>
   <section class="panel">
     <h2>Credits</h2>
-    <p class="big">{{ balance }}</p>
-    {% if reset %}<p><strong>Your balance becomes {{ reset[1] }} on {{ reset[0] | day }}</strong>{% if plan == 'free' %} (on your first visit from that day){% endif %}.</p>{% endif %}
+    <p class="big">{{ balance | n }}</p>
+    {% if reset %}<p><strong>Your balance becomes {{ reset[1] | n }} on {{ reset[0] | day }}</strong>{% if plan == 'free' %} (on your first visit from that day){% endif %}.</p>{% endif %}
     {% set names = {'prop': 'Single lines opened', 'board': 'Full boards opened', 'advisor': 'AI Advisor analyses', 'arbitrage': 'Arbitrage terminal days'} %}
     {% if usage %}<h3>Used since {{ user.credits_reset_at | day }}</h3>
     <ul class="plain">{% for k, u in usage.items() %}<li>{{ names[k] }}: {{ u.times }}, {{ u.spent }} credit{{ 's' if u.spent != 1 }}{% if u.refunded %} ({{ u.refunded }} returned){% endif %}</li>{% endfor %}</ul>
@@ -39,7 +39,7 @@
   <p><a href="/app/account/history.csv" download>Download every charge, refund and reset (CSV)</a>{% if history | length >= 100 %}. The table shows the latest 100.{% endif %}</p>
   <div class="table-scroll" role="region" aria-label="Usage history" tabindex="0">
   <table class="data"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">Credits</th><th scope="col">Balance after</th></tr></thead><tbody>
-    {% for h, after in history %}<tr><td>{{ h.created_at | when }}</td><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '%+d' % h.delta }}</td><td class="num">{{ after }}</td></tr>{% endfor %}
+    {% for h, after in history %}<tr><td>{{ h.created_at | when }}</td><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '{:+,}'.format(h.delta) }}</td><td class="num">{{ after | n }}</td></tr>{% endfor %}
   </tbody></table>
   </div>
   {% else %}<p>No activity yet.</p>{% endif %}

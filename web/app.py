@@ -176,7 +176,7 @@ def receipt(request: Request, user, result: str, kind: str, what: str) -> None:
     if result == "ok":
         n = db.COSTS[kind]
         flash(request, f"Charged {n} credit{'s' if n != 1 else ''} for {what}. "
-                       f"You have {db.balance(user['id'])} left.")
+                       f"You have {db.balance(user['id']):,} left.")
     elif result == "already":
         flash(request, f"You already opened {what}. Nothing was charged.")
 
@@ -280,7 +280,8 @@ def ret_tone(value) -> str:
 
 
 templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
-                             run_status=run_status, gap=gap, gap_tone=gap_tone, ret=ret, ret_tone=ret_tone)
+                             run_status=run_status, gap=gap, gap_tone=gap_tone, ret=ret, ret_tone=ret_tone,
+                             n=lambda v: f"{int(v):,}")
 
 
 # ---------------------------------------------------------------------------
