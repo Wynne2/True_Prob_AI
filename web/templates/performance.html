@@ -7,6 +7,7 @@
 <section class="page-head">
   <h1>Model performance</h1>
   <p class="lede">Every board we publish is saved before tip-off and graded against box scores the next day. Nothing is left out. The short version: the no-vig market consensus has been as accurate as anything we have tested, so the market leads and our model only moves it where it has earned that in testing.</p>
+  {% if perf.dates %}{% set n = perf.pending | length %}<p class="muted">Newest graded board: <strong>{{ perf.dates[-1].date }}</strong>.{% if n %} <a href="#pending">{{ n }} saved board{{ 's' if n != 1 }}</a> {{ 'are' if n != 1 else 'is' }} not in the numbers yet.{% endif %}</p>{% endif %}
 </section>
 
 <section class="band">
@@ -40,7 +41,7 @@
   <p class="muted">Brier score is the mean squared error of a probability; lower is better, and 0.25 is what always guessing 50% scores. "Flat-stake return" is the average profit per $1 if every flagged positive gap had been bought at the listed price. Lines for one player and game are correlated, so a single night is a small sample. These early boards used earlier model versions, before the fixes that anchor every probability to the market.</p>
   {% else %}<p>No graded boards yet.</p>{% endif %}
   {% if perf.pending %}
-  <h3>Saved, not graded yet</h3>
+  <h3 id="pending">Saved, not graded yet</h3>
   <ul class="plain">{% for p in perf.pending %}<li>{{ p.date }}{% if p.no_finals %}: graded, but no game had a final box score, so no line could be scored{% elif p.lines is not none %}: {{ '{:,}'.format(p.lines) }} lines saved before tip-off{% endif %}</li>{% endfor %}</ul>
   <p class="muted">These boards were saved before their games started and are not in any number above. Each one is added, wins and losses alike, once its lines are graded against the box scores.</p>
   {% endif %}

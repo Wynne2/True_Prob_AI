@@ -270,6 +270,25 @@ def test_performance_lists_saved_boards_that_are_not_graded_yet(client, monkeypa
     assert webapp._performance()["pending"] == [] and "Saved, not graded yet" not in client.get("/performance").text
 
 
+def test_performance_says_how_fresh_the_record_is_at_the_top(client, monkeypatch, tmp_path):
+    from web import db
+
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    for d in ("2026-11-01", "2026-11-04"):
+        _graded(preds / f"{d}.graded.json", [{"model_probability": 0.5, "market_probability": 0.5, "result": "win"}], 1)
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    page = client.get("/performance").text
+    assert "Newest graded board: <strong>2026-11-04</strong>." in page and 'href="#pending"' not in page
+    (preds / "2026-11-05.json").write_text("[{}]", encoding="utf-8")
+    page = client.get("/performance").text
+    assert '<a href="#pending">1 saved board</a> is not in the numbers yet.' in page and 'id="pending"' in page
+    (preds / "2026-11-06.json").write_text("[{}]", encoding="utf-8")
+    assert '<a href="#pending">2 saved boards</a> are not in the numbers yet.' in client.get("/performance").text
+    monkeypatch.setattr(db, "ROOT", tmp_path / "empty")
+    assert "Newest graded board" not in client.get("/performance").text
+
+
 def test_each_graded_date_downloads_every_line_unedited(client):
     import csv as _csv
 
