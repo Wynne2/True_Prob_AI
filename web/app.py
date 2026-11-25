@@ -1307,6 +1307,9 @@ class SecurityHeaders(BaseHTTPMiddleware):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         if request.url.path.startswith(("/app", "/admin", "/login", "/register", "/forgot", "/reset", "/verify", "/billing")):
             response.headers["Cache-Control"] = "no-store"
+        elif request.url.path.startswith("/static/"):
+            # No content hash in the URL, so one day — not a year — and revalidate after that.
+            response.headers["Cache-Control"] = "public, max-age=86400"
         return response
 
 

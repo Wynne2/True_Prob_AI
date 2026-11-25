@@ -1744,6 +1744,9 @@ def test_sign_in_and_recovery_pages_are_never_cached(client):
     assert r.status_code == 400 and r.headers["Cache-Control"] == "no-store"
     for path in ("/", "/pricing", "/performance", "/legal/terms"):          # public pages stay cacheable
         assert "Cache-Control" not in client.get(path).headers, path
+    static = client.get("/static/app.css").headers["Cache-Control"]
+    assert static == "public, max-age=86400"
+    assert client.get("/static/app.js").headers["Cache-Control"] == "public, max-age=86400"
 
 
 def test_account_lists_recent_sign_ins_and_security_changes_for_this_user_only(client):
