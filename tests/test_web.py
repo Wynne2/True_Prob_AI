@@ -131,6 +131,15 @@ def test_public_pages_render_with_disclosures(client):
     assert client.get("/legal/nope").status_code == 404
 
 
+def test_missing_pages_offer_ways_back_into_the_product(client):
+    page = client.get("/nope").text
+    assert "Page not found" in page
+    assert 'href="/performance"' in page and 'href="/pricing"' in page and 'href="/login">Sign in</a>' in page
+    register(client, verify=False)
+    signed = client.get("/nope").text
+    assert 'href="/app">Open the app</a>' in signed and 'href="/login">Sign in</a>' not in signed
+
+
 def test_signed_in_home_page_opens_the_app_instead_of_sign_up(client):
     register(client)
     home = client.get("/").text

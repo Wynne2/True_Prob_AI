@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}: True Prob AI{% endblock %}
 {% block content %}
-<section class="auth"><h1>{{ title }}</h1><p>{{ message }}</p><p><a class="btn ghost" href="/">Go to the home page</a></p></section>
+<section class="auth">
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  <p class="cta-row">
+    <a class="btn ghost" href="/">Home</a>
+    <a class="btn ghost" href="/performance">Performance</a>
+    <a class="btn ghost" href="/pricing">Pricing</a>
+    {% if user %}<a class="btn" href="/app">Open the app</a>
+    {% else %}<a class="btn" href="/login">Sign in</a>{% endif %}
+  </p>
+</section>
 {% endblock %}
