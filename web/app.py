@@ -562,7 +562,9 @@ async def healthz(request: Request):
 
 
 async def robots(request: Request):
+    # /reset and /verify are capability-URL paths (token in the query). List the path, not tokens.
     return PlainTextResponse(f"User-agent: *\nDisallow: /app\nDisallow: /admin\nDisallow: /billing\n"
+                             f"Disallow: /reset\nDisallow: /verify\n"
                              f"Sitemap: {base_url(request)}/sitemap.xml\n")
 
 
