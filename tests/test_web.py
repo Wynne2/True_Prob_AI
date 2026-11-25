@@ -575,6 +575,24 @@ def test_signing_out_tells_the_browser_to_drop_cached_pages(client):
     assert client.get("/app", follow_redirects=False).status_code == 303
 
 
+def test_idle_session_ends_after_a_week_without_activity(client, monkeypatch):
+    """Cookie max-age is 14 days; a week of silence ends the session on the server."""
+    from web import app as webapp
+
+    register(client, verify=False)
+    clock = {"now": time.time()}
+    monkeypatch.setattr(webapp.time, "time", lambda: clock["now"])
+    assert client.get("/app").status_code == 200
+    clock["now"] += webapp.IDLE_SECONDS - 60
+    assert client.get("/app").status_code == 200  # still inside the idle window; seen refreshes
+    clock["now"] += webapp.IDLE_SECONDS + 60
+    gone = client.get("/app", follow_redirects=False)
+    assert gone.status_code == 303 and gone.headers["location"].startswith("/login")
+    login = client.get("/login")
+    assert login.status_code == 200 and "week without activity" in login.text
+    assert client.get("/app", follow_redirects=False).status_code == 303  # still signed out
+
+
 def test_signed_in_visitors_skip_the_sign_in_and_sign_up_forms(client):
     register(client, verify=False)
     assert client.get("/login", follow_redirects=False).headers["location"] == "/app"

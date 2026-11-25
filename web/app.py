@@ -87,11 +87,23 @@ def base_url(request: Request) -> str:
 # Request helpers: user, CSRF, rate limits, rendering
 # ---------------------------------------------------------------------------
 
+# Absolute cookie life is 14 days (SessionMiddleware). Idle ends the session sooner so a
+# forgotten tab on a shared machine does not stay signed in for the full two weeks.
+IDLE_SECONDS = 7 * 86400
+
+
 def current_user(request: Request):
     uid = request.session.get("uid")
     user = db.get_user(uid) if uid else None
     if user is None or user["session_version"] != request.session.get("sv"):
         return None
+    now = time.time()
+    seen = request.session.get("seen")
+    if seen is not None and now - float(seen) > IDLE_SECONDS:
+        request.session.clear()
+        request.session["flash"] = ["warn", "Your session ended after a week without activity. Sign in again."]
+        return None
+    request.session["seen"] = now
     db.refresh_free_credits(user)
     return user
 
@@ -591,7 +603,8 @@ async def sitemap(request: Request):
 def _sign_in(request: Request, user) -> None:
     csrf = request.session.get("csrf")
     request.session.clear()  # new session on login (no fixation)
-    request.session.update(uid=user["id"], sv=user["session_version"], csrf=csrf or secrets.token_urlsafe(24))
+    request.session.update(uid=user["id"], sv=user["session_version"], csrf=csrf or secrets.token_urlsafe(24),
+                           seen=time.time())
 
 
 def _send_verification(request: Request, user) -> str:
