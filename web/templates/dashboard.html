@@ -55,6 +55,7 @@
   <section class="panel">
     <h2>Watchlist</h2>
     {% if watch %}
+      <p><a href="/app/watchlist.csv" download>Download your watchlist (CSV)</a></p>
       <ul class="chips">{% for w in watch %}<li>{{ w.label }}
         <form method="post" action="/app/watch" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="player" value="{{ w.label }}"><input type="hidden" name="remove" value="1"><button class="link">Remove<span class="visually-hidden"> {{ w.label }} from your watchlist</span></button></form></li>{% endfor %}</ul>
       {% if watch_hits %}

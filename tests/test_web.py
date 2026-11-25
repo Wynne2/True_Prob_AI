@@ -1558,6 +1558,22 @@ def test_watchlist_says_what_happened_and_overview_shows_every_watched_player(cl
     assert "Stopped watching Player 2." in client.get("/app").text
 
 
+def test_watchlist_downloads_as_csv_of_player_names(client, env):
+    assert client.get("/app/watchlist.csv", follow_redirects=False).status_code == 303
+    register(client)
+    write_board(env)
+    post(client, "/app/watch", player="Player 1")
+    post(client, "/app/watch", player="=SUM(A1)")  # formula-looking name must be escaped
+    assert 'href="/app/watchlist.csv"' in client.get("/app").text
+    r = client.get("/app/watchlist.csv")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    assert r.content.startswith(b"\xef\xbb\xbf")  # UTF-8 BOM for Excel
+    body = r.content.decode("utf-8-sig")
+    assert body.splitlines()[0] == "Player,Added (UTC)"
+    assert "Player 1" in body and "'=SUM(A1)" in body
+    assert "Kalshi" not in body and "odds" not in body.lower()  # names only; not board prices
+
+
 def test_overview_says_when_watched_lines_are_cut_short(client, env):
     register(client)
     rows = write_board(env)["rows"]

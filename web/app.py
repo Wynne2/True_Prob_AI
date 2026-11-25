@@ -1061,6 +1061,20 @@ async def history_csv(request: Request):
                     headers={"Content-Disposition": 'attachment; filename="true-prob-ai-credits.csv"'})
 
 
+async def watchlist_csv(request: Request):
+    """The customer's watched player names only — not today's board prices (provider permission open)."""
+    user, redirect = need_user(request)
+    if redirect:
+        return redirect
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Player", "Added (UTC)"])
+    for w in db.query("SELECT label, created_at FROM watchlist WHERE user_id=? ORDER BY created_at", (user["id"],)):
+        writer.writerow([csv_cell(w["label"]), time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(w["created_at"]))])
+    return Response("\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="true-prob-ai-watchlist.csv"'})
+
+
 def iso(ts) -> str | None:
     return None if ts is None else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(float(ts)))
 
@@ -1336,6 +1350,7 @@ routes = [
     P("/app/advisor", advisor), P("/app/advisor/run", advisor_run, ("POST",)), P("/app/advisor/{run_id:int}", advisor_view),
     P("/app/account", account), P("/app/account/password", change_password, ("POST",)),
     P("/app/account/sessions", sign_out_others, ("POST",)), P("/app/account/history.csv", history_csv),
+    P("/app/watchlist.csv", watchlist_csv),
     P("/app/account/data.json", data_export),
     P("/app/account/delete", delete_account, ("POST",)),
     P("/billing/checkout", checkout, ("POST",)), P("/billing/portal", portal, ("POST",)),
