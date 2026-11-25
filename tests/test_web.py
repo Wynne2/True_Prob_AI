@@ -466,6 +466,8 @@ def test_sign_up_form_has_a_password_toggle_and_keeps_answers_after_an_error(cli
                                        "region": "New Jersey", "age": "yes", "terms": "yes"})
     assert r.status_code == 400 and "<option selected>New Jersey</option>" in r.text and 'value="kim@example.com"' in r.text
     assert "autocomplete=\"current-password\"" in client.get("/login").text
+    assert 'autocomplete="username"' in client.get("/login").text  # password managers; type stays email
+    assert 'autocomplete="email"' in client.get("/register").text and 'autocomplete="username"' not in client.get("/register").text
 
 
 def test_auth_errors_are_tied_to_the_fields_that_failed(client):
