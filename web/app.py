@@ -1262,6 +1262,7 @@ class SecurityHeaders(BaseHTTPMiddleware):
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
             "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Resource-Policy": "same-origin",
         })
         if request.url.path in ("/reset", "/verify"):  # the address carries a one-time token
             response.headers["Referrer-Policy"] = "no-referrer"

@@ -1633,7 +1633,9 @@ def test_warning_flashes_are_announced_as_alerts(client):
 
 def test_pages_are_isolated_from_cross_origin_windows(client):
     for path in ("/", "/login", "/performance", "/nope"):
-        assert client.get(path).headers["Cross-Origin-Opener-Policy"] == "same-origin", path
+        h = client.get(path).headers
+        assert h["Cross-Origin-Opener-Policy"] == "same-origin", path
+        assert h["Cross-Origin-Resource-Policy"] == "same-origin", path
 
 
 def test_pages_with_a_token_in_the_address_send_no_referrer(client):
