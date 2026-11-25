@@ -1715,9 +1715,15 @@ def test_pages_are_isolated_from_cross_origin_windows(client):
 
 
 def test_pages_with_a_token_in_the_address_send_no_referrer(client):
-    assert client.get("/reset?token=abc").headers["Referrer-Policy"] == "no-referrer"
-    assert client.get("/verify?token=abc", follow_redirects=False).headers["Referrer-Policy"] == "no-referrer"
+    reset = client.get("/reset?token=abc")
+    assert reset.headers["Referrer-Policy"] == "no-referrer"
+    assert reset.headers["X-Robots-Tag"] == "noindex"
+    verify = client.get("/verify?token=abc", follow_redirects=False)
+    assert verify.headers["Referrer-Policy"] == "no-referrer"
+    assert verify.headers["X-Robots-Tag"] == "noindex"
     assert client.get("/login").headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "X-Robots-Tag" not in client.get("/login").headers
+    assert "X-Robots-Tag" not in client.get("/").headers
 
 
 def test_security_txt_follows_rfc_9116_and_needs_a_real_contact(client, monkeypatch):

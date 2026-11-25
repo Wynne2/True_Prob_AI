@@ -1303,6 +1303,7 @@ class SecurityHeaders(BaseHTTPMiddleware):
         })
         if request.url.path in ("/reset", "/verify"):  # the address carries a one-time token
             response.headers["Referrer-Policy"] = "no-referrer"
+            response.headers["X-Robots-Tag"] = "noindex"  # belt with the meta tag; crawlers that skip HTML still see it
         if PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         if request.url.path.startswith(("/app", "/admin", "/login", "/register", "/forgot", "/reset", "/verify", "/billing")):
