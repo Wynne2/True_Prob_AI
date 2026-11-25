@@ -717,6 +717,8 @@ async def resend(request: Request):
 
 async def forgot(request: Request):
     if request.method == "GET":
+        if current_user(request):
+            return RedirectResponse("/app", 303)
         return render(request, "auth.html", mode="forgot")
     form = await checked_form(request)
     if limited(request, "forgot", 5, 3600):
