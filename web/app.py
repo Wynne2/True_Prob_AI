@@ -664,15 +664,20 @@ async def register(request: Request):
     return RedirectResponse("/app", 303)
 
 
+def _safe_next(raw: str | None) -> str:
+    nxt = (raw or "/app").strip() or "/app"
+    return nxt if nxt.startswith("/") and not nxt.startswith("//") else "/app"
+
+
 async def login(request: Request):
-    nxt = request.query_params.get("next") or "/app"
-    if not nxt.startswith("/") or nxt.startswith("//"):
-        nxt = "/app"
     if request.method == "GET":
+        nxt = _safe_next(request.query_params.get("next"))
         if current_user(request):
             return RedirectResponse(nxt, 303)
         return render(request, "auth.html", mode="login", next=nxt)
     form = await checked_form(request)
+    # Prefer the hidden field so a POST to /login (no query) still returns to the right page.
+    nxt = _safe_next(str(form.get("next") or "") or request.query_params.get("next"))
     if limited(request, "login", 10, 600):
         raise too_many("Too many sign-in attempts. Wait ten minutes and try again.", 600)
     email = str(form.get("email") or "").strip().lower()

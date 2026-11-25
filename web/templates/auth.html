@@ -9,8 +9,9 @@
     <p>If an account uses that address, a reset link is on its way. It works once and expires in an hour.</p>
     {% if dev_link %}<p class="flash note">Development mode, no mail server: <a href="{{ dev_link }}">open the reset link</a></p>{% endif %}
   {% else %}
-  <form method="post" class="stack">
+  <form method="post" class="stack"{% if mode == 'login' %} action="/login"{% endif %}>
     <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if mode == 'login' %}<input type="hidden" name="next" value="{{ next or '/app' }}">{% endif %}
     {% if mode in ('register', 'login', 'forgot') %}
     <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="{{ 'username' if mode == 'login' else 'email' }}" autocapitalize="none" spellcheck="false" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}></label>
     {% endif %}

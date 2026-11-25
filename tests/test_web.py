@@ -592,6 +592,22 @@ def test_login_logout_and_open_redirect(client):
     assert ok.headers["location"] == "/app"
 
 
+def test_login_form_keeps_next_in_a_hidden_field(client):
+    register(client, verify=False)
+    client.post("/logout", data={"csrf": _csrf(client, "/app")})
+    form = client.get("/login?next=/app/account").text
+    assert 'action="/login"' in form
+    assert 'name="next" value="/app/account"' in form
+    # POST to /login with no query still honours the hidden field; open redirects stay blocked.
+    ok = client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "ann@example.com",
+                                     "password": "correct horse 1", "next": "/app/explorer"}, follow_redirects=False)
+    assert ok.headers["location"] == "/app/explorer"
+    client.post("/logout", data={"csrf": _csrf(client, "/app")})
+    blocked = client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "ann@example.com",
+                                          "password": "correct horse 1", "next": "//evil.example"}, follow_redirects=False)
+    assert blocked.headers["location"] == "/app"
+
+
 def test_signing_out_tells_the_browser_to_drop_cached_pages(client):
     register(client, verify=False)
     r = client.post("/logout", data={"csrf": _csrf(client, "/app")}, follow_redirects=False)
