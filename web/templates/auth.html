@@ -4,7 +4,7 @@
 {% block content %}
 <section class="auth">
   <h1>{{ heading }}</h1>
-  {% if error %}<p class="flash warn" role="alert">{{ error }}</p>{% endif %}
+  {% if error %}<p id="form-error" class="flash warn" role="alert">{{ error }}</p>{% endif %}
   {% if mode == 'forgot' and sent %}
     <p>If an account uses that address, a reset link is on its way. It works once and expires in an hour.</p>
     {% if dev_link %}<p class="flash note">Development mode, no mail server: <a href="{{ dev_link }}">open the reset link</a></p>{% endif %}
@@ -12,13 +12,14 @@
   <form method="post" class="stack">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     {% if mode in ('register', 'login', 'forgot') %}
-    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="email" autocapitalize="none" spellcheck="false" required></label>
+    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="email" autocapitalize="none" spellcheck="false" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}></label>
     {% endif %}
     {% if mode in ('register', 'login', 'reset') %}
+    {% set pw_desc = ((['pw-rule'] if mode != 'login' else []) + (['form-error'] if error else [])) | join(' ') %}
     <div class="pw">
       <label for="pw">{{ 'New password' if mode == 'reset' else 'Password' }}</label>
       <div class="pw-row">
-        <input id="pw" type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required{% if mode != 'login' %} aria-describedby="pw-rule"{% endif %}>
+        <input id="pw" type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required{% if pw_desc %} aria-describedby="{{ pw_desc }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}>
         <button type="button" class="btn ghost small" data-reveal="pw" aria-controls="pw" aria-pressed="false" hidden>Show</button>
       </div>
       {% if mode != 'login' %}<small id="pw-rule">At least 10 characters, and not a common password, your email or our name. Three or four unrelated words work well.</small>{% endif %}
@@ -28,7 +29,7 @@
     <div class="pw">
       <label for="pw2">Confirm new password</label>
       <div class="pw-row">
-        <input id="pw2" type="password" name="password2" minlength="10" autocomplete="new-password" required>
+        <input id="pw2" type="password" name="password2" minlength="10" autocomplete="new-password" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}>
         <button type="button" class="btn ghost small" data-reveal="pw2" aria-controls="pw2" aria-pressed="false" hidden>Show</button>
       </div>
     </div>

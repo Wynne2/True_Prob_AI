@@ -468,6 +468,18 @@ def test_sign_up_form_has_a_password_toggle_and_keeps_answers_after_an_error(cli
     assert "autocomplete=\"current-password\"" in client.get("/login").text
 
 
+def test_auth_errors_are_tied_to_the_fields_that_failed(client):
+    bad = client.post("/login", data={"csrf": _csrf(client, "/login"), "email": "nobody@example.com", "password": "wrong guess"})
+    assert bad.status_code == 400
+    assert 'id="form-error"' in bad.text and 'role="alert"' in bad.text
+    assert re.search(r'name="email"[^>]*aria-invalid="true"[^>]*aria-describedby="form-error"', bad.text)
+    assert re.search(r'id="pw"[^>]*aria-describedby="form-error"[^>]*aria-invalid="true"', bad.text)
+    reg = client.post("/register", data={"csrf": _csrf(client), "email": "kim@example.com", "password": "short",
+                                         "region": "New Jersey", "age": "yes", "terms": "yes"})
+    assert 'aria-describedby="pw-rule form-error"' in reg.text and 'aria-invalid="true"' in reg.text
+    assert 'aria-invalid' not in client.get("/login").text  # clean form is not marked invalid
+
+
 def test_blocked_region_cannot_register(client, monkeypatch):
     monkeypatch.setenv("BLOCKED_REGIONS", "Washington")
     r = client.post("/register", data={"csrf": _csrf(client), "email": "w@example.com", "password": "long enough 1",
