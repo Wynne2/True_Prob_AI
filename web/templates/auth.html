@@ -24,7 +24,16 @@
       {% if mode != 'login' %}<small id="pw-rule">At least 10 characters, and not a common password, your email or our name. Three or four unrelated words work well.</small>{% endif %}
     </div>
     {% endif %}
-    {% if mode == 'reset' %}<input type="hidden" name="token" value="{{ token }}">{% endif %}
+    {% if mode == 'reset' %}
+    <div class="pw">
+      <label for="pw2">Confirm new password</label>
+      <div class="pw-row">
+        <input id="pw2" type="password" name="password2" minlength="10" autocomplete="new-password" required>
+        <button type="button" class="btn ghost small" data-reveal="pw2" aria-controls="pw2" aria-pressed="false" hidden>Show</button>
+      </div>
+    </div>
+    <input type="hidden" name="token" value="{{ token }}">
+    {% endif %}
     {% if mode == 'register' %}
     <label>Where you live
       <select name="region" required><option value="">Choose one</option>{% for r in regions %}<option{% if r == region %} selected{% endif %}>{{ r }}</option>{% endfor %}</select>

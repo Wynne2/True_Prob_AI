@@ -52,6 +52,7 @@
     <form method="post" action="/app/account/password" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
       <label>Current password<input type="password" name="current" autocomplete="current-password" required></label>
       <label>New password<input type="password" name="new" minlength="10" autocomplete="new-password" required><small>At least 10 characters, not a common password or your email. Changing it signs out every other device.</small></label>
+      <label>Confirm new password<input type="password" name="new2" minlength="10" autocomplete="new-password" required></label>
       <button class="btn small ghost">Change password</button>
     </form>
     <h3>Signed in somewhere else?</h3>

@@ -741,7 +741,9 @@ async def reset(request: Request):
     if request.method == "GET":
         return render(request, "auth.html", mode="reset", token=request.query_params.get("token", ""))
     form = await checked_form(request)
-    password, token = str(form.get("password") or ""), str(form.get("token") or "")
+    password, password2, token = str(form.get("password") or ""), str(form.get("password2") or ""), str(form.get("token") or "")
+    if password != password2:
+        return render(request, "auth.html", 400, mode="reset", token=token, error="Those two passwords do not match.")
     if weak := passwords.problem(password):
         return render(request, "auth.html", 400, mode="reset", token=token, error=weak)
     uid = db.use_token(token, "reset")
@@ -1080,9 +1082,11 @@ async def change_password(request: Request):
     user, redirect = need_user(request)
     if redirect:
         return redirect
-    new = str(form.get("new") or "")
+    new, new2 = str(form.get("new") or ""), str(form.get("new2") or "")
     if not _reauth(user, str(form.get("current") or "")):
         flash(request, "Your current password is not correct.", "warn")
+    elif new != new2:
+        flash(request, "Those two passwords do not match.", "warn")
     elif weak := passwords.problem(new, user["email"]):
         flash(request, weak, "warn")
     else:
