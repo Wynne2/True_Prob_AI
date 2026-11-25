@@ -1616,6 +1616,17 @@ def test_skip_link_target_can_receive_keyboard_focus(client):
     assert 'id="main" class="work" tabindex="-1"' in client.get("/app").text
 
 
+def test_warning_flashes_are_announced_as_alerts(client):
+    register(client, verify=False)
+    app = client.get("/app").text
+    assert 'class="flash warn" role="alert"' in app and "Confirm your email" in app
+    post(client, "/app/account/password", current="wrong guess", new="brand new pass 2")
+    assert 'class="flash warn" role="alert"' in client.get("/app/account").text
+    # A successful flash stays polite (status), not an interrupt.
+    post(client, "/app/account/sessions", password="correct horse 1")
+    page = client.get("/app/account").text
+    assert 'class="flash ok" role="status"' in page and "signed out" in page.lower()
+
 
 def test_pages_are_isolated_from_cross_origin_windows(client):
     for path in ("/", "/login", "/performance", "/nope"):

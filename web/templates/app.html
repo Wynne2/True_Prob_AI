@@ -6,9 +6,9 @@
   {{ appnav(path, user, balance, plan, feature, csrf, reset, costs) }}
   <main id="main" class="work" tabindex="-1">
     {% for a in announcements %}<p class="flash note" role="status">{{ a.body }}</p>{% endfor %}
-    {% if flash %}<p class="flash {{ flash[0] }}" role="status">{{ flash[1] }}</p>{% endif %}
+    {% if flash %}<p class="flash {{ flash[0] }}" role="{{ 'alert' if flash[0] == 'warn' else 'status' }}">{{ flash[1] }}</p>{% endif %}
     {% if not user.verified_at %}
-    <div class="flash warn">
+    <div class="flash warn" role="alert">
       Confirm your email to use your credits. We sent a link to {{ user.email }}.
       {% if dev_verify %}<a href="{{ dev_verify }}">Development mode: confirm now</a>{% endif %}
       <form method="post" action="/verify/resend" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Send it again</button></form>

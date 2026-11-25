@@ -5,7 +5,7 @@
 <section class="page-head">
   <h1>Plans</h1>
   {% set need = request.query_params.get('need') %}
-  {% if need in costs %}<p class="flash warn">That needs {{ costs[need] }} credits and you have {{ (balance or 0) | n }}. Nothing was charged. Pick a plan to keep going{% if reset %}, or wait until {{ reset[0] | day }}, when your balance becomes {{ reset[1] | n }}{% else %}, or wait for your credits to reset{% endif %}.</p>{% endif %}
+  {% if need in costs %}<p class="flash warn" role="alert">That needs {{ costs[need] }} credits and you have {{ (balance or 0) | n }}. Nothing was charged. Pick a plan to keep going{% if reset %}, or wait until {{ reset[0] | day }}, when your balance becomes {{ reset[1] | n }}{% else %}, or wait for your credits to reset{% endif %}.</p>{% endif %}
   <p class="lede">Every plan has every tool. Plans differ only in how many credits you get each period.</p>
 </section>
 <div class="plans">

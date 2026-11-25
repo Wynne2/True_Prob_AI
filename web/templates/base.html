@@ -38,7 +38,7 @@
   </nav>
 </header>
 <main id="main" tabindex="-1">
-  {% if flash %}<p class="flash {{ flash[0] }}" role="status">{{ flash[1] }}</p>{% endif %}
+  {% if flash %}<p class="flash {{ flash[0] }}" role="{{ 'alert' if flash[0] == 'warn' else 'status' }}">{{ flash[1] }}</p>{% endif %}
   {% block content %}{% endblock %}
 </main>
 {% endblock %}
