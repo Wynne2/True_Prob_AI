@@ -1807,8 +1807,8 @@ def test_dataset_markup_and_page_explain_every_csv_column(client):
     assert names == list(webapp.GRADED_COLUMNS) and all(v["@type"] == "PropertyValue" and v["description"]
                                                         for v in data["variableMeasured"])
     assert "Brier score" in data["keywords"]
-        header = client.get("/performance/2026-11-06.csv").text.lstrip("\ufeff").splitlines()[0]
-        assert header.split(",") == names                                   # the markup describes the real file
+    header = client.get("/performance/2026-11-06.csv").text.lstrip("\ufeff").splitlines()[0]
+    assert header.split(",") == names                                   # the markup describes the real file
     assert "What each CSV column means" in page
     for k, v in webapp.GRADED_COLUMN_NOTES.items():                     # and the same text is on the page
         text = str(__import__("markupsafe").escape(v))
