@@ -86,7 +86,15 @@ def write_board(env, rows=None):
 
 def post(client, path, **data):
     data.setdefault("csrf", _csrf(client, "/app/account"))
+    if "new" in data and "new2" not in data:
+        data["new2"] = data["new"]  # confirm matches unless a test sets new2 on purpose
     return client.post(path, data=data, follow_redirects=False)
+
+
+def reset_post(client, token, password, password2=None):
+    return client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": password,
+                                       "password2": password if password2 is None else password2},
+                       follow_redirects=False)
 
 
 def signed(payload: dict, secret: str = WEBHOOK_SECRET) -> tuple[bytes, str]:
@@ -118,8 +126,17 @@ def test_public_pages_render_with_disclosures(client):
         assert "1-800-GAMBLER" in r.text and "21+" in r.text
     home = client.get("/").text
     assert "guarantee" not in home.lower().replace("nothing here is a guarantee", "")
+    assert 'href="/register">Create a free account</a>' in home and 'href="/app">Open the app</a>' not in home
     assert "Content-Security-Policy" in client.get("/").headers
     assert client.get("/legal/nope").status_code == 404
+
+
+def test_signed_in_home_page_opens_the_app_instead_of_sign_up(client):
+    register(client)
+    home = client.get("/").text
+    assert 'href="/app">Open the app</a>' in home
+    assert 'href="/register">Create a free account</a>' not in home
+    assert "free credits every 30 days" not in home
 
 
 def test_theme_is_set_before_first_paint_by_a_csp_allowed_script(client):
@@ -560,9 +577,11 @@ def test_signed_in_visitors_skip_the_sign_in_and_sign_up_forms(client):
     assert client.get("/login?next=/app/account", follow_redirects=False).headers["location"] == "/app/account"
     assert client.get("/login?next=//evil.example", follow_redirects=False).headers["location"] == "/app"
     assert client.get("/register", follow_redirects=False).headers["location"] == "/app"
+    assert client.get("/forgot", follow_redirects=False).headers["location"] == "/app"
     client.post("/logout", data={"csrf": _csrf(client, "/app")})
     assert client.get("/login", follow_redirects=False).status_code == 200
     assert client.get("/register", follow_redirects=False).status_code == 200
+    assert client.get("/forgot", follow_redirects=False).status_code == 200
 
 
 def test_old_password_hashes_still_work_and_are_upgraded_at_sign_in(client, env):
@@ -603,9 +622,8 @@ def test_password_reset_is_single_use_and_ends_sessions(client):
     other.post("/login", data={"csrf": _csrf(other, "/login"), "email": "ann@example.com", "password": "correct horse 1"})
     assert other.get("/app", follow_redirects=False).status_code == 200
     token = db.make_token(user["id"], "reset", 3600)
-    assert client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "brand new pass 2"},
-                       follow_redirects=False).status_code == 303
-    assert client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "again again 3"}).status_code == 400
+    assert reset_post(client, token, "brand new pass 2").status_code == 303
+    assert reset_post(client, token, "again again 3").status_code == 400
     assert other.get("/app", follow_redirects=False).status_code == 303   # old session signed out
     assert db.check_password("brand new pass 2", db.get_user(user["id"])["pw_hash"])
 
@@ -1392,7 +1410,7 @@ def test_owner_is_emailed_when_the_password_is_changed_or_reset(client, env):
     post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
     assert mailer.OUTBOX.read_text(encoding="utf-8").count(subject) == 1
     token = db.make_token(user["id"], "reset", 3600)
-    client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "third pass 333"})
+    reset_post(client, token, "third pass 333")
     mail = mailer.OUTBOX.read_text(encoding="utf-8")
     assert mail.count(subject) == 2 and "/forgot" in mail and "third pass" not in mail and "1-800-GAMBLER" in mail
 
@@ -1414,8 +1432,7 @@ def test_a_new_password_or_signing_out_others_voids_every_other_reset_link(clien
     from web import db
 
     user = register(client)
-    reset = lambda token: client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token,
-                                                      "password": "fresh password 9"}, follow_redirects=False).status_code
+    reset = lambda token: reset_post(client, token, "fresh password 9").status_code
     first, second = db.make_token(user["id"], "reset", 3600), db.make_token(user["id"], "reset", 3600)
     verify_token = db.make_token(user["id"], "verify", 3600)
     assert reset(first) == 303 and reset(second) == 400
@@ -1566,14 +1583,29 @@ def test_common_and_context_passwords_are_refused_everywhere_a_password_is_set(c
     assert db.check_password("correct horse 1", db.get_user(user["id"])["pw_hash"])
 
     token = db.make_token(user["id"], "reset", 3600)
-    r = client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "football2026"})
+    r = reset_post(client, token, "football2026")
     assert r.status_code == 400 and "list of common" in r.text
-    r = client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": token, "password": "ann@example.com"})
+    r = reset_post(client, token, "ann@example.com")
     fresh = re.search(r'name="token" value="([^"]+)"', r.text).group(1)        # token was spent; the form gets a new one
     assert r.status_code == 400 and fresh != token
-    assert client.post("/reset", data={"csrf": _csrf(client, "/forgot"), "token": fresh, "password": "brand new pass 2"},
-                       follow_redirects=False).status_code == 303
+    assert reset_post(client, fresh, "brand new pass 2").status_code == 303
     assert db.check_password("brand new pass 2", db.get_user(user["id"])["pw_hash"])
+
+
+def test_new_password_must_be_typed_the_same_twice(client):
+    from web import db
+
+    user = register(client)
+    page = client.get("/app/account").text
+    assert 'name="new2"' in page and "Confirm new password" in page
+    assert 'name="password2"' in client.get("/reset?token=abc").text
+    post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2", new2="brand new pass 3")
+    assert "Those two passwords do not match." in client.get("/app/account").text
+    assert db.check_password("correct horse 1", db.get_user(user["id"])["pw_hash"])
+    token = db.make_token(user["id"], "reset", 3600)
+    r = reset_post(client, token, "brand new pass 2", password2="brand new pass 3")
+    assert r.status_code == 400 and "Those two passwords do not match." in r.text
+    assert db.use_token(token, "reset") == user["id"]  # mismatch is checked before the token is spent
 
 
 def test_pages_are_isolated_from_cross_origin_windows(client):
