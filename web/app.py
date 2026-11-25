@@ -505,7 +505,8 @@ def _graded_csv_response(request: Request, files: list[tuple[str, list]], name: 
         for r in rows:
             writer.writerow(([date] if with_date else []) +
                             ["" if r.get(c) is None else csv_cell(r[c]) if isinstance(r[c], str) else r[c] for c in GRADED_COLUMNS])
-    body = out.getvalue().encode("utf-8")
+    # UTF-8 BOM so Excel on Windows opens the file as UTF-8 instead of a legacy code page.
+    body = ("\ufeff" + out.getvalue()).encode("utf-8")
     # no-cache: keep a copy but ask every time, so a regraded file is never served stale; unchanged answers are a bodiless 304.
     headers = {"ETag": f'"{hashlib.sha256(body).hexdigest()[:32]}"', "Cache-Control": "no-cache"}
     if headers["ETag"] in [t.strip().removeprefix("W/") for t in request.headers.get("if-none-match", "").split(",")]:
@@ -1037,7 +1038,8 @@ async def history_csv(request: Request):
     for h in db.query("SELECT * FROM ledger WHERE user_id=? ORDER BY id", (user["id"],)):
         running += h["delta"]
         writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(h["created_at"])), csv_cell(h["reason"]), h["delta"], running])
-    return Response(out.getvalue(), media_type="text/csv; charset=utf-8",
+    # UTF-8 BOM so Excel on Windows opens player names and reasons as UTF-8.
+    return Response("\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": 'attachment; filename="true-prob-ai-credits.csv"'})
 
 

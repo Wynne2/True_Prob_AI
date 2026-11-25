@@ -355,7 +355,8 @@ def test_each_graded_date_downloads_every_line_unedited(client):
     graded = json.loads((Path(__file__).resolve().parents[1] / "data" / "predictions" / "2026-11-06.graded.json").read_text())
     r = client.get("/performance/2026-11-06.csv")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
-    rows = list(_csv.DictReader(r.text.splitlines()))
+    assert r.content.startswith(b"\xef\xbb\xbf")  # UTF-8 BOM for Excel
+    rows = list(_csv.DictReader(r.text.lstrip("\ufeff").splitlines()))
     assert len(rows) == len(graded["rows"])
     first = graded["rows"][0]
     assert rows[0]["player"] == first["player"] and rows[0]["result"] == first["result"]
@@ -370,12 +371,13 @@ def test_every_graded_line_downloads_in_one_file_with_its_date(client):
     assert 'href="/performance/all.csv"' in client.get("/performance").text
     r = client.get("/performance/all.csv")
     assert r.status_code == 200 and "true-prob-ai-graded-all-dates.csv" in r.headers["content-disposition"]
-    rows = list(_csv.DictReader(r.text.splitlines()))
+    assert r.content.startswith(b"\xef\xbb\xbf")
+    rows = list(_csv.DictReader(r.text.lstrip("\ufeff").splitlines()))
     assert list(rows[0])[0] == "date"
     folder = Path(__file__).resolve().parents[1] / "data" / "predictions"
     for path in sorted(folder.glob("????-??-??.graded.json")):
         date = path.name[:10]
-        per_date = list(_csv.DictReader(client.get(f"/performance/{date}.csv").text.splitlines()))
+        per_date = list(_csv.DictReader(client.get(f"/performance/{date}.csv").text.lstrip("\ufeff").splitlines()))
         assert [{k: v for k, v in row.items() if k != "date"} for row in rows if row["date"] == date] == per_date, date
     assert len(rows) == sum(len(json.loads(p.read_text())["rows"] or []) for p in folder.glob("????-??-??.graded.json"))
 
@@ -786,7 +788,8 @@ def test_credit_history_downloads_as_csv_with_running_balance(client, env):
     r = client.get("/app/account/history.csv")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
     assert "attachment" in r.headers["content-disposition"] and r.headers["cache-control"] == "no-store"
-    rows = list(_csv.reader(r.text.splitlines()))
+    assert r.content.startswith(b"\xef\xbb\xbf")  # UTF-8 BOM for Excel
+    rows = list(_csv.reader(r.text.lstrip("\ufeff").splitlines()))
     assert rows[0] == ["When (UTC)", "What", "Credits", "Balance after"]
     assert [(w, c, b) for _, w, c, b in rows[1:]] == [
         ("Free plan credits", "20", "20"), ("Analysis: Player 0 points over 20.5", "-1", "19"),
@@ -1802,8 +1805,8 @@ def test_dataset_markup_and_page_explain_every_csv_column(client):
     assert names == list(webapp.GRADED_COLUMNS) and all(v["@type"] == "PropertyValue" and v["description"]
                                                         for v in data["variableMeasured"])
     assert "Brier score" in data["keywords"]
-    header = client.get("/performance/2026-11-06.csv").text.splitlines()[0]
-    assert header.split(",") == names                                   # the markup describes the real file
+        header = client.get("/performance/2026-11-06.csv").text.lstrip("\ufeff").splitlines()[0]
+        assert header.split(",") == names                                   # the markup describes the real file
     assert "What each CSV column means" in page
     for k, v in webapp.GRADED_COLUMN_NOTES.items():                     # and the same text is on the page
         text = str(__import__("markupsafe").escape(v))
