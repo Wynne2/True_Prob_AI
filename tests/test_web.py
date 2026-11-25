@@ -153,13 +153,15 @@ def test_theme_is_set_before_first_paint_by_a_csp_allowed_script(client):
 
 
 def test_structured_data_and_indexing_hints(client):
-    from web import db
+    from web import content, db
 
     home = client.get("/").text
     ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S).group(1))
-    assert {d["@type"] for d in ld} == {"WebSite", "Organization", "SoftwareApplication"}
+    assert {d["@type"] for d in ld} == {"WebSite", "Organization", "SoftwareApplication", "FAQPage"}
     offers = next(d for d in ld if d["@type"] == "SoftwareApplication")["offers"]
     assert [(o["name"], o["price"]) for o in offers] == [(p["name"], str(p["price"])) for p in db.PLANS.values()]
+    faq = next(d for d in ld if d["@type"] == "FAQPage")["mainEntity"]
+    assert [(q["name"], q["acceptedAnswer"]["text"]) for q in faq] == list(content.FAQ)
     assert 'property="og:site_name"' in home and 'name="twitter:card"' in home and "/static/favicon.svg" in home
     for path in ("/", "/pricing", "/performance", "/legal/terms"):
         assert 'name="robots" content="noindex"' not in client.get(path).text, path

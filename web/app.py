@@ -404,7 +404,7 @@ def _compute_performance() -> dict:
 
 
 def structured_data(base: str) -> list[dict]:
-    """Home-page JSON-LD: site name, organisation and the real plan prices (from PLANS, so never stale)."""
+    """Home-page JSON-LD: site, organisation, plan prices (from PLANS) and the FAQ shown on the page."""
     home = base + "/"
     return [
         {"@context": "https://schema.org", "@type": "WebSite", "name": "True Prob AI", "url": home},
@@ -413,6 +413,9 @@ def structured_data(base: str) -> list[dict]:
          "applicationCategory": "BusinessApplication", "operatingSystem": "Web",
          "offers": [{"@type": "Offer", "name": p["name"], "price": str(p["price"]), "priceCurrency": "USD",
                      "url": base + "/pricing"} for p in db.PLANS.values()]},
+        {"@context": "https://schema.org", "@type": "FAQPage",
+         "mainEntity": [{"@type": "Question", "name": q,
+                        "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in content.FAQ]},
     ]
 
 
