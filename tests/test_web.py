@@ -265,7 +265,8 @@ def test_performance_totals_pool_every_graded_line_on_the_same_rows(client, monk
 def test_a_missing_or_zero_return_is_not_coloured_as_a_gain_or_loss(client, env, monkeypatch, tmp_path):
     from web import app as webapp, db
 
-    assert [webapp.ret(v) for v in (None, 0.0, -0.0004, 0.123, -0.192)] == ["–", "0.0%", "0.0%", "+12.3%", "-19.2%"]
+    assert webapp.ret(None) == webapp.NO_DATA and "no data" in str(webapp.ret(None))
+    assert [webapp.ret(v) for v in (0.0, -0.0004, 0.123, -0.192)] == ["0.0%", "0.0%", "+12.3%", "-19.2%"]
     assert [webapp.ret_tone(v) for v in (None, 0.0, -0.0004, 0.123, -0.192)] == ["", "", "", "pos", "neg"]
     preds = tmp_path / "data" / "predictions"
     preds.mkdir(parents=True)
@@ -273,7 +274,21 @@ def test_a_missing_or_zero_return_is_not_coloured_as_a_gain_or_loss(client, env,
     monkeypatch.setattr(db, "ROOT", tmp_path)
     register(client)
     for page in (client.get("/performance").text, client.get("/app").text):   # no flagged line, so no return
-        assert '<td class="num ">–</td>' in page and 'class="num pos">–' not in page
+        assert 'class="num ">–<span class="visually-hidden"> no data</span></td>' in page
+        assert 'class="num pos">–' not in page
+
+
+def test_empty_table_cells_name_the_missing_value_for_screen_readers(client, env, monkeypatch, tmp_path):
+    from web import app as webapp, db
+
+    assert webapp.pct(None) == webapp.when(None) == webapp.day(None) == webapp.score(None) == webapp.NO_DATA
+    assert webapp.score(0.2144) == "0.2144"
+    preds = tmp_path / "data" / "predictions"
+    preds.mkdir(parents=True)
+    _graded(preds / "2026-11-01.graded.json", [{"model_probability": 0.6, "result": "win"}], 1)  # no market → empty Brier
+    monkeypatch.setattr(db, "ROOT", tmp_path)
+    page = client.get("/performance").text
+    assert page.count('visually-hidden"> no data</span>') >= 2  # our Brier and market Brier on the date row
 
 
 def test_performance_lists_saved_boards_that_are_not_graded_yet(client, monkeypatch, tmp_path):

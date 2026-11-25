@@ -22,6 +22,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from markdown_it import MarkdownIt
+from markupsafe import Markup
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
@@ -36,6 +37,9 @@ from starlette.templating import Jinja2Templates
 
 import config  # noqa: F401  (loads .env)
 from web import billing, content, db, jobs, mailer, passwords
+
+# En-dash shown when a cell has no value; the hidden text is for screen readers (Mass.gov tables guidance).
+NO_DATA = Markup('–<span class="visually-hidden"> no data</span>')
 
 logger = logging.getLogger(__name__)
 HERE = Path(__file__).parent
@@ -211,7 +215,7 @@ def need_user(request: Request, verified: bool = False):
 
 
 def pct(value, digits: int = 1) -> str:
-    return "–" if value is None else f"{float(value) * 100:.{digits}f}%"
+    return NO_DATA if value is None else f"{float(value) * 100:.{digits}f}%"
 
 
 def american(odds) -> str:
@@ -219,11 +223,16 @@ def american(odds) -> str:
 
 
 def when(ts) -> str:
-    return "–" if not ts else time.strftime("%b %d, %Y %H:%M UTC", time.gmtime(float(ts)))
+    return NO_DATA if not ts else time.strftime("%b %d, %Y %H:%M UTC", time.gmtime(float(ts)))
 
 
 def day(ts) -> str:
-    return "–" if not ts else time.strftime("%b %d, %Y", time.gmtime(float(ts))).replace(" 0", " ")
+    return NO_DATA if not ts else time.strftime("%b %d, %Y", time.gmtime(float(ts))).replace(" 0", " ")
+
+
+def score(value, digits: int = 4) -> str:
+    """A Brier (or similar) score to a fixed number of decimals, or the empty-cell marker."""
+    return NO_DATA if value is None else f"{float(value):.{digits}f}"
 
 
 def ago(ts) -> str:
@@ -267,9 +276,9 @@ def gap_tone(edge) -> str:
 
 
 def ret(value) -> str:
-    """A flat-stake return per $1 as a signed percent; "–" when there is none and a plain 0.0% when it rounds to nothing."""
+    """A flat-stake return per $1 as a signed percent; empty-cell marker when there is none and a plain 0.0% when it rounds to nothing."""
     if value is None:
-        return "–"
+        return NO_DATA
     points = round(float(value) * 100, 1)
     return "0.0%" if points == 0 else f"{points:+.1f}%"
 
@@ -292,7 +301,8 @@ def usd_tone(value) -> str:
 
 templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
                              run_status=run_status, gap=gap, gap_tone=gap_tone, ret=ret, ret_tone=ret_tone,
-                             n=lambda v: f"{int(v):,}", usd=usd, usd_tone=usd_tone)
+                             score=score, n=lambda v: f"{int(v):,}", usd=usd, usd_tone=usd_tone)
+templates.env.globals["NO_DATA"] = NO_DATA
 
 
 # ---------------------------------------------------------------------------

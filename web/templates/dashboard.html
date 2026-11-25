@@ -82,7 +82,7 @@
   <h2>How recent boards graded</h2>
   {% if perf_dates %}
   <table class="data"><thead><tr><th scope="col">Date</th><th scope="col">Lines graded</th><th scope="col">Our Brier</th><th scope="col">Market Brier</th><th scope="col">Flagged edges, flat stake</th></tr></thead><tbody>
-    {% for d in perf_dates %}<tr><td>{{ d.date }}</td><td class="num">{{ '{:,}'.format(d.all.decided or 0) }}</td><td class="num">{{ '%.4f' % d.all.brier_model if d.all.brier_model else '–' }}</td><td class="num">{{ '%.4f' % d.all.brier_market if d.all.brier_market else '–' }}</td>
+    {% for d in perf_dates %}<tr><td>{{ d.date }}</td><td class="num">{{ '{:,}'.format(d.all.decided or 0) }}</td><td class="num">{{ d.all.brier_model | score }}</td><td class="num">{{ d.all.brier_market | score }}</td>
     <td class="num {{ d.positive_edge.flat_roi_per_bet | ret_tone }}">{{ d.positive_edge.flat_roi_per_bet | ret }}</td></tr>{% endfor %}
   </tbody></table>
   <p class="muted">Lower Brier is more accurate. Every graded date is on the <a href="/performance">performance page</a>.</p>
