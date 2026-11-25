@@ -37,7 +37,7 @@
     {% else %}<a href="/login">Sign in</a><a class="btn small" href="/register">Create free account</a>{% endif %}
   </nav>
 </header>
-<main id="main">
+<main id="main" tabindex="-1">
   {% if flash %}<p class="flash {{ flash[0] }}" role="status">{{ flash[1] }}</p>{% endif %}
   {% block content %}{% endblock %}
 </main>

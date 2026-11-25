@@ -1608,6 +1608,15 @@ def test_new_password_must_be_typed_the_same_twice(client):
     assert db.use_token(token, "reset") == user["id"]  # mismatch is checked before the token is spent
 
 
+def test_skip_link_target_can_receive_keyboard_focus(client):
+    # tabindex=-1 lets "Skip to content" move focus into main without adding a Tab stop (Chrome a11y guidance).
+    assert 'href="#main"' in client.get("/").text
+    assert 'id="main" tabindex="-1"' in client.get("/").text
+    register(client)
+    assert 'id="main" class="work" tabindex="-1"' in client.get("/app").text
+
+
+
 def test_pages_are_isolated_from_cross_origin_windows(client):
     for path in ("/", "/login", "/performance", "/nope"):
         assert client.get(path).headers["Cross-Origin-Opener-Policy"] == "same-origin", path

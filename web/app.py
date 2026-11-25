@@ -1284,7 +1284,7 @@ async def on_error(request: Request, exc: HTTPException):
 CRASH_PAGE = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
     f'<meta name="robots" content="noindex"><title>Something went wrong: True Prob AI</title><script>{THEME_SCRIPT}</script>'
-    '<link rel="stylesheet" href="/static/app.css"></head><body><main id="main"><section class="auth">'
+    '<link rel="stylesheet" href="/static/app.css"></head><body><main id="main" tabindex="-1"><section class="auth">'
     '<h1>Something went wrong on our side</h1><p>Nothing was charged. Try again in a moment.</p>'
     '<p><a class="btn ghost" href="/">Go to the home page</a></p></section></main><footer class="foot">'
     '<p><strong>21+ only.</strong> Research and information, not betting or investment advice. Nothing here is a guarantee, '
