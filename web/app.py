@@ -1297,7 +1297,12 @@ class SecurityHeaders(BaseHTTPMiddleware):
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+            # Disable features this research UI never uses (OWASP Secure Headers Project). Clipboard
+            # and sync-xhr stay at browser defaults so password managers and form posts keep working.
+            "Permissions-Policy": "geolocation=(), camera=(), microphone=(), accelerometer=(), "
+                                 "gyroscope=(), magnetometer=(), usb=(), payment=(), midi=(), "
+                                 "display-capture=(), bluetooth=(), serial=(), hid=(), "
+                                 "xr-spatial-tracking=(), interest-cohort=(), browsing-topics=()",
             "Cross-Origin-Opener-Policy": "same-origin",
             "Cross-Origin-Resource-Policy": "same-origin",
         })

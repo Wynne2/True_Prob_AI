@@ -1714,6 +1714,16 @@ def test_pages_are_isolated_from_cross_origin_windows(client):
         assert h["Cross-Origin-Resource-Policy"] == "same-origin", path
 
 
+def test_permissions_policy_disables_sensors_and_payment_apis(client):
+    # Research UI never needs these; leaving them on widens the XSS blast radius (OWASP headers).
+    policy = client.get("/").headers["Permissions-Policy"]
+    for feature in ("geolocation", "camera", "microphone", "accelerometer", "gyroscope", "magnetometer",
+                    "usb", "payment", "midi", "display-capture", "bluetooth", "serial", "hid",
+                    "xr-spatial-tracking", "interest-cohort", "browsing-topics"):
+        assert f"{feature}=()" in policy, feature
+    assert "clipboard-write" not in policy  # password managers paste into forms
+
+
 def test_pages_with_a_token_in_the_address_send_no_referrer(client):
     reset = client.get("/reset?token=abc")
     assert reset.headers["Referrer-Policy"] == "no-referrer"
