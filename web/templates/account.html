@@ -50,9 +50,30 @@
     <h2>Profile and security</h2>
     <p>{{ user.email }}{% if user.verified_at %}, confirmed{% else %}, <strong>not confirmed</strong>{% endif %}. Region: {{ user.region or 'not set' }}. Member since {{ user.created_at | when }}.</p>
     <form method="post" action="/app/account/password" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
-      <label>Current password<input type="password" name="current" autocomplete="current-password" required></label>
-      <label>New password<input type="password" name="new" minlength="10" autocomplete="new-password" required><small>At least 10 characters, not a common password or your email. Changing it signs out every other device.</small></label>
-      <label>Confirm new password<input type="password" name="new2" minlength="10" autocomplete="new-password" required></label>
+      {# Username field helps password managers bind the new password to this account (Chromium form styles). #}
+      <input type="text" name="username" value="{{ user.email }}" autocomplete="username" readonly class="visually-hidden" tabindex="-1" aria-hidden="true">
+      <div class="pw">
+        <label for="current-password">Current password</label>
+        <div class="pw-row">
+          <input id="current-password" type="password" name="current" autocomplete="current-password" required>
+          <button type="button" class="btn ghost small" data-reveal="current-password" aria-controls="current-password" aria-pressed="false" hidden>Show</button>
+        </div>
+      </div>
+      <div class="pw">
+        <label for="new-password">New password</label>
+        <div class="pw-row">
+          <input id="new-password" type="password" name="new" minlength="10" autocomplete="new-password" required aria-describedby="new-pw-rule">
+          <button type="button" class="btn ghost small" data-reveal="new-password" aria-controls="new-password" aria-pressed="false" hidden>Show</button>
+        </div>
+        <small id="new-pw-rule">At least 10 characters, not a common password or your email. Changing it signs out every other device.</small>
+      </div>
+      <div class="pw">
+        <label for="new-password-confirm">Confirm new password</label>
+        <div class="pw-row">
+          <input id="new-password-confirm" type="password" name="new2" minlength="10" autocomplete="new-password" required>
+          <button type="button" class="btn ghost small" data-reveal="new-password-confirm" aria-controls="new-password-confirm" aria-pressed="false" hidden>Show</button>
+        </div>
+      </div>
       <button class="btn small ghost">Change password</button>
     </form>
     <h3>Signed in somewhere else?</h3>

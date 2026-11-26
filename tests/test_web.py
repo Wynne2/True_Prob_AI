@@ -1689,6 +1689,21 @@ def test_new_password_must_be_typed_the_same_twice(client):
     assert db.use_token(token, "reset") == user["id"]  # mismatch is checked before the token is spent
 
 
+def test_account_password_form_helps_password_managers(client):
+    # Chromium / web.dev: username + current-password / new-password ids, with a Show toggle per field.
+    user = register(client)
+    page = client.get("/app/account").text
+    assert f'name="username" value="{user["email"]}" autocomplete="username"' in page
+    assert 'id="current-password"' in page and 'autocomplete="current-password"' in page
+    assert 'id="new-password"' in page and 'id="new-password-confirm"' in page
+    assert 'for="current-password"' in page and 'for="new-password"' in page and 'for="new-password-confirm"' in page
+    for field in ("current-password", "new-password", "new-password-confirm"):
+        assert f'data-reveal="{field}"' in page and f'aria-controls="{field}"' in page
+    assert 'aria-describedby="new-pw-rule"' in page
+    post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
+    assert "Password changed" in client.get("/app/account").text
+
+
 def test_skip_link_target_can_receive_keyboard_focus(client):
     # tabindex=-1 lets "Skip to content" move focus into main without adding a Tab stop (Chrome a11y guidance).
     assert 'href="#main"' in client.get("/").text
