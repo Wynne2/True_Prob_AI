@@ -1738,8 +1738,16 @@ def test_pages_with_a_token_in_the_address_send_no_referrer(client):
     assert verify.headers["Referrer-Policy"] == "no-referrer"
     assert verify.headers["X-Robots-Tag"] == "noindex"
     assert client.get("/login").headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
-    assert "X-Robots-Tag" not in client.get("/login").headers
     assert "X-Robots-Tag" not in client.get("/").headers
+
+
+def test_sign_in_pages_send_x_robots_noindex(client):
+    # Meta noindex was already set; the header reaches crawlers that skip HTML (same pattern as /reset).
+    for path in ("/login", "/register", "/forgot"):
+        assert client.get(path).headers["X-Robots-Tag"] == "noindex", path
+        assert 'name="robots" content="noindex"' in client.get(path).text, path
+    assert "X-Robots-Tag" not in client.get("/pricing").headers
+    assert "X-Robots-Tag" not in client.get("/performance").headers
 
 
 def test_security_txt_follows_rfc_9116_and_needs_a_real_contact(client, monkeypatch):
