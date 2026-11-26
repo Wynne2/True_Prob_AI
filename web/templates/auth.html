@@ -13,7 +13,7 @@
     <input type="hidden" name="csrf" value="{{ csrf }}">
     {% if mode == 'login' %}<input type="hidden" name="next" value="{{ next or '/app' }}">{% endif %}
     {% if mode in ('register', 'login', 'forgot') %}
-    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="{{ 'username' if mode == 'login' else 'email' }}" autocapitalize="none" spellcheck="false" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}></label>
+    <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="{{ 'username' if mode in ('login', 'forgot') else 'email' }}" autocapitalize="none" spellcheck="false" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}></label>
     {% endif %}
     {% if mode in ('register', 'login', 'reset') %}
     {% set pw_desc = ((['pw-rule'] if mode != 'login' else []) + (['form-error'] if error else [])) | join(' ') %}
