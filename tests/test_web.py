@@ -1724,6 +1724,12 @@ def test_permissions_policy_disables_sensors_and_payment_apis(client):
     assert "clipboard-write" not in policy  # password managers paste into forms
 
 
+def test_cross_domain_policy_files_are_refused(client):
+    # OWASP Secure Headers: none means no crossdomain.xml opt-in for legacy clients.
+    assert client.get("/").headers["X-Permitted-Cross-Domain-Policies"] == "none"
+    assert client.get("/login").headers["X-Permitted-Cross-Domain-Policies"] == "none"
+
+
 def test_pages_with_a_token_in_the_address_send_no_referrer(client):
     reset = client.get("/reset?token=abc")
     assert reset.headers["Referrer-Policy"] == "no-referrer"

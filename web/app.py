@@ -1303,6 +1303,7 @@ class SecurityHeaders(BaseHTTPMiddleware):
                                  "gyroscope=(), magnetometer=(), usb=(), payment=(), midi=(), "
                                  "display-capture=(), bluetooth=(), serial=(), hid=(), "
                                  "xr-spatial-tracking=(), interest-cohort=(), browsing-topics=()",
+            "X-Permitted-Cross-Domain-Policies": "none",  # no Adobe crossdomain.xml opt-in anywhere
             "Cross-Origin-Opener-Policy": "same-origin",
             "Cross-Origin-Resource-Policy": "same-origin",
         })
