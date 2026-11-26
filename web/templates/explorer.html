@@ -24,6 +24,8 @@
       {% if mine %}{% set k = mine | length %}<p class="muted">You have opened {{ k }} single line{{ 's' if k != 1 }} today ({{ k * costs.prop }} credit{{ 's' if k * costs.prop != 1 }}). Those are not counted toward the board, so it only saves credits if you will open more than {{ costs.board // costs.prop }} other lines today.</p>{% endif %}
     </div>
     <form method="post" action="/app/explorer/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
+      {# Keep the customer's filters after unlocking so they land back on the same shortlist. #}
+      <input type="hidden" name="back" value="/app/explorer{% if request.url.query %}?{{ request.url.query }}{% endif %}">
       <button class="btn" {% if not user.verified_at or balance < costs.board %}disabled{% endif %}>Open board for {{ costs.board }} credits</button>
       {{ afford('board', costs, balance, reset) }}</form>
   </section>

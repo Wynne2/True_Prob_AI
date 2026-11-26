@@ -1345,6 +1345,23 @@ def test_explorer_filters_can_be_cleared_and_never_end_in_a_blank_table(client, 
     assert "Clear filters" not in client.get("/app/explorer?backed=1").text              # ignored while the board is locked
 
 
+def test_unlocking_the_board_keeps_the_filters_the_customer_had_on(client, env):
+    from web import app as webapp, db
+
+    register(client)
+    write_board(env)
+    filtered = client.get("/app/explorer?q=Player+0&prop=points").text
+    assert 'name="back" value="/app/explorer?q=Player+0&amp;prop=points"' in filtered
+    assert webapp._explorer_back({"back": "/app/explorer?q=Player+0&prop=points"}) == "/app/explorer?q=Player+0&prop=points"
+    assert webapp._explorer_back({"back": "https://evil.example/"}) == "/app/explorer"
+    assert webapp._explorer_back({"back": "/login"}) == "/app/explorer"
+    r = post(client, "/app/explorer/unlock", back="/app/explorer?q=Player+0&prop=points")
+    assert r.headers["location"] == "/app/explorer?q=Player+0&prop=points"
+    assert db.is_unlocked(db.get_user(email="ann@example.com")["id"], "board", "2026-11-15")
+    # Off-path back values are ignored so a crafted form cannot bounce elsewhere after the spend.
+    assert post(client, "/app/explorer/unlock", back="/pricing").headers["location"] == "/app/explorer"
+
+
 def test_tests_never_write_a_session_key_file(env, monkeypatch, tmp_path):
     from web import db
 

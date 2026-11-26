@@ -852,15 +852,22 @@ async def explorer(request: Request):
                   props=sorted({r["prop"] for r in (board or {}).get("rows", [])}))
 
 
+def _explorer_back(form) -> str:
+    """Return path after unlocking the board: keep filters when the form sent a safe /app/explorer URL."""
+    back = str(form.get("back") or "/app/explorer")
+    return back if back == "/app/explorer" or back.startswith("/app/explorer?") else "/app/explorer"
+
+
 async def unlock_board(request: Request):
-    await checked_form(request)
+    form = await checked_form(request)
     user, redirect = need_user(request, verified=True)
     if redirect:
         return redirect
+    back = _explorer_back(form)
     slate = jobs.today().isoformat()
     if not (jobs.load_board(slate) or {}).get("rows"):
         flash(request, "There is no board to open yet. Nothing was charged.", "warn")
-        return RedirectResponse("/app/explorer", 303)
+        return RedirectResponse(back, 303)
     result = db.spend(user["id"], "board", slate, f"Full board for {slate}")
     if result == "insufficient":
         db.track("limit_hit", user["id"])
@@ -868,7 +875,7 @@ async def unlock_board(request: Request):
     if result == "ok":
         db.track("board_unlocked", user["id"])
     receipt(request, user, result, "board", f"today's full board ({slate})")
-    return RedirectResponse("/app/explorer", 303)
+    return RedirectResponse(back, 303)
 
 
 def _find_prop(pid: str):
