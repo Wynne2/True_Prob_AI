@@ -1058,6 +1058,16 @@ def csv_cell(text: str) -> str:
     return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
 
 
+def _account_csv_response(request: Request, body: str, filename: str) -> Response:
+    """UTF-8 BOM CSV with ETag: unchanged re-downloads are a bodiless 304. Cache-Control stays no-store via middleware."""
+    raw = ("\ufeff" + body).encode("utf-8")
+    etag = f'"{hashlib.sha256(raw).hexdigest()[:32]}"'
+    if etag in [t.strip().removeprefix("W/") for t in request.headers.get("if-none-match", "").split(",")]:
+        return Response(status_code=304, headers={"ETag": etag})
+    return Response(raw, media_type="text/csv; charset=utf-8",
+                    headers={"ETag": etag, "Content-Disposition": f'attachment; filename="{filename}"'})
+
+
 async def history_csv(request: Request):
     user, redirect = need_user(request)
     if redirect:
@@ -1068,9 +1078,7 @@ async def history_csv(request: Request):
     for h in db.query("SELECT * FROM ledger WHERE user_id=? ORDER BY id", (user["id"],)):
         running += h["delta"]
         writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(h["created_at"])), csv_cell(h["reason"]), h["delta"], running])
-    # UTF-8 BOM so Excel on Windows opens player names and reasons as UTF-8.
-    return Response("\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="true-prob-ai-credits.csv"'})
+    return _account_csv_response(request, out.getvalue(), "true-prob-ai-credits.csv")
 
 
 async def watchlist_csv(request: Request):
@@ -1083,8 +1091,7 @@ async def watchlist_csv(request: Request):
     writer.writerow(["Player", "Added (UTC)"])
     for w in db.query("SELECT label, created_at FROM watchlist WHERE user_id=? ORDER BY created_at", (user["id"],)):
         writer.writerow([csv_cell(w["label"]), time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(w["created_at"]))])
-    return Response("\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="true-prob-ai-watchlist.csv"'})
+    return _account_csv_response(request, out.getvalue(), "true-prob-ai-watchlist.csv")
 
 
 def iso(ts) -> str | None:

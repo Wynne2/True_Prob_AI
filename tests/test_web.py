@@ -851,6 +851,8 @@ def test_credit_history_downloads_as_csv_with_running_balance(client, env):
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
     assert "attachment" in r.headers["content-disposition"] and r.headers["cache-control"] == "no-store"
     assert r.content.startswith(b"\xef\xbb\xbf")  # UTF-8 BOM for Excel
+    assert r.headers["etag"].startswith('"') and len(r.headers["etag"]) == 34
+    assert client.get("/app/account/history.csv", headers={"If-None-Match": r.headers["etag"]}).status_code == 304
     rows = list(_csv.reader(r.text.lstrip("\ufeff").splitlines()))
     assert rows[0] == ["When (UTC)", "What", "Credits", "Balance after"]
     assert [(w, c, b) for _, w, c, b in rows[1:]] == [
@@ -1617,10 +1619,14 @@ def test_watchlist_downloads_as_csv_of_player_names(client, env):
     r = client.get("/app/watchlist.csv")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
     assert r.content.startswith(b"\xef\xbb\xbf")  # UTF-8 BOM for Excel
+    assert r.headers["etag"].startswith('"')
+    assert client.get("/app/watchlist.csv", headers={"If-None-Match": r.headers["etag"]}).status_code == 304
     body = r.content.decode("utf-8-sig")
     assert body.splitlines()[0] == "Player,Added (UTC)"
     assert "Player 1" in body and "'=SUM(A1)" in body
     assert "Kalshi" not in body and "odds" not in body.lower()  # names only; not board prices
+    post(client, "/app/watch", player="Player 0")
+    assert client.get("/app/watchlist.csv", headers={"If-None-Match": r.headers["etag"]}).status_code == 200  # changed
 
 
 def test_overview_says_when_watched_lines_are_cut_short(client, env):
