@@ -1330,6 +1330,15 @@ def test_locked_board_does_not_leak_gap_order(client, env):
     assert order(client.get("/app/explorer?sort=edge").text) == ["Zed", "Max", "Amy"]           # by gap once paid
 
 
+def test_explorer_filter_form_is_labelled_for_search_and_mobile_keyboards(client, env):
+    register(client)
+    write_board(env)
+    page = client.get("/app/explorer").text
+    assert 'role="search" aria-label="Filter today\'s lines"' in page or 'role="search" aria-label="Filter today&#39;s lines"' in page
+    assert 'name="q"' in page and 'enterkeyhint="search"' in page and 'autocapitalize="none"' in page
+    assert 'autocomplete="off"' in page and 'spellcheck="false"' in page
+
+
 def test_explorer_filters_can_be_cleared_and_never_end_in_a_blank_table(client, env):
     register(client)
     board = write_board(env)

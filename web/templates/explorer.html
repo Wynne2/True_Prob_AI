@@ -31,8 +31,8 @@
   </section>
   {% endif %}
 
-  <form class="filters" method="get">
-    <label>Player or team<input type="search" name="q" value="{{ q.get('q', '') }}"></label>
+  <form class="filters" method="get" role="search" aria-label="Filter today's lines">
+    <label>Player or team<input type="search" name="q" value="{{ q.get('q', '') }}" enterkeyhint="search" autocapitalize="none" autocomplete="off" spellcheck="false"></label>
     <label>Market<select name="prop"><option value="">All</option>{% for p in props %}<option {% if q.get('prop') == p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></label>
     <label>Odds from<input type="number" name="min_odds" value="{{ q.get('min_odds', '') }}" placeholder="-600"></label>
     <label>to<input type="number" name="max_odds" value="{{ q.get('max_odds', '') }}" placeholder="400"></label>
