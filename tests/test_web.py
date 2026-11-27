@@ -157,6 +157,7 @@ def test_theme_is_set_before_first_paint_by_a_csp_allowed_script(client):
     digest = "sha256-" + base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     csp = r.headers["Content-Security-Policy"]
     assert f"script-src 'self' '{digest}';" in csp and "unsafe-inline" not in csp
+    assert "object-src 'none'" in csp  # OWASP: block plugins / unexpected embeds
     # It runs before the stylesheet loads, so there is no flash of the other theme.
     assert r.text.index("<script>") < r.text.index('rel="stylesheet" href="/static/app.css"')
 

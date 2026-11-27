@@ -1309,7 +1309,8 @@ class SecurityHeaders(BaseHTTPMiddleware):
         response.headers.update({
             "Content-Security-Policy": "default-src 'self'; style-src 'self' https://fonts.googleapis.com; "
                                        f"font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' '{THEME_SCRIPT_HASH}'; "
-                                       "frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
+                                       "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; "
+                                       "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "strict-origin-when-cross-origin",
