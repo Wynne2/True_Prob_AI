@@ -168,7 +168,11 @@ def test_structured_data_and_indexing_hints(client):
     home = client.get("/").text
     ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S).group(1))
     assert {d["@type"] for d in ld} == {"WebSite", "Organization", "SoftwareApplication", "FAQPage"}
-    offers = next(d for d in ld if d["@type"] == "SoftwareApplication")["offers"]
+    org = next(d for d in ld if d["@type"] == "Organization")
+    assert org["description"] and "21+" in org["description"] and "not betting or investment advice" in org["description"]
+    app = next(d for d in ld if d["@type"] == "SoftwareApplication")
+    assert app["description"] == org["description"]
+    offers = app["offers"]
     assert [(o["name"], o["price"]) for o in offers] == [(p["name"], str(p["price"])) for p in db.PLANS.values()]
     faq = next(d for d in ld if d["@type"] == "FAQPage")["mainEntity"]
     assert [(q["name"], q["acceptedAnswer"]["text"]) for q in faq] == list(content.FAQ)

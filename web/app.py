@@ -416,14 +416,22 @@ def _compute_performance() -> dict:
     return out
 
 
+ORG_DESCRIPTION = (
+    "True Prob AI is an NBA player-prop research tool for adults 21+. It removes each venue's margin "
+    "from the same event's prices and shows the consensus probability next to the offered price. "
+    "Research and information, not betting or investment advice."
+)
+
+
 def structured_data(base: str) -> list[dict]:
     """Home-page JSON-LD: site, organisation, plan prices (from PLANS) and the FAQ shown on the page."""
     home = base + "/"
     return [
         {"@context": "https://schema.org", "@type": "WebSite", "name": "True Prob AI", "url": home},
-        {"@context": "https://schema.org", "@type": "Organization", "name": "True Prob AI", "url": home},
+        {"@context": "https://schema.org", "@type": "Organization", "name": "True Prob AI", "url": home,
+         "description": ORG_DESCRIPTION},
         {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "True Prob AI", "url": home,
-         "applicationCategory": "BusinessApplication", "operatingSystem": "Web",
+         "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "description": ORG_DESCRIPTION,
          "offers": [{"@type": "Offer", "name": p["name"], "price": str(p["price"]), "priceCurrency": "USD",
                      "url": base + "/pricing"} for p in db.PLANS.values()]},
         {"@context": "https://schema.org", "@type": "FAQPage",
