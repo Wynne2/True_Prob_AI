@@ -16,22 +16,24 @@
     <label>Email<input type="email" name="email" value="{{ email or '' }}" autocomplete="{{ 'username' if mode in ('login', 'forgot') else 'email' }}" autocapitalize="none" spellcheck="false" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}></label>
     {% endif %}
     {% if mode in ('register', 'login', 'reset') %}
+    {# Chromium / web.dev: current-password on sign-in, new-password on sign-up and reset. #}
+    {% set pw_id = 'current-password' if mode == 'login' else 'new-password' %}
     {% set pw_desc = ((['pw-rule'] if mode != 'login' else []) + (['form-error'] if error else [])) | join(' ') %}
     <div class="pw">
-      <label for="pw">{{ 'New password' if mode == 'reset' else 'Password' }}</label>
+      <label for="{{ pw_id }}">{{ 'New password' if mode == 'reset' else 'Password' }}</label>
       <div class="pw-row">
-        <input id="pw" type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required{% if pw_desc %} aria-describedby="{{ pw_desc }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}>
-        <button type="button" class="btn ghost small" data-reveal="pw" aria-controls="pw" aria-pressed="false" hidden>Show</button>
+        <input id="{{ pw_id }}" type="password" name="password" minlength="{{ 1 if mode == 'login' else 10 }}" autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}" required{% if pw_desc %} aria-describedby="{{ pw_desc }}"{% endif %}{% if error %} aria-invalid="true"{% endif %}>
+        <button type="button" class="btn ghost small" data-reveal="{{ pw_id }}" aria-controls="{{ pw_id }}" aria-pressed="false" hidden>Show</button>
       </div>
       {% if mode != 'login' %}<small id="pw-rule">At least 10 characters, and not a common password, your email or our name. Three or four unrelated words work well.</small>{% endif %}
     </div>
     {% endif %}
     {% if mode == 'reset' %}
     <div class="pw">
-      <label for="pw2">Confirm new password</label>
+      <label for="new-password-confirm">Confirm new password</label>
       <div class="pw-row">
-        <input id="pw2" type="password" name="password2" minlength="10" autocomplete="new-password" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}>
-        <button type="button" class="btn ghost small" data-reveal="pw2" aria-controls="pw2" aria-pressed="false" hidden>Show</button>
+        <input id="new-password-confirm" type="password" name="password2" minlength="10" autocomplete="new-password" required{% if error %} aria-invalid="true" aria-describedby="form-error"{% endif %}>
+        <button type="button" class="btn ghost small" data-reveal="new-password-confirm" aria-controls="new-password-confirm" aria-pressed="false" hidden>Show</button>
       </div>
     </div>
     <input type="hidden" name="token" value="{{ token }}">

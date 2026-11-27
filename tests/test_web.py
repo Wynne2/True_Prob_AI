@@ -455,21 +455,26 @@ def test_registration_rules(client):
 
 def test_sign_up_form_has_a_password_toggle_and_keeps_answers_after_an_error(client):
     page = client.get("/register").text
-    assert re.search(r'<label for="pw">Password</label>', page)
-    assert re.search(r'<input id="pw" type="password"[^>]*aria-describedby="pw-rule"', page)
+    # web.dev / Chromium: new-password on sign-up, current-password on sign-in (same ids as Account).
+    assert re.search(r'<label for="new-password">Password</label>', page)
+    assert re.search(r'<input id="new-password" type="password"[^>]*aria-describedby="pw-rule"', page)
     # Hidden until app.js runs, so without JavaScript there is no dead button.
-    assert re.search(r'<button type="button"[^>]*data-reveal="pw" aria-controls="pw" aria-pressed="false" hidden>Show</button>', page)
+    assert re.search(r'<button type="button"[^>]*data-reveal="new-password" aria-controls="new-password" aria-pressed="false" hidden>Show</button>', page)
     assert "Create free account</button>" in page and "20 free credits every 30 days. No card needed." in page
     assert 'autocapitalize="none" spellcheck="false"' in page
 
     r = client.post("/register", data={"csrf": _csrf(client), "email": "kim@example.com", "password": "short",
                                        "region": "New Jersey", "age": "yes", "terms": "yes"})
     assert r.status_code == 400 and "<option selected>New Jersey</option>" in r.text and 'value="kim@example.com"' in r.text
-    assert "autocomplete=\"current-password\"" in client.get("/login").text
-    assert 'autocomplete="username"' in client.get("/login").text  # password managers; type stays email
+    login = client.get("/login").text
+    assert 'id="current-password"' in login and 'autocomplete="current-password"' in login
+    assert 'autocomplete="username"' in login  # password managers; type stays email
     assert 'autocomplete="email"' in client.get("/register").text and 'autocomplete="username"' not in client.get("/register").text
     # Forgot is account recovery: same username token so managers fill the stored address (web.dev sign-in forms).
     assert 'autocomplete="username"' in client.get("/forgot").text and 'autocomplete="email"' not in client.get("/forgot").text
+    reset = client.get("/reset?token=abc").text
+    assert 'id="new-password"' in reset and 'id="new-password-confirm"' in reset
+    assert 'data-reveal="new-password-confirm"' in reset
 
 
 def test_auth_errors_are_tied_to_the_fields_that_failed(client):
@@ -477,10 +482,11 @@ def test_auth_errors_are_tied_to_the_fields_that_failed(client):
     assert bad.status_code == 400
     assert 'id="form-error"' in bad.text and 'role="alert"' in bad.text
     assert re.search(r'name="email"[^>]*aria-invalid="true"[^>]*aria-describedby="form-error"', bad.text)
-    assert re.search(r'id="pw"[^>]*aria-describedby="form-error"[^>]*aria-invalid="true"', bad.text)
+    assert re.search(r'id="current-password"[^>]*aria-describedby="form-error"[^>]*aria-invalid="true"', bad.text)
     reg = client.post("/register", data={"csrf": _csrf(client), "email": "kim@example.com", "password": "short",
                                          "region": "New Jersey", "age": "yes", "terms": "yes"})
     assert 'aria-describedby="pw-rule form-error"' in reg.text and 'aria-invalid="true"' in reg.text
+    assert 'id="new-password"' in reg.text
     assert 'aria-invalid' not in client.get("/login").text  # clean form is not marked invalid
 
 
