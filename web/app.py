@@ -30,7 +30,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
@@ -465,7 +465,8 @@ async def landing(request: Request):
 
 
 async def favicon(request: Request):
-    return RedirectResponse("/static/favicon.svg", 301)
+    # Serve the SVG at the legacy /.ico path so clients that request it get one hop, not a 301.
+    return FileResponse(HERE / "static" / "favicon.svg", media_type="image/svg+xml")
 
 
 async def pricing(request: Request):

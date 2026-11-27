@@ -183,7 +183,9 @@ def test_structured_data_and_indexing_hints(client):
         assert 'name="robots" content="noindex"' in client.get(path).text, path
     register(client)
     assert 'name="robots" content="noindex"' in client.get("/app").text
-    assert client.get("/favicon.ico", follow_redirects=False).headers["location"] == "/static/favicon.svg"
+    ico = client.get("/favicon.ico", follow_redirects=False)
+    assert ico.status_code == 200 and ico.headers["content-type"].startswith("image/svg+xml")
+    assert b"<svg" in ico.content
     assert client.get("/static/favicon.svg").status_code == 200
 
 
