@@ -1127,9 +1127,15 @@ async def data_export(request: Request):
                          for r in rows("SELECT action, at FROM audit WHERE actor_id=? ORDER BY id")],
         "usage_events": [{"at": iso(r["at"]), "event": r["name"]} for r in rows("SELECT name, at FROM events WHERE user_id=? ORDER BY id")],
     }
+    # ETag ignores exported_at and prior data.export rows (each 200 adds one). Same 304 idea as CSVs.
+    stable = {k: v for k, v in data.items() if k != "exported_at"}
+    stable["security_log"] = [e for e in stable["security_log"] if e["action"] != "data.export"]
+    etag = f'"{hashlib.sha256(json.dumps(stable, sort_keys=True).encode()).hexdigest()[:32]}"'
+    if etag in [t.strip().removeprefix("W/") for t in request.headers.get("if-none-match", "").split(",")]:
+        return Response(status_code=304, headers={"ETag": etag})
     db.audit(uid, "data.export")
     return Response(json.dumps(data, indent=2), media_type="application/json",
-                    headers={"Content-Disposition": 'attachment; filename="true-prob-ai-my-data.json"'})
+                    headers={"ETag": etag, "Content-Disposition": 'attachment; filename="true-prob-ai-my-data.json"'})
 
 
 async def change_password(request: Request):

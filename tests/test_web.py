@@ -1875,6 +1875,7 @@ def test_customers_can_download_their_own_data_as_json(client, env):
     r = client.get("/app/account/data.json")
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/json")
     assert "attachment" in r.headers["content-disposition"] and r.headers["cache-control"] == "no-store"
+    assert "etag" in r.headers
     data = r.json()
     assert data["account"]["email"] == "ann@example.com" and data["account"]["credit_balance"] == 19
     assert [h["credits"] for h in data["credit_history"]] == [20, -1]
@@ -1883,6 +1884,11 @@ def test_customers_can_download_their_own_data_as_json(client, env):
     assert "user.register" in {e["action"] for e in data["security_log"]}
     assert "bob@example.com" not in r.text and "cus_secret" not in r.text and "scrypt" not in r.text
     assert db.query("SELECT 1 FROM audit WHERE actor_id=? AND action='data.export'", (user["id"],))
+    # Unchanged re-download is a bodiless 304 (same pattern as credit-history CSV).
+    assert client.get("/app/account/data.json", headers={"If-None-Match": r.headers["etag"]}).status_code == 304
+    post(client, "/app/watch", player="Player 1")
+    changed = client.get("/app/account/data.json", headers={"If-None-Match": r.headers["etag"]})
+    assert changed.status_code == 200 and "Player 1" in changed.text
 
 
 def test_wallet_warns_before_the_balance_is_too_low_for_a_board(client):
