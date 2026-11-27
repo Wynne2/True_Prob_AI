@@ -1384,6 +1384,27 @@ def test_unlocking_the_board_keeps_the_filters_the_customer_had_on(client, env):
     assert post(client, "/app/explorer/unlock", back="/pricing").headers["location"] == "/app/explorer"
 
 
+def test_line_page_back_link_keeps_the_explorer_filters(client, env):
+    from urllib.parse import quote
+
+    from web import app as webapp
+
+    register(client)
+    write_board(env)
+    here = "/app/explorer?q=Player+0&prop=points"
+    page = client.get(here).text
+    assert f'href="/app/prop/p0?from={quote(here, safe="")}"' in page
+    assert webapp._safe_explorer_path(here) == here
+    assert webapp._safe_explorer_path("https://evil.example/") == "/app/explorer"
+    assert webapp._safe_explorer_path("/login") == "/app/explorer"
+    prop = client.get(f"/app/prop/p0?from={quote(here, safe="")}").text
+    assert 'href="/app/explorer?q=Player+0&amp;prop=points"' in prop and "Back to the explorer" in prop
+    assert 'name="from" value="/app/explorer?q=Player+0&amp;prop=points"' in prop  # unlock keeps the shortlist
+    unlocked = post(client, "/app/prop/p0/unlock", **{"from": here})
+    assert unlocked.headers["location"] == f"/app/prop/p0?from={quote(here, safe="")}"
+    assert post(client, "/app/prop/p1/unlock", **{"from": "/pricing"}).headers["location"] == "/app/prop/p1"
+
+
 def test_tests_never_write_a_session_key_file(env, monkeypatch, tmp_path):
     from web import db
 

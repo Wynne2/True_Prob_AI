@@ -3,11 +3,11 @@
 {% block title %}{{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}: True Prob AI{% endblock %}
 {% block content %}
 <header class="work-head">
-  <p><a href="/app/explorer">Back to the explorer</a></p>
+  <p><a href="{{ back }}">Back to the explorer</a></p>
   <h1>{{ r.player }}: {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</h1>
   <p class="muted">{{ r.team }} vs {{ r.opponent }}. Board read {{ board.scanned_at | ago }} ({{ board.scanned_at | when }}).</p>
   <form method="post" action="/app/watch" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="player" value="{{ r.player }}">
-    <input type="hidden" name="back" value="/app/prop/{{ r.id }}">{% if watching %}<input type="hidden" name="remove" value="1">{% endif %}
+    <input type="hidden" name="back" value="/app/prop/{{ r.id }}{% if back != '/app/explorer' %}?from={{ back | urlquote }}{% endif %}">{% if watching %}<input type="hidden" name="remove" value="1">{% endif %}
     <button class="btn small ghost">{{ 'Stop watching' if watching else 'Watch' }} {{ r.player }}</button></form>
 </header>
 
@@ -18,6 +18,7 @@
     <p>Best price now: <strong>{{ r.odds | american }}</strong> at {{ r.venue }} ({{ r.implied | pct }} including the margin), quoted by {{ r.venues }} venues. Opening shows the consensus, gap, projection and the other side.</p>
   </div>
   <form method="post" action="/app/prop/{{ r.id }}/unlock"><input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if back != '/app/explorer' %}<input type="hidden" name="from" value="{{ back }}">{% endif %}
     <button class="btn" {% if not user.verified_at or balance < costs.prop %}disabled{% endif %}>Open for {{ costs.prop }} credit</button>{{ afford('prop', costs, balance, reset) }}</form>
   {% set n = costs.board // costs.prop %}
   <p class="muted">Opening {{ n }} or more lines today? The <a href="/app/explorer">full board</a> costs {{ costs.board }} credits, the same as {{ n }} single lines, and opens all {{ board.rows | length }} for the rest of the day.</p>
@@ -39,7 +40,7 @@
   {% if r.notes %}<h2>Production model notes</h2><p class="notes">{{ r.notes }}</p>{% endif %}
   {% if other %}
   <h2>The other side</h2>
-  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ other.edge | gap }} points. <a href="/app/prop/{{ other.id }}">View<span class="visually-hidden"> the {{ other.side }} side</span></a></p>
+  <p>{{ other.side | capitalize }} {{ '%g' % other.line }}: best {{ other.odds | american }} at {{ other.venue }}, consensus {{ other.market | pct }}, gap {{ other.edge | gap }} points. <a href="/app/prop/{{ other.id }}{% if back != '/app/explorer' %}?from={{ back | urlquote }}{% endif %}">View<span class="visually-hidden"> the {{ other.side }} side</span></a></p>
   {% endif %}
 </section>
 <p class="muted">Research only. Prices move; check the venue before acting. <a href="/legal/risk">Risk disclosure</a>.</p>

@@ -55,12 +55,13 @@
     {% for r in rows %}
       {% set open = unlocked or r.id in mine %}
       <tr>
-        <th scope="row"><a href="/app/prop/{{ r.id }}">{{ r.player }}</a><small>{{ r.team }} vs {{ r.opponent }}, {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</small></th>
+        {% set prop_href = '/app/prop/' ~ r.id ~ '?from=' ~ (explorer_here | urlquote) %}
+        <th scope="row"><a href="{{ prop_href }}">{{ r.player }}</a><small>{{ r.team }} vs {{ r.opponent }}, {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</small></th>
         <td class="num">{{ r.odds | american }}<small>{{ r.venue }}</small></td>
         <td class="railcol">{% if open %}{{ rail(r.implied, r.market, r.blended, r.model_own, r.market_lo, r.market_hi, r.player ~ ' probability rail') }}{% else %}{{ rail(r.implied, none, none, none, none, none, r.player ~ ' price only') }}{% endif %}</td>
         <td class="num">{% if open %}<span class="{{ r.edge | gap_tone }}">{{ r.edge | gap }}</span>{% else %}<span class="muted">Locked</span>{% endif %}</td>
         <td class="num">{% if open %}{{ '%.2f' % r.weight }}{% if not r.model_agrees %}<small class="warn-text">model disagrees</small>{% endif %}{% else %}–{% endif %}</td>
-        <td><a href="/app/prop/{{ r.id }}">{{ 'Details' if open else 'Open, ' ~ costs.prop ~ ' credit' }}<span class="visually-hidden">: {{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</span></a></td>
+        <td><a href="{{ prop_href }}">{{ 'Details' if open else 'Open, ' ~ costs.prop ~ ' credit' }}<span class="visually-hidden">: {{ r.player }} {{ r.prop }} {{ r.side }} {{ '%g' % r.line }}</span></a></td>
       </tr>
     {% endfor %}
     </tbody>

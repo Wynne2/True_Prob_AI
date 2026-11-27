@@ -19,7 +19,7 @@ import secrets
 import time
 from collections import defaultdict, deque
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from markdown_it import MarkdownIt
 from markupsafe import Markup
@@ -313,7 +313,8 @@ def usd_tone(value) -> str:
 
 templates.env.filters.update(pct=pct, american=american, when=when, day=day, ago=ago, venue_links=venue_links,
                              run_status=run_status, gap=gap, gap_tone=gap_tone, ret=ret, ret_tone=ret_tone,
-                             score=score, n=lambda v: f"{int(v):,}", usd=usd, usd_tone=usd_tone)
+                             score=score, n=lambda v: f"{int(v):,}", usd=usd, usd_tone=usd_tone,
+                             urlquote=lambda s: quote(str(s), safe=""))
 templates.env.globals["NO_DATA"] = NO_DATA
 
 
@@ -849,15 +850,26 @@ async def explorer(request: Request):
     filtered = any(params.get(k) for k in ("q", "prop", "min_odds", "max_odds", "backed"))
     mine = {r["ref"].split(":", 1)[1] for r in db.query(
         "SELECT ref FROM unlocks WHERE user_id=? AND kind='prop' AND ref LIKE ?", (user["id"], f"{slate}:%"))}
+    # Line links carry this so "Back to the explorer" restores the same shortlist.
+    explorer_here = "/app/explorer"
+    if request.url.query:
+        explorer_here = f"/app/explorer?{request.url.query}"
     return render(request, "explorer.html", user=user, board=board, job=job, slate=slate, unlocked=unlocked, rows=rows[:400],
-                  total=len(rows), mine=mine, q=params, filtered=filtered,
+                  total=len(rows), mine=mine, q=params, filtered=filtered, explorer_here=explorer_here,
                   props=sorted({r["prop"] for r in (board or {}).get("rows", [])}))
+
+
+def _safe_explorer_path(value: str | None, default: str = "/app/explorer") -> str:
+    """Only /app/explorer or /app/explorer?... — never an open redirect."""
+    path = str(value or default)
+    if path == "/app/explorer" or (path.startswith("/app/explorer?") and "://" not in path and "\\" not in path):
+        return path
+    return default
 
 
 def _explorer_back(form) -> str:
     """Return path after unlocking the board: keep filters when the form sent a safe /app/explorer URL."""
-    back = str(form.get("back") or "/app/explorer")
-    return back if back == "/app/explorer" or back.startswith("/app/explorer?") else "/app/explorer"
+    return _safe_explorer_path(form.get("back"))
 
 
 async def unlock_board(request: Request):
@@ -898,17 +910,20 @@ async def prop_detail(request: Request):
     other = next((r for r in board["rows"] if r["player"] == row["player"] and r["prop"] == row["prop"]
                   and r["line"] == row["line"] and r["side"] != row["side"]), None)
     watching = bool(db.query("SELECT 1 FROM watchlist WHERE user_id=? AND key=?", (user["id"], row["player"].lower())))
-    return render(request, "prop.html", user=user, board=board, r=row, open=open_, other=other if open_ else None, watching=watching)
+    back = _safe_explorer_path(request.query_params.get("from"))
+    return render(request, "prop.html", user=user, board=board, r=row, open=open_, other=other if open_ else None,
+                  watching=watching, back=back)
 
 
 async def unlock_prop(request: Request):
-    await checked_form(request)
+    form = await checked_form(request)
     user, redirect = need_user(request, verified=True)
     if redirect:
         return redirect
     board, row = _find_prop(request.path_params["pid"])
     if row is None:
         raise HTTPException(404, "That line is no longer on today's board. Nothing was charged.")
+    back = _safe_explorer_path(form.get("from"))
     result = db.spend(user["id"], "prop", f"{board['slate']}:{row['id']}",
                       f"Analysis: {row['player']} {row['prop']} {row['side']} {row['line']:g}")
     if result == "insufficient":
@@ -917,7 +932,11 @@ async def unlock_prop(request: Request):
     if result == "ok":
         db.track("prop_unlocked", user["id"])
     receipt(request, user, result, "prop", f"{row['player']} {row['prop']} {row['side']} {row['line']:g}")
-    return RedirectResponse(f"/app/prop/{row['id']}", 303)
+    # Keep the explorer shortlist on the line page after unlock.
+    dest = f"/app/prop/{row['id']}"
+    if back != "/app/explorer":
+        dest = f"{dest}?{urlencode({'from': back})}"
+    return RedirectResponse(dest, 303)
 
 
 WATCH_LIMIT = 50
