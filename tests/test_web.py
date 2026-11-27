@@ -1764,6 +1764,11 @@ def test_account_password_form_helps_password_managers(client):
     for field in ("current-password", "new-password", "new-password-confirm"):
         assert f'data-reveal="{field}"' in page and f'aria-controls="{field}"' in page
     assert 'aria-describedby="new-pw-rule"' in page
+    # Sign-out-others and delete use the same Show pattern with distinct labelled ids.
+    assert 'id="sessions-password"' in page and 'for="sessions-password"' in page
+    assert 'data-reveal="sessions-password"' in page and 'aria-describedby="sessions-pw-hint"' in page
+    assert 'id="delete-password"' in page and 'for="delete-password"' in page
+    assert 'data-reveal="delete-password"' in page
     post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
     assert "Password changed" in client.get("/app/account").text
 
