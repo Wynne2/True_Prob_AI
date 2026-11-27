@@ -260,6 +260,7 @@ def test_sitemap_dates_only_the_page_whose_change_date_is_known(client, env, mon
     assert "<lastmod>2026-11-16</lastmod>" in client.get("/sitemap.xml").text
     robots = client.get("/robots.txt").text
     assert "Disallow: /billing" in robots and "Disallow: /app" in robots and "Sitemap: " in robots
+    assert "Disallow: /login" in robots and "Disallow: /register" in robots and "Disallow: /forgot" in robots
     assert "Disallow: /reset" in robots and "Disallow: /verify" in robots  # capability-URL paths, not tokens
 
 
