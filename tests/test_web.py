@@ -1865,6 +1865,17 @@ def test_sign_in_and_recovery_pages_are_never_cached(client):
     assert client.get("/static/app.js").headers["Cache-Control"] == "public, max-age=86400"
 
 
+def test_private_pages_turn_off_dns_prefetch(client):
+    # OWASP: private/auth pages should not DNS-prefetch third-party hosts from links.
+    for path in ("/login", "/register", "/forgot", "/reset?token=abc"):
+        assert client.get(path).headers["X-DNS-Prefetch-Control"] == "off", path
+    register(client)
+    assert client.get("/app").headers["X-DNS-Prefetch-Control"] == "off"
+    assert client.get("/app/account").headers["X-DNS-Prefetch-Control"] == "off"
+    for path in ("/", "/pricing", "/performance"):
+        assert "X-DNS-Prefetch-Control" not in client.get(path).headers, path
+
+
 def test_account_lists_recent_sign_ins_and_security_changes_for_this_user_only(client):
     from starlette.testclient import TestClient
 
