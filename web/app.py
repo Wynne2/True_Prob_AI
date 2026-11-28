@@ -427,7 +427,8 @@ def structured_data(base: str) -> list[dict]:
     """Home-page JSON-LD: site, organisation, plan prices (from PLANS) and the FAQ shown on the page."""
     home = base + "/"
     return [
-        {"@context": "https://schema.org", "@type": "WebSite", "name": "True Prob AI", "url": home},
+        {"@context": "https://schema.org", "@type": "WebSite", "name": "True Prob AI", "url": home,
+         "description": ORG_DESCRIPTION},
         {"@context": "https://schema.org", "@type": "Organization", "name": "True Prob AI", "url": home,
          "description": ORG_DESCRIPTION},
         {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "True Prob AI", "url": home,

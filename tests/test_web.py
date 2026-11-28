@@ -170,6 +170,8 @@ def test_structured_data_and_indexing_hints(client):
     assert {d["@type"] for d in ld} == {"WebSite", "Organization", "SoftwareApplication", "FAQPage"}
     org = next(d for d in ld if d["@type"] == "Organization")
     assert org["description"] and "21+" in org["description"] and "not betting or investment advice" in org["description"]
+    site = next(d for d in ld if d["@type"] == "WebSite")
+    assert site["description"] == org["description"]  # Google site-name / WebSite guidance
     app = next(d for d in ld if d["@type"] == "SoftwareApplication")
     assert app["description"] == org["description"]
     offers = app["offers"]
