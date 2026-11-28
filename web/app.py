@@ -470,15 +470,28 @@ async def favicon(request: Request):
     return FileResponse(HERE / "static" / "favicon.svg", media_type="image/svg+xml")
 
 
+def breadcrumb_list(base: str, *crumbs: tuple[str, str]) -> dict:
+    """Home → … → current page. At least two ListItems (Google BreadcrumbList)."""
+    items = [{"@type": "ListItem", "position": 1, "name": "Home", "item": base + "/"}]
+    for i, (name, path) in enumerate(crumbs, start=2):
+        entry: dict = {"@type": "ListItem", "position": i, "name": name}
+        if path:  # last crumb may omit item; Google then uses the page URL
+            entry["item"] = base + path
+        items.append(entry)
+    return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": items}
+
+
 async def pricing(request: Request):
     db.track("visit_pricing")
-    return render(request, "pricing.html", faq=content.FAQ)
+    return render(request, "pricing.html", faq=content.FAQ,
+                  breadcrumbs=breadcrumb_list(base_url(request), ("Pricing", "/pricing")))
 
 
 async def performance(request: Request):
     perf = await run_in_threadpool(_performance)
     return render(request, "performance.html", perf=perf, columns=GRADED_COLUMN_NOTES,
-                  dataset=performance_dataset(base_url(request), [d["date"] for d in perf["dates"]]))
+                  dataset=performance_dataset(base_url(request), [d["date"] for d in perf["dates"]]),
+                  breadcrumbs=breadcrumb_list(base_url(request), ("Performance", "/performance")))
 
 
 GRADED_COLUMN_NOTES = {
@@ -554,12 +567,15 @@ LEGAL_DESCRIPTIONS = {
 
 
 async def legal(request: Request):
-    page = content.LEGAL.get(request.path_params["slug"])
+    slug = request.path_params["slug"]
+    page = content.LEGAL.get(slug)
     if page is None:
         raise HTTPException(404)
     support = os.environ.get("SUPPORT_EMAIL") or "support@example.com"
-    return render(request, "legal.html", page=page, pages=content.LEGAL, description=LEGAL_DESCRIPTIONS.get(request.path_params["slug"]),
-                  body=_md.render(page["body"].replace("{support_email}", support)))
+    base = base_url(request)
+    return render(request, "legal.html", page=page, pages=content.LEGAL, description=LEGAL_DESCRIPTIONS.get(slug),
+                  body=_md.render(page["body"].replace("{support_email}", support)),
+                  breadcrumbs=breadcrumb_list(base, (page["title"], f"/legal/{slug}")))
 
 
 async def healthz(request: Request):

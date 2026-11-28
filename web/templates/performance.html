@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Model performance: True Prob AI{% endblock %}
 {% block description %}Every graded True Prob AI board: accuracy against the market, calibration and flat-stake results, including losing dates.{% endblock %}
-{% block head %}{% if dataset %}<script type="application/ld+json">{{ dataset | tojson }}</script>{% endif %}{% endblock %}
+{% block head %}
+{% if breadcrumbs %}<script type="application/ld+json">{{ breadcrumbs | tojson }}</script>{% endif %}
+{% if dataset %}<script type="application/ld+json">{{ dataset | tojson }}</script>{% endif %}
+{% endblock %}
 {% block content %}
 {% set wf = perf.slope.walk_forward if perf.slope else none %}
 <section class="page-head">

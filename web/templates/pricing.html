@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Pricing: True Prob AI{% endblock %}
 {% block description %}{% for p in plans.values() %}{{ p.name }} ({% if p.price %}${{ p.price }}/month, {% endif %}{{ '{:,}'.format(p.credits) }} credits){{ ' and ' if loop.revindex == 2 else ', ' if not loop.last }}{% endfor %} plans for True Prob AI, an NBA player-prop research tool for adults 21+. Credits reset each period and have no cash value; cancel any time.{% endblock %}
+{% block head %}{% if breadcrumbs %}<script type="application/ld+json">{{ breadcrumbs | tojson }}</script>{% endif %}{% endblock %}
 {% block content %}
 <section class="page-head">
   <h1>Plans</h1>

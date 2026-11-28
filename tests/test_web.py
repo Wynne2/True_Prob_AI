@@ -207,6 +207,26 @@ def test_every_legal_page_has_its_own_meta_description(client):
     assert home not in seen and "Draft" not in home
 
 
+def test_public_pages_publish_breadcrumb_json_ld(client):
+    # Google BreadcrumbList: Home plus the page (at least two ListItems).
+    from web import content
+
+    def crumbs(path):
+        scripts = re.findall(r'<script type="application/ld\+json">(.*?)</script>', client.get(path).text, re.S)
+        blocks = [json.loads(s) for s in scripts]
+        trail = next(b for b in blocks if b.get("@type") == "BreadcrumbList")
+        return [(i["name"], i.get("item")) for i in trail["itemListElement"]]
+
+    assert crumbs("/pricing") == [("Home", "http://testserver/"), ("Pricing", "http://testserver/pricing")]
+    assert crumbs("/performance") == [("Home", "http://testserver/"), ("Performance", "http://testserver/performance")]
+    for slug, page in content.LEGAL.items():
+        assert crumbs(f"/legal/{slug}") == [
+            ("Home", "http://testserver/"),
+            (page["title"], f"http://testserver/legal/{slug}"),
+        ], slug
+    assert "BreadcrumbList" not in client.get("/").text  # home is the trail root, not a crumb page
+
+
 def test_pricing_translates_credits_into_usage(client, env):
     from web import content, db
 
@@ -426,15 +446,19 @@ def test_performance_page_describes_its_csv_files_as_a_dataset(client, monkeypat
     from web import db
 
     page = client.get("/performance").text
-    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
-    assert data["@type"] == "Dataset" and 50 <= len(data["description"]) <= 5000 and data["name"]
+    blocks = [json.loads(s) for s in re.findall(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)]
+    assert any(b.get("@type") == "BreadcrumbList" for b in blocks)
+    data = next(b for b in blocks if b.get("@type") == "Dataset")
+    assert 50 <= len(data["description"]) <= 5000 and data["name"]
     assert data["temporalCoverage"] == "2026-10-31/2026-11-06" and data["isAccessibleForFree"] is True
     urls = [d["contentUrl"] for d in data["distribution"]]
     assert urls[-1] == "http://testserver/performance/2026-11-06.csv" and "license" not in data
     for u in urls:                                            # every advertised file really downloads
         assert client.get(u.replace("http://testserver", "")).status_code == 200
     monkeypatch.setattr(db, "ROOT", tmp_path)
-    assert "application/ld+json" not in client.get("/performance").text
+    empty = [json.loads(s) for s in re.findall(r'<script type="application/ld\+json">(.*?)</script>',
+                                               client.get("/performance").text, re.S)]
+    assert [b["@type"] for b in empty] == ["BreadcrumbList"]  # crumbs stay; Dataset only when graded files exist
 
 
 def test_paid_plans_show_what_a_board_works_out_to(client):
@@ -2028,7 +2052,8 @@ def test_dataset_markup_and_page_explain_every_csv_column(client):
     from web import app as webapp
 
     page = client.get("/performance").text
-    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
+    blocks = [json.loads(s) for s in re.findall(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)]
+    data = next(b for b in blocks if b.get("@type") == "Dataset")
     names = [v["name"] for v in data["variableMeasured"]]
     assert names == list(webapp.GRADED_COLUMNS) and all(v["@type"] == "PropertyValue" and v["description"]
                                                         for v in data["variableMeasured"])

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ page.title }}: True Prob AI{% endblock %}
 {% block description %}{{ description or super() }}{% if description and not legal_reviewed %} Draft awaiting review by a lawyer.{% endif %}{% endblock %}
+{% block head %}{% if breadcrumbs %}<script type="application/ld+json">{{ breadcrumbs | tojson }}</script>{% endif %}{% endblock %}
 {% block content %}
 <div class="legal">
   <nav class="legal-nav" aria-label="Policies">{% for slug, p in pages.items() %}<a href="/legal/{{ slug }}" {% if path == '/legal/' ~ slug %}aria-current="page"{% endif %}>{{ p.title }}</a>{% endfor %}</nav>
