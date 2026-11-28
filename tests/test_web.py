@@ -477,12 +477,15 @@ def test_sign_up_form_has_a_password_toggle_and_keeps_answers_after_an_error(cli
     login = client.get("/login").text
     assert 'id="current-password"' in login and 'autocomplete="current-password"' in login
     assert 'autocomplete="username"' in login  # password managers; type stays email
+    # GOV.UK: keep Show-as-text from spell-checking or capitalising the password.
+    assert 'id="current-password"' in login and 'autocapitalize="off"' in login and 'spellcheck="false"' in login
     assert 'autocomplete="email"' in client.get("/register").text and 'autocomplete="username"' not in client.get("/register").text
     # Forgot is account recovery: same username token so managers fill the stored address (web.dev sign-in forms).
     assert 'autocomplete="username"' in client.get("/forgot").text and 'autocomplete="email"' not in client.get("/forgot").text
     reset = client.get("/reset?token=abc").text
     assert 'id="new-password"' in reset and 'id="new-password-confirm"' in reset
     assert 'data-reveal="new-password-confirm"' in reset
+    assert 'autocapitalize="off"' in reset and reset.count('spellcheck="false"') >= 2
 
 
 def test_auth_errors_are_tied_to_the_fields_that_failed(client):
@@ -1775,6 +1778,9 @@ def test_account_password_form_helps_password_managers(client):
     assert 'data-reveal="sessions-password"' in page and 'aria-describedby="sessions-pw-hint"' in page
     assert 'id="delete-password"' in page and 'for="delete-password"' in page
     assert 'data-reveal="delete-password"' in page
+    # Five password fields; Show toggles to type=text, so block spellcheck and autocapitalize (GOV.UK).
+    assert page.count('type="password"') == 5
+    assert page.count('type="password"') == page.count('autocapitalize="off" spellcheck="false"')
     post(client, "/app/account/password", current="correct horse 1", new="brand new pass 2")
     assert "Password changed" in client.get("/app/account").text
 

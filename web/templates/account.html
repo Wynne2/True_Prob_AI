@@ -55,14 +55,14 @@
       <div class="pw">
         <label for="current-password">Current password</label>
         <div class="pw-row">
-          <input id="current-password" type="password" name="current" autocomplete="current-password" required>
+          <input id="current-password" type="password" name="current" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
           <button type="button" class="btn ghost small" data-reveal="current-password" aria-controls="current-password" aria-pressed="false" hidden>Show</button>
         </div>
       </div>
       <div class="pw">
         <label for="new-password">New password</label>
         <div class="pw-row">
-          <input id="new-password" type="password" name="new" minlength="10" autocomplete="new-password" required aria-describedby="new-pw-rule">
+          <input id="new-password" type="password" name="new" minlength="10" autocomplete="new-password" autocapitalize="off" spellcheck="false" required aria-describedby="new-pw-rule">
           <button type="button" class="btn ghost small" data-reveal="new-password" aria-controls="new-password" aria-pressed="false" hidden>Show</button>
         </div>
         <small id="new-pw-rule">At least 10 characters, not a common password or your email. Changing it signs out every other device.</small>
@@ -70,7 +70,7 @@
       <div class="pw">
         <label for="new-password-confirm">Confirm new password</label>
         <div class="pw-row">
-          <input id="new-password-confirm" type="password" name="new2" minlength="10" autocomplete="new-password" required>
+          <input id="new-password-confirm" type="password" name="new2" minlength="10" autocomplete="new-password" autocapitalize="off" spellcheck="false" required>
           <button type="button" class="btn ghost small" data-reveal="new-password-confirm" aria-controls="new-password-confirm" aria-pressed="false" hidden>Show</button>
         </div>
       </div>
@@ -81,7 +81,7 @@
       <div class="pw">
         <label for="sessions-password">Password</label>
         <div class="pw-row">
-          <input id="sessions-password" type="password" name="password" autocomplete="current-password" required aria-describedby="sessions-pw-hint">
+          <input id="sessions-password" type="password" name="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required aria-describedby="sessions-pw-hint">
           <button type="button" class="btn ghost small" data-reveal="sessions-password" aria-controls="sessions-password" aria-pressed="false" hidden>Show</button>
         </div>
         <small id="sessions-pw-hint">Signs out every other device and browser. This one stays signed in.</small>
@@ -102,7 +102,7 @@
       <div class="pw">
         <label for="delete-password">Password</label>
         <div class="pw-row">
-          <input id="delete-password" type="password" name="password" autocomplete="current-password" required>
+          <input id="delete-password" type="password" name="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
           <button type="button" class="btn ghost small" data-reveal="delete-password" aria-controls="delete-password" aria-pressed="false" hidden>Show</button>
         </div>
       </div>
