@@ -39,6 +39,7 @@
     {% set sorts = [('edge', 'Largest gap'), ('player', 'Player'), ('price', 'Price')] if unlocked else [('player', 'Player'), ('price', 'Price')] %}
     <label>Sort<select name="sort">{% for k, v in sorts %}<option value="{{ k }}" {% if q.get('sort', 'edge' if unlocked else 'player') == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
     {% if unlocked %}<label class="check"><input type="checkbox" name="backed" value="1" {% if q.get('backed') == '1' %}checked{% endif %}> Only lines the model backs</label>{% endif %}
+    {% if watch %}<label class="check"><input type="checkbox" name="watch" value="1" {% if q.get('watch') == '1' %}checked{% endif %}> Only my watchlist</label>{% endif %}
     <button class="btn small ghost">Apply</button>
   </form>
 

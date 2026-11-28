@@ -1384,6 +1384,22 @@ def test_explorer_filter_form_is_labelled_for_search_and_mobile_keyboards(client
     assert 'role="search" aria-label="Filter today\'s lines"' in page or 'role="search" aria-label="Filter today&#39;s lines"' in page
     assert 'name="q"' in page and 'enterkeyhint="search"' in page and 'autocapitalize="none"' in page
     assert 'autocomplete="off"' in page and 'spellcheck="false"' in page
+    assert 'name="watch"' not in page  # no empty watchlist checkbox
+
+
+def test_explorer_can_filter_to_the_customers_watchlist(client, env):
+    # Reddit prop-tool users lean on filters to cut noise; watchlist is the shortlist they already built.
+    register(client)
+    write_board(env)
+    post(client, "/app/watch", player="Player 0")
+    page = client.get("/app/explorer").text
+    assert 'name="watch" value="1"' in page and "Only my watchlist" in page
+    short = client.get("/app/explorer?watch=1").text
+    assert "Player 0" in short and "Player 1" not in short
+    assert "1 of 3 lines match." in short and 'href="/app/explorer">Clear filters</a>' in short
+    # Phantom watch=1 with an empty list is ignored so the board does not go blank.
+    post(client, "/app/watch", player="Player 0", remove="1")
+    assert "Player 1" in client.get("/app/explorer?watch=1").text and 'name="watch"' not in client.get("/app/explorer?watch=1").text
 
 
 def test_explorer_filters_can_be_cleared_and_never_end_in_a_blank_table(client, env):

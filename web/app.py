@@ -842,15 +842,17 @@ async def dashboard(request: Request):
                   dev_verify=request.session.get("dev_verify"))
 
 
-def _filter_rows(rows: list[dict], q) -> list[dict]:
+def _filter_rows(rows: list[dict], q, watched: set[str] | None = None) -> list[dict]:
     text, prop, sort = (q.get("q") or "").strip().lower(), q.get("prop") or "", q.get("sort") or "edge"
     try:
         lo, hi = int(q.get("min_odds") or -100000), int(q.get("max_odds") or 100000)
     except ValueError:
         lo, hi = -100000, 100000
+    watched = watched or set()
     out = [r for r in rows if (not text or text in r["player"].lower() or text in r["team"].lower())
            and (not prop or r["prop"] == prop) and lo <= r["odds"] <= hi
-           and (q.get("backed") != "1" or (r["model_agrees"] and r["weight"] > 0))]
+           and (q.get("backed") != "1" or (r["model_agrees"] and r["weight"] > 0))
+           and (q.get("watch") != "1" or r["player"].lower() in watched)]
     key = {"edge": lambda r: -r["edge"], "player": lambda r: (r["player"], r["prop"], r["line"]),
            "price": lambda r: r["odds"]}.get(sort, lambda r: -r["edge"])
     return sorted(out, key=key)
@@ -864,18 +866,22 @@ async def explorer(request: Request):
     board = jobs.load_board()
     slate = jobs.today().isoformat()
     unlocked = db.is_unlocked(user["id"], "board", slate)
+    watch = db.query("SELECT * FROM watchlist WHERE user_id=? ORDER BY created_at DESC LIMIT ?", (user["id"], WATCH_LIMIT))
+    watched = {w["key"] for w in watch}
     params = dict(request.query_params)
     if not unlocked:  # gap size and model backing are what customers pay for: no sorting or filtering by them
         params.pop("backed", None)
         if params.get("sort", "edge") == "edge":
             params["sort"] = "player"
+    if not watched:  # do not keep a watchlist filter that would empty the board for no reason
+        params.pop("watch", None)
     try:
         if int(params["min_odds"]) > int(params["max_odds"]):  # "from 200 to -200" means the same range
             params["min_odds"], params["max_odds"] = params["max_odds"], params["min_odds"]
     except (KeyError, ValueError):
         pass
-    rows = _filter_rows((board or {}).get("rows", []), params)
-    filtered = any(params.get(k) for k in ("q", "prop", "min_odds", "max_odds", "backed"))
+    rows = _filter_rows((board or {}).get("rows", []), params, watched=watched)
+    filtered = any(params.get(k) for k in ("q", "prop", "min_odds", "max_odds", "backed", "watch"))
     mine = {r["ref"].split(":", 1)[1] for r in db.query(
         "SELECT ref FROM unlocks WHERE user_id=? AND kind='prop' AND ref LIKE ?", (user["id"], f"{slate}:%"))}
     # Line links carry this so "Back to the explorer" restores the same shortlist.
@@ -883,7 +889,7 @@ async def explorer(request: Request):
     if request.url.query:
         explorer_here = f"/app/explorer?{request.url.query}"
     return render(request, "explorer.html", user=user, board=board, job=job, slate=slate, unlocked=unlocked, rows=rows[:400],
-                  total=len(rows), mine=mine, q=params, filtered=filtered, explorer_here=explorer_here,
+                  total=len(rows), mine=mine, q=params, filtered=filtered, explorer_here=explorer_here, watch=watch,
                   props=sorted({r["prop"] for r in (board or {}).get("rows", [])}))
 
 
