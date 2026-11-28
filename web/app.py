@@ -1099,7 +1099,9 @@ async def account(request: Request):
     for h in db.history(user["id"], 100):  # newest first, so walk the balance backwards from today's
         history.append((h, after))
         after -= h["delta"]
-    return render(request, "account.html", user=user, history=history, usage=db.period_usage(user),
+    # Free-plan grant alone is not a charge; nudge until the first spend (same idea as Overview).
+    charged = any(h["delta"] < 0 for h, _ in history)
+    return render(request, "account.html", user=user, history=history, charged=charged, usage=db.period_usage(user),
                   security=[(SECURITY_EVENTS[s["action"]], s["at"]) for s in security], dev_verify=request.session.get("dev_verify"))
 
 

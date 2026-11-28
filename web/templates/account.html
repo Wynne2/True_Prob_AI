@@ -42,7 +42,8 @@
     {% for h, after in history %}<tr><td>{{ h.created_at | when }}</td><td>{{ h.reason }}</td><td class="num {{ 'pos' if h.delta > 0 else '' }}">{{ '{:+,}'.format(h.delta) }}</td><td class="num">{{ after | n }}</td></tr>{% endfor %}
   </tbody></table>
   </div>
-  {% else %}<p>No activity yet.</p>{% endif %}
+  {% if not charged %}<p class="muted">Nothing charged yet. Opening a line in the <a href="/app/explorer">explorer</a> costs {{ costs.prop }} credit{% if costs.prop != 1 %}s{% endif %} and shows up here.</p>{% endif %}
+  {% endif %}
 </section>
 
 <div class="grid-2">

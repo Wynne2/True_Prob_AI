@@ -1743,7 +1743,10 @@ def test_account_shows_what_this_periods_credits_were_used_for(client, env):
     from web import db
 
     user = register(client)
-    assert "Nothing used since" in client.get("/app/account").text
+    fresh = client.get("/app/account").text
+    assert "Nothing used since" in fresh
+    # Free grant is history, not a charge; point new accounts at the explorer (same idea as Overview).
+    assert "Nothing charged yet." in fresh and 'href="/app/explorer"' in fresh
     write_board(env)
     for pid in ("p0", "p1", "p0"):   # reopening p0 is free and is not counted
         post(client, f"/app/prop/{pid}/unlock")
@@ -1758,6 +1761,7 @@ def test_account_shows_what_this_periods_credits_were_used_for(client, env):
     page = client.get("/app/account").text
     assert "Single lines opened: 2, 2 credits" in page and "Full boards opened: 1, 5 credits" in page
     assert "AI Advisor analyses: 1, 3 credits (3 returned)" in page and "Arbitrage terminal days" not in page
+    assert "Nothing charged yet." not in page  # spends hide the nudge
 
 
 def test_common_and_context_passwords_are_refused_everywhere_a_password_is_set(client):
