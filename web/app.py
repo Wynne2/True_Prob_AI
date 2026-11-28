@@ -467,7 +467,9 @@ async def landing(request: Request):
 
 async def favicon(request: Request):
     # Serve the SVG at the legacy /.ico path so clients that request it get one hop, not a 301.
-    return FileResponse(HERE / "static" / "favicon.svg", media_type="image/svg+xml")
+    # Same one-day cache as /static/ (path is not under /static/, so middleware would leave it bare).
+    return FileResponse(HERE / "static" / "favicon.svg", media_type="image/svg+xml",
+                        headers={"Cache-Control": "public, max-age=86400"})
 
 
 def breadcrumb_list(base: str, *crumbs: tuple[str, str]) -> dict:
