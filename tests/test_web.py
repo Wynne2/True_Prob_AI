@@ -1899,6 +1899,16 @@ def test_sign_in_pages_send_x_robots_noindex(client):
     assert "X-Robots-Tag" not in client.get("/performance").headers
 
 
+def test_private_app_pages_send_x_robots_noindex(client):
+    # Auth paths already had the header; /app and /billing get it too so header-only crawlers stay out.
+    register(client)
+    for path in ("/app", "/app/account", "/app/explorer", "/billing/checkout"):
+        r = client.get(path, follow_redirects=False)
+        assert r.headers.get("X-Robots-Tag") == "noindex", path
+    assert "X-Robots-Tag" not in client.get("/").headers
+    assert "X-Robots-Tag" not in client.get("/legal/terms").headers
+
+
 def test_security_txt_follows_rfc_9116_and_needs_a_real_contact(client, monkeypatch):
     from datetime import datetime, timedelta, timezone
 

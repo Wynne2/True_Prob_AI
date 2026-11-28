@@ -1387,13 +1387,12 @@ class SecurityHeaders(BaseHTTPMiddleware):
         })
         if request.url.path in ("/reset", "/verify"):  # the address carries a one-time token
             response.headers["Referrer-Policy"] = "no-referrer"
-            response.headers["X-Robots-Tag"] = "noindex"  # belt with the meta tag; crawlers that skip HTML still see it
-        elif request.url.path in ("/login", "/register", "/forgot"):
-            # Meta noindex already comes from PRIVATE_PREFIXES; header covers crawlers that skip HTML.
+        if request.url.path.startswith(PRIVATE_PREFIXES):
+            # Meta noindex already from PRIVATE_PREFIXES; header reaches crawlers that skip HTML.
             response.headers["X-Robots-Tag"] = "noindex"
         if PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        if request.url.path.startswith(("/app", "/admin", "/login", "/register", "/forgot", "/reset", "/verify", "/billing")):
+        if request.url.path.startswith(PRIVATE_PREFIXES):
             response.headers["Cache-Control"] = "no-store"
             # Private pages: do not DNS-prefetch third-party hosts from links (OWASP headers).
             response.headers["X-DNS-Prefetch-Control"] = "off"
