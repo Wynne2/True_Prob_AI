@@ -286,9 +286,14 @@ def test_sitemap_dates_only_the_page_whose_change_date_is_known(client, env, mon
     monkeypatch.setattr(db, "ROOT", tmp_path)
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     urls = ET.fromstring(client.get("/sitemap.xml").content).findall("s:url", ns)
+    from web import content
+
     dated = {u.find("s:loc", ns).text.split("testserver")[1]: u.find("s:lastmod", ns) for u in urls}
     assert dated["/performance"].text == "2026-11-06"
-    assert all(v is None for k, v in dated.items() if k != "/performance") and "/legal/terms" in dated
+    legal_day = __import__("datetime").datetime.strptime(content._UPDATED, "%B %d, %Y").date().isoformat()
+    assert dated["/legal/terms"].text == legal_day
+    assert all(dated[f"/legal/{s}"].text == legal_day for s in content.LEGAL)
+    assert dated["/"] is None and dated["/pricing"] is None  # no known change date yet
     (tmp_path / "data" / "models" / "market_slope.json").write_text(json.dumps({"fitted_at": "2026-11-16T01:00:00+00:00"}),
                                                                     encoding="utf-8")
     assert "<lastmod>2026-11-16</lastmod>" in client.get("/sitemap.xml").text

@@ -18,6 +18,7 @@ import re
 import secrets
 import time
 from collections import defaultdict, deque
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -621,9 +622,19 @@ def performance_lastmod() -> str | None:
     return max(days) if days else None
 
 
+def legal_lastmod() -> str | None:
+    """ISO date from content._UPDATED (e.g. 'November 15, 2026' → '2026-11-15'). None if unparseable."""
+    try:
+        return datetime.strptime(content._UPDATED, "%B %d, %Y").date().isoformat()
+    except (TypeError, ValueError):
+        return None
+
+
 async def sitemap(request: Request):
     # lastmod only where the date is real; Google ignores a sitemap whose dates are not.
-    urls = [("/", None), ("/pricing", None), ("/performance", performance_lastmod())] + [(f"/legal/{s}", None) for s in content.LEGAL]
+    legal_day = legal_lastmod()
+    urls = [("/", None), ("/pricing", None), ("/performance", performance_lastmod())] + [
+        (f"/legal/{s}", legal_day) for s in content.LEGAL]
     body = "".join(f"<url><loc>{base_url(request)}{u}</loc>{f'<lastmod>{d}</lastmod>' if d else ''}</url>" for u, d in urls)
     return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>',
                     media_type="application/xml")
