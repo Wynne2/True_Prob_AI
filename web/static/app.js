@@ -12,7 +12,11 @@
   document.addEventListener("DOMContentLoaded", function () {
     var btn = document.querySelector("[data-theme-toggle]");
     function label() {
-      if (btn) btn.textContent = root.getAttribute("data-theme") === "light" ? "Switch to dark mode" : "Switch to light mode";
+      if (!btn) return;
+      var lightOn = root.getAttribute("data-theme") === "light";
+      btn.textContent = lightOn ? "Switch to dark mode" : "Switch to light mode";
+      // pressed = light theme is on (WAI-ARIA Toggle Button Pattern).
+      btn.setAttribute("aria-pressed", lightOn ? "true" : "false");
     }
     label();
     if (btn) btn.addEventListener("click", function () {

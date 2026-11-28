@@ -160,6 +160,10 @@ def test_theme_is_set_before_first_paint_by_a_csp_allowed_script(client):
     assert "object-src 'none'" in csp  # OWASP: block plugins / unexpected embeds
     # It runs before the stylesheet loads, so there is no flash of the other theme.
     assert r.text.index("<script>") < r.text.index('rel="stylesheet" href="/static/app.css"')
+    # Toggle is a pressed button for the light theme (WAI-ARIA); app.js keeps the attribute in sync.
+    assert 'data-theme-toggle aria-pressed="false"' in r.text
+    js = (Path(__file__).resolve().parents[1] / "web" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'setAttribute("aria-pressed"' in js
 
 
 def test_structured_data_and_indexing_hints(client):
